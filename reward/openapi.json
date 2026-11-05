@@ -22,6 +22,22 @@
   ],
   "tags": [
     {
+      "name": "Campaign",
+      "description": "Màn **Campaign list** và tạo/sửa campaign."
+    },
+    {
+      "name": "Participants",
+      "description": "Màn **Participants + detail drawer**: người tham gia campaign."
+    },
+    {
+      "name": "Registration form",
+      "description": "Màn **Settings · Registration form**: field của form đăng ký tham gia campaign."
+    },
+    {
+      "name": "Integrated app",
+      "description": "Ứng dụng tích hợp gắn với campaign.\n\n⚠️ Route không có `/web/` (giữ nguyên vì đang chạy) và controller **chưa có `[Authorize]`**."
+    },
+    {
       "name": "Redemption",
       "description": "Màn **Redemption + detail drawer**: tab trạng thái, bảng phiếu đổi quà, drawer chi tiết.\n\nChưa có API cho các nút: Approve, Reject, Mark delivered, Approve pending (bulk), Import shipping status, Resend ZNS, Export."
     },
@@ -35,6 +51,596 @@
     }
   ],
   "paths": {
+    "/api/v1/reward/web/campaign-consumer-field/create": {
+      "post": {
+        "tags": [
+          "Registration form"
+        ],
+        "summary": "Lưu bộ field form đăng ký của campaign",
+        "description": "Lưu cả bộ trong 1 transaction: mỗi phần tử `field_list` có `id = 0` → tạo mới, `id > 0` → cập nhật;\r\n`field_delete_list` là các field cần xóa (theo `id`). Lỗi 1 field thì cả bộ không được lưu.",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_field_create",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerFieldWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "campaign_id": 2,
+                "field_list": [
+                  {
+                    "id": 0,
+                    "code": "pharmacy_name",
+                    "type_key": "text",
+                    "data_type_key": "string",
+                    "config": {
+                      "required": true
+                    },
+                    "name": "Tên nhà thuốc",
+                    "is_system": false,
+                    "sequence": 1,
+                    "active": true
+                  }
+                ],
+                "field_delete_list": [
+                  {
+                    "id": 15
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-field/get-by-campaign-id": {
+      "get": {
+        "tags": [
+          "Registration form"
+        ],
+        "summary": "Danh sách field form đăng ký của campaign",
+        "description": "Màn Settings · Registration form: toàn bộ field của campaign, sắp theo `sequence`.",
+        "operationId": "get_api_v1_reward_web_campaign_consumer_field_get_by_campaign_id",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerFieldWebGetByCampaignIdResponseDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer/list-pageindex": {
+      "post": {
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Danh sách người tham gia campaign",
+        "description": "Màn Participants: phân trang, chọn cột (`columns`), tìm theo tên / SĐT / email / tỉnh.\n\n### Map lên màn hình\n\n> ⚠️ **Đang lỗi trên dev**: function dùng cột `approve_key` nhưng bảng `campaign_consumer` là `approved_key` → API trả `[]`.\n>\n> ⚠️ Khi `columns = null`, bộ cột mặc định của API (`balance`, `earned`, `missions`, `rewards`, `create_date`) **lệch tên** với SQL (`total_balance`, `total_earned`, `total_mission`, `total_reward`, `created_date`) → vẫn trả `[]` kể cả khi DB đã sửa. Tạm thời FE nên gửi `columns` với tên theo SQL.",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_list_pageindex",
+        "x-badges": [
+          {
+            "name": "Đang lỗi trên dev",
+            "color": "#B42318"
+          },
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerWebListPageindexRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "campaign_id": 2,
+                "pageindex": 1,
+                "pagesize": 20,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "columns": [
+                  {
+                    "column_name": "id",
+                    "column_data_type": "bigint"
+                  },
+                  {
+                    "column_name": "name",
+                    "column_data_type": "character varying"
+                  },
+                  {
+                    "column_name": "phone",
+                    "column_data_type": "character varying"
+                  },
+                  {
+                    "column_name": "total_balance",
+                    "column_data_type": "numeric"
+                  }
+                ],
+                "from_date": null,
+                "to_date": null,
+                "sortby": "created_date",
+                "sortdir": "DESC"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringObjectDictionaryListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer/list-totalrow": {
+      "post": {
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Tổng số người tham gia + số theo trạng thái",
+        "description": "Gọi cùng bộ lọc với `list-pageindex`.",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_list_totalrow",
+        "x-badges": [
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerWebListTotalrowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "campaign_id": 2,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "columns": null,
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerWebListTotalrowDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer/export-excel-list": {
+      "post": {
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Xuất Excel người tham gia",
+        "description": "Trả file `.xlsx` theo `columns` (có tên hiển thị). Lỗi thì trả `ResponseDTO` có `error`.",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_export_excel_list",
+        "x-badges": [
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerExportListRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "campaign_id": 2,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "columns": [
+                  {
+                    "column_name": "name",
+                    "column_data_type": "character varying",
+                    "column_display_name": "Tên"
+                  },
+                  {
+                    "column_name": "phone",
+                    "column_data_type": "character varying",
+                    "column_display_name": "Số điện thoại"
+                  }
+                ],
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File tải về",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer/get-by-id": {
+      "get": {
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Chi tiết người tham gia campaign",
+        "description": "Drawer chi tiết người tham gia theo `id` (id dòng campaign_consumer).",
+        "operationId": "get_api_v1_reward_web_campaign_consumer_get_by_id",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerWebGetByIdItemDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer/update-active": {
+      "post": {
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Bật/tắt người tham gia",
+        "description": "Đổi cờ `active` của người tham gia (`id` dòng campaign_consumer).",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_update_active",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerWebUpdateActiveRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 10,
+                "active": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer/approve": {
+      "post": {
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Duyệt / từ chối người tham gia",
+        "description": "Gán `approved_key` (trạng thái duyệt) cho người tham gia theo `id`.\n\n### Map lên màn hình\n\n> `approved_key` là key trạng thái duyệt trong module_config (hỏi BE danh sách key chính xác).",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_approve",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerWebApproveRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 10,
+                "approved_key": "campaign.consumer.approved.approved"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/campaign-integrated-app/create": {
+      "post": {
+        "tags": [
+          "Integrated app"
+        ],
+        "summary": "Gắn ứng dụng tích hợp vào campaign",
+        "description": "`id = 0` → tạo mới; `id > 0` → cập nhật.",
+        "operationId": "post_api_v1_reward_campaign_integrated_app_create",
+        "x-badges": [
+          {
+            "name": "Chưa yêu cầu đăng nhập",
+            "color": "#B42318"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignIntegratedAppWebCreateRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/campaign-integrated-app/delete": {
+      "post": {
+        "tags": [
+          "Integrated app"
+        ],
+        "summary": "Gỡ ứng dụng tích hợp khỏi campaign",
+        "description": "Xóa mềm theo `id`.",
+        "operationId": "post_api_v1_reward_campaign_integrated_app_delete",
+        "x-badges": [
+          {
+            "name": "Chưa yêu cầu đăng nhập",
+            "color": "#B42318"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignIntegratedAppWebDeleteRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/campaign-integrated-app/view": {
+      "post": {
+        "tags": [
+          "Integrated app"
+        ],
+        "summary": "Chi tiết ứng dụng tích hợp của campaign",
+        "description": "Không tìm thấy → `error.code = -404`.",
+        "operationId": "post_api_v1_reward_campaign_integrated_app_view",
+        "x-badges": [
+          {
+            "name": "Chưa yêu cầu đăng nhập",
+            "color": "#B42318"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignIntegratedAppWebGetByIdRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignIntegratedAppWebGetByIdDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign-leaderboard/list-score-nopaging": {
       "get": {
         "tags": [
@@ -109,6 +715,381 @@
                     }
                   ],
                   "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/create": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Tạo hoặc cập nhật campaign",
+        "description": "`id = 0` → tạo mới (status mặc định `campaign.status.draft`); `id > 0` → cập nhật campaign đó.\r\nThành công trả `record_id` của campaign.",
+        "operationId": "post_api_v1_reward_web_campaign_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 0,
+                "code": "OPL-DS-2603",
+                "name": "Reward Opella Dược Sỹ",
+                "tags": [
+                  1,
+                  2
+                ],
+                "description": "",
+                "server_files": "",
+                "banner_filepath": "",
+                "banner_filename": "",
+                "logo_filepath": "",
+                "logo_filename": "",
+                "start_date": "2026-03-12T00:00:00",
+                "end_date": "2026-04-12T23:59:59",
+                "status_key": "",
+                "config_json": null,
+                "active": true,
+                "redemption_window": 7,
+                "cancel_notes": "",
+                "redemption_window_open": true,
+                "miniapp_active": true,
+                "participation_methods": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/update-active": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Bật/tắt campaign",
+        "description": "Đổi cờ `active` của campaign.",
+        "operationId": "post_api_v1_reward_web_campaign_update_active",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebUpdateActiveRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 2,
+                "active": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/update-status": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Đổi trạng thái campaign",
+        "description": "Gán `status_key` mới (key trong module_config `campaign.status.*`).",
+        "operationId": "post_api_v1_reward_web_campaign_update_status",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebUpdateStatusRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 2,
+                "status_key": "campaign.status.ongoing"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/delete": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Xóa campaign",
+        "description": "Xóa mềm campaign theo `id`.",
+        "operationId": "post_api_v1_reward_web_campaign_delete",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebDeleteRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 2
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/get-by-id": {
+      "get": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Chi tiết campaign",
+        "description": "Thông tin campaign theo `id` cho màn chỉnh sửa / overview.",
+        "operationId": "get_api_v1_reward_web_campaign_get_by_id",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignWebGetByIdDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/list-pageindex": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Danh sách campaign",
+        "description": "Màn Campaign list: phân trang, tìm theo mã hoặc tên, lọc trạng thái / tag / khoảng ngày tạo.\n\n### Map lên màn hình\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
+        "operationId": "post_api_v1_reward_web_campaign_list_pageindex",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebListPageindexRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "pageindex": 1,
+                "pagesize": 20,
+                "searchtext": "",
+                "list_status_key": null,
+                "list_tag_id": null,
+                "list_campaign_type_key": [],
+                "from_date": null,
+                "to_date": null,
+                "sortby": "create_date",
+                "sortdir": "DESC"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignWebItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/list-totalrow": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Tổng số campaign + số theo trạng thái",
+        "description": "Gọi cùng bộ lọc với `list-pageindex` để phân trang và hiện số trên tab trạng thái.",
+        "operationId": "post_api_v1_reward_web_campaign_list_totalrow",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebListTotalrowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "searchtext": "",
+                "list_status_key": null,
+                "list_tag_id": null,
+                "list_campaign_type_key": [],
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignWebListTotalrowDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/export-excel-list": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Xuất Excel danh sách campaign",
+        "description": "Trả file `.xlsx` (không bọc `ResponseDTO`). Lỗi thì trả `ResponseDTO` có `error`.\n\n### Map lên màn hình\n\n> Trả file `.xlsx`. ⚠️ `list_tag_id` hiện **không có tác dụng** khi xuất (SQL không dùng).",
+        "operationId": "post_api_v1_reward_web_campaign_export_excel_list",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignExportListRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "searchtext": "",
+                "list_status_key": null,
+                "list_tag_id": null,
+                "from_date": null,
+                "to_date": null,
+                "sortby": "create_date",
+                "sortdir": "DESC"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File tải về",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -757,6 +1738,210 @@
         },
         "additionalProperties": false
       },
+      "CampaignWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã campaign",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_image": {
+            "type": "string",
+            "description": "URL ảnh banner (đã ghép server_files + filepath + filename)",
+            "nullable": true
+          },
+          "logo_image": {
+            "type": "string",
+            "description": "URL logo (đã ghép server_files + filepath + filename)",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Thời điểm bắt đầu",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Thời điểm kết thúc",
+            "format": "date-time",
+            "nullable": true
+          },
+          "published_date": {
+            "type": "string",
+            "description": "Thời điểm publish",
+            "format": "date-time",
+            "nullable": true
+          },
+          "config_json": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái (campaign.status.*)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái",
+            "nullable": true
+          },
+          "tags": {
+            "type": "string",
+            "description": "Danh sách tag (JSON)",
+            "nullable": true
+          },
+          "total_participants": {
+            "type": "integer",
+            "description": "Số người tham gia",
+            "format": "int64",
+            "nullable": true
+          },
+          "points_issued": {
+            "type": "number",
+            "description": "Tổng điểm đã phát",
+            "format": "double",
+            "nullable": true
+          },
+          "total_rewards": {
+            "type": "integer",
+            "description": "Số phần quà",
+            "format": "int64",
+            "nullable": true
+          },
+          "rewards_redeemed": {
+            "type": "integer",
+            "description": "Số quà đã đổi",
+            "format": "int64",
+            "nullable": true
+          },
+          "redemption_closes_at": {
+            "type": "string",
+            "description": "Thời điểm đóng đổi quà",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancel_notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateActionResultDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateActionResultDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/CreateActionResultDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
       "DataCollumnOption": {
         "type": "object",
         "properties": {
@@ -784,6 +1969,74 @@
         },
         "additionalProperties": false
       },
+      "DataCollumnOptionExport": {
+        "type": "object",
+        "properties": {
+          "column_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên cột trả về."
+          },
+          "column_data_type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Kiểu PostgreSQL của cột.",
+            "example": "character varying",
+            "enum": [
+              "bigint",
+              "integer",
+              "numeric",
+              "character varying",
+              "text",
+              "boolean",
+              "timestamp without time zone",
+              "jsonb"
+            ]
+          },
+          "column_display_name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeleteActionResultDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeleteActionResultDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/DeleteActionResultDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
       "ErrorDTO": {
         "type": "object",
         "properties": {
@@ -796,6 +2049,1508 @@
             "nullable": true
           },
           "description": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConfigWebCreateRequestDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConfigWebGetByIdDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerExportListRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign đang xem",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "nullable": true,
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOptionExport"
+            },
+            "description": "Cột xuất Excel kèm tên hiển thị (column_display_name); null = bộ cột mặc định",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerFieldWebCreateItemRequestDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "0 = tạo mới, > 0 = cập nhật",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã field (duy nhất trong campaign)",
+            "nullable": true
+          },
+          "type_key": {
+            "type": "string",
+            "description": "Loại field (control hiển thị)",
+            "nullable": true
+          },
+          "data_type_key": {
+            "type": "string",
+            "description": "Kiểu dữ liệu",
+            "nullable": true
+          },
+          "config": {
+            "description": "Cấu hình field (JSON: options, validate, ...)",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Nhãn hiển thị",
+            "nullable": true
+          },
+          "is_system": {
+            "type": "boolean",
+            "description": "Field hệ thống (không cho xóa)",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Bật/tắt field",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerFieldWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign cần lưu form",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "field_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerFieldWebCreateItemRequestDTO"
+            },
+            "description": "Field cần tạo mới (id = 0) hoặc cập nhật (id > 0)",
+            "nullable": true
+          },
+          "field_delete_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerFieldWebCreateItemRequestDTO"
+            },
+            "description": "Field cần xóa (chỉ cần id)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerFieldWebGetByCampaignIdResponseDTO": {
+        "type": "object",
+        "properties": {
+          "field_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerFieldWebItemDTO"
+            },
+            "description": "Danh sách field, sắp theo sequence",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerFieldWebGetByCampaignIdResponseDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerFieldWebGetByCampaignIdResponseDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerFieldWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "base_field_id": {
+            "type": "integer",
+            "description": "Field gốc trong thư viện field (nếu có)",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_field_id": {
+            "type": "integer",
+            "description": "Field của tenant (nếu có)",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã field",
+            "nullable": true
+          },
+          "type_key": {
+            "type": "string",
+            "description": "Loại field",
+            "nullable": true
+          },
+          "data_type_key": {
+            "type": "string",
+            "description": "Kiểu dữ liệu",
+            "nullable": true
+          },
+          "format": {
+            "type": "string",
+            "description": "Định dạng hiển thị",
+            "nullable": true
+          },
+          "config": {
+            "description": "Cấu hình field (JSON)",
+            "nullable": true
+          },
+          "default_value": {
+            "description": "Giá trị mặc định (JSON)",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Nhãn hiển thị",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_system": {
+            "type": "boolean",
+            "description": "Field hệ thống",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebApproveRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "approved_key": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebGetByIdItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "consumer_id": {
+            "type": "integer",
+            "description": "id người dùng (consumer)",
+            "format": "int64",
+            "nullable": true
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "ward_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "object_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalooa_uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "zaloapp_uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "ref_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên người tham gia",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "description": "SĐT",
+            "nullable": true
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "gender_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata_json": {
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "total_balance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_earned": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_mission": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "total_reward": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái",
+            "nullable": true
+          },
+          "status_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "approved_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approved_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "job_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "workplace": {
+            "type": "string",
+            "nullable": true
+          },
+          "data_json": {
+            "nullable": true
+          },
+          "balance": {
+            "type": "number",
+            "description": "Số điểm hiện có",
+            "format": "double",
+            "nullable": true
+          },
+          "earned": {
+            "type": "number",
+            "description": "Tổng điểm đã tích lũy",
+            "format": "double",
+            "nullable": true
+          },
+          "missions": {
+            "type": "integer",
+            "description": "Số nhiệm vụ đã làm",
+            "format": "int64",
+            "nullable": true
+          },
+          "rewards": {
+            "type": "integer",
+            "description": "Số quà đã đổi",
+            "format": "int64",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebGetByIdItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerWebGetByIdItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebListPageindexRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "pageindex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Trang hiện tại, bắt đầu từ 1.",
+            "default": 1,
+            "minimum": 1,
+            "example": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Số dòng mỗi trang.",
+            "default": 20,
+            "minimum": 1,
+            "example": 20
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign đang xem",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm theo tên, SĐT, email, tỉnh/thành",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái người tham gia",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "nullable": true,
+            "description": "Danh sách cột muốn lấy. Null = bộ cột mặc định của API."
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+            "example": null
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp: id, name, phone, email, province_name, total_balance, total_earned, total_mission, total_reward, status_key, status_name, approve_key, approve_name, active (khác → created_date)",
+            "nullable": true,
+            "enum": [
+              "id",
+              "name",
+              "phone",
+              "email",
+              "province_name",
+              "total_balance",
+              "total_earned",
+              "total_mission",
+              "total_reward",
+              "status_key",
+              "status_name",
+              "approve_key",
+              "approve_name",
+              "active",
+              "created_date"
+            ],
+            "default": "created_date"
+          },
+          "sortdir": {
+            "type": "string",
+            "nullable": true,
+            "description": "Chiều sắp xếp.",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebListTotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status_summary": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebListTotalrowDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerWebListTotalrowDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebListTotalrowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign đang xem",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: giống list-pageindex",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Để null khi lấy số cho các tab",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "nullable": true,
+            "description": "Danh sách cột muốn lấy. Null = bộ cột mặc định của API."
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebUpdateActiveRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignExportListRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm theo mã hoặc tên campaign",
+            "nullable": true,
+            "example": ""
+          },
+          "list_tag_id": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Lọc theo tag (id)",
+            "nullable": true
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái (campaign.status.*)",
+            "nullable": true
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp: tên cột của bảng campaign (mặc định create_date)",
+            "nullable": true
+          },
+          "sortdir": {
+            "type": "string",
+            "nullable": true,
+            "description": "Chiều sắp xếp.",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc từ ngày tạo",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc đến ngày tạo (tự lấy tới 23:59:59)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignIntegratedAppWebCreateRequestDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "app_config_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "integrated_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "integrated_app_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignIntegratedAppWebDeleteRequestDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignIntegratedAppWebGetByIdDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "app_config_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "integrated_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "integrated_app_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignIntegratedAppWebGetByIdDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignIntegratedAppWebGetByIdDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignIntegratedAppWebGetByIdRequestDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "0 = tạo mới, > 0 = cập nhật campaign này",
+            "format": "int64"
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã campaign",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên campaign",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "description": "Domain file server của ảnh",
+            "nullable": true
+          },
+          "banner_filepath": {
+            "type": "string",
+            "description": "Đường dẫn ảnh banner",
+            "nullable": true
+          },
+          "banner_filename": {
+            "type": "string",
+            "description": "Tên file ảnh banner",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "description": "Đường dẫn logo",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "description": "Tên file logo",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Thời điểm bắt đầu",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Thời điểm kết thúc",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái; trống thì mặc định campaign.status.draft",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "redemption_window": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cancel_notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "redemption_window_open": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "miniapp_active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "participation_methods": {
+            "nullable": true
+          },
+          "campaign_config": {
+            "$ref": "#/components/schemas/FnCampaignConfigWebCreateRequestDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebDeleteRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id campaign cần xóa",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebGetByIdDTO": {
+        "type": "object",
+        "properties": {
+          "campaign": {
+            "$ref": "#/components/schemas/FnCampaignWebGetByIdItemDTO"
+          },
+          "campaign_config": {
+            "$ref": "#/components/schemas/FnCampaignConfigWebGetByIdDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebGetByIdDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignWebGetByIdDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebGetByIdItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "redemption_window": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cancel_notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "redemption_window_open": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "miniapp_active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "tags": {
+            "nullable": true
+          },
+          "participation_methods": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebListPageindexRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm theo mã hoặc tên campaign",
+            "nullable": true,
+            "example": ""
+          },
+          "list_campaign_type_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo loại campaign",
+            "nullable": true
+          },
+          "list_tag_id": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Lọc theo tag (id)",
+            "nullable": true
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái (campaign.status.*)",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc từ ngày tạo",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc đến ngày tạo (tự lấy tới 23:59:59)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "pageindex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Trang hiện tại, bắt đầu từ 1.",
+            "default": 1,
+            "minimum": 1,
+            "example": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Số dòng mỗi trang.",
+            "default": 20,
+            "minimum": 1,
+            "example": 20
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp: tên cột của bảng campaign (mặc định create_date)",
+            "nullable": true
+          },
+          "sortdir": {
+            "type": "string",
+            "nullable": true,
+            "description": "Chiều sắp xếp.",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebListTotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "totalrow": {
+            "$ref": "#/components/schemas/FnCampaignWebListTotalrowItemDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebListTotalrowDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignWebListTotalrowDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebListTotalrowItemDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số campaign khớp bộ lọc",
+            "format": "int32"
+          },
+          "status_summary": {
+            "description": "Số campaign theo từng key trạng thái",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebListTotalrowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "list_campaign_type_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo loại campaign",
+            "nullable": true
+          },
+          "list_tag_id": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Lọc theo tag (id)",
+            "nullable": true
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái (campaign.status.*)",
+            "nullable": true
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm theo mã hoặc tên campaign",
+            "nullable": true,
+            "example": ""
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc từ ngày tạo",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc đến ngày tạo (tự lấy tới 23:59:59)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebUpdateActiveRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id campaign",
+            "format": "int64"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "true = bật, false = tắt"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebUpdateStatusRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id campaign",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái mới (campaign.status.*)",
+            "nullable": true
+          },
+          "cancel_notes": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -1734,6 +4489,43 @@
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateActionResultDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateActionResultDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/UpdateActionResultDTO"
           },
           "success": {
             "type": "boolean"

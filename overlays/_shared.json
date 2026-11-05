@@ -1,9 +1,14 @@
 {
   "servers": [
-    { "url": "https://api-staging.superflow.vn", "description": "Dev / staging" },
-    { "url": "http://localhost:112", "description": "Local (dotnet run host reward)" }
+    {
+      "url": "https://api-staging.superflow.vn",
+      "description": "Dev / staging"
+    },
+    {
+      "url": "http://localhost:112",
+      "description": "Local (dotnet run host reward)"
+    }
   ],
-
   "securitySchemes": {
     "Bearer": {
       "type": "http",
@@ -12,83 +17,209 @@
       "description": "Dán access token (không cần chữ `Bearer`). Trang doc nhớ token cho lần sau."
     }
   },
-
   "x-scalar-environments": {
     "staging": {
       "description": "Biến dùng chung khi gọi thử. Sửa 1 lần, mọi request đều dùng.",
       "color": "#0B7A45",
       "variables": [
-        { "name": "tenant_id", "value": { "default": "1", "description": "Tenant đang làm việc" } },
-        { "name": "campaign_id", "value": { "default": "", "description": "Campaign đang mở (hiện API chưa lọc theo campaign)" } }
+        {
+          "name": "tenant_id",
+          "value": {
+            "default": "1",
+            "description": "Tenant đang làm việc"
+          }
+        },
+        {
+          "name": "campaign_id",
+          "value": {
+            "default": "",
+            "description": "Campaign đang mở (hiện API chưa lọc theo campaign)"
+          }
+        }
       ]
     }
   },
-
-  "drop_params": ["user_id", "lang_id", "defaultLangId"],
-
+  "drop_params": [
+    "user_id",
+    "lang_id",
+    "defaultLangId"
+  ],
   "parameters": {
     "tenant_id": {
-      "name": "tenant_id", "in": "query", "required": true,
+      "name": "tenant_id",
+      "in": "query",
+      "required": true,
       "description": "Tenant đang làm việc.",
-      "schema": { "type": "integer", "format": "int64", "minimum": 1 },
+      "schema": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1
+      },
       "example": 1
     },
     "id": {
-      "name": "id", "in": "query", "required": true,
+      "name": "id",
+      "in": "query",
+      "required": true,
       "description": "`id` của bản ghi (lấy từ cột `id` trong danh sách, không phải mã hiển thị).",
-      "schema": { "type": "integer", "format": "int64", "minimum": 1 },
+      "schema": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1
+      },
       "example": 1
     }
   },
-
   "fields": {
-    "tenant_id":   { "description": "Tenant đang làm việc. Bắt buộc, > 0.", "example": 1, "minimum": 1 },
-    "campaign_id": { "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.", "example": null },
-    "pageindex":   { "description": "Trang hiện tại, bắt đầu từ 1.", "default": 1, "minimum": 1, "example": 1 },
-    "pagesize":    { "description": "Số dòng mỗi trang.", "default": 20, "minimum": 1, "example": 20 },
-    "searchtext":  { "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".", "example": "" },
-    "list_status_key": { "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null." },
-    "filter_definition": { "$ref": "#/components/schemas/FilterDefinition", "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null." },
-    "columns":     { "description": "Danh sách cột muốn lấy. Null = bộ cột mặc định của API." },
-    "from_date":   { "description": "Lọc từ ngày (theo ngày tạo bản ghi).", "example": null },
-    "to_date":     { "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.", "example": null },
-    "sortby":      { "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo." },
-    "sortdir":     { "description": "Chiều sắp xếp.", "enum": ["ASC", "DESC"], "default": "DESC" },
-    "column_name": { "description": "Tên cột trả về." },
-    "column_data_type": { "description": "Kiểu PostgreSQL của cột.", "example": "character varying",
-      "enum": ["bigint", "integer", "numeric", "character varying", "text", "boolean", "timestamp without time zone", "jsonb"] }
+    "tenant_id": {
+      "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+      "example": 1,
+      "minimum": 1
+    },
+    "campaign_id": {
+      "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+      "example": null
+    },
+    "pageindex": {
+      "description": "Trang hiện tại, bắt đầu từ 1.",
+      "default": 1,
+      "minimum": 1,
+      "example": 1
+    },
+    "pagesize": {
+      "description": "Số dòng mỗi trang.",
+      "default": 20,
+      "minimum": 1,
+      "example": 20
+    },
+    "searchtext": {
+      "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+      "example": ""
+    },
+    "list_status_key": {
+      "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+    },
+    "filter_definition": {
+      "$ref": "#/components/schemas/FilterDefinition",
+      "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+    },
+    "columns": {
+      "description": "Danh sách cột muốn lấy. Null = bộ cột mặc định của API."
+    },
+    "from_date": {
+      "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+      "example": null
+    },
+    "to_date": {
+      "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+      "example": null
+    },
+    "sortby": {
+      "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo."
+    },
+    "sortdir": {
+      "description": "Chiều sắp xếp.",
+      "enum": [
+        "ASC",
+        "DESC"
+      ],
+      "default": "DESC"
+    },
+    "column_name": {
+      "description": "Tên cột trả về."
+    },
+    "column_data_type": {
+      "description": "Kiểu PostgreSQL của cột.",
+      "example": "character varying",
+      "enum": [
+        "bigint",
+        "integer",
+        "numeric",
+        "character varying",
+        "text",
+        "boolean",
+        "timestamp without time zone",
+        "jsonb"
+      ]
+    }
   },
-
   "badges": {
-    "new":            { "name": "Mới", "color": "#0B7A45" },
-    "filter-broken":  { "name": "Filter nâng cao đang lỗi", "color": "#B42318" },
-    "no-campaign":    { "name": "Chưa lọc campaign", "color": "#B54708" },
-    "no-tenant":      { "name": "Chưa lọc tenant", "color": "#B42318" },
-    "missing-fields": { "name": "Thiếu field so với design", "color": "#B54708" }
+    "new": {
+      "name": "Mới",
+      "color": "#0B7A45"
+    },
+    "filter-broken": {
+      "name": "Filter nâng cao đang lỗi",
+      "color": "#B42318"
+    },
+    "no-campaign": {
+      "name": "Chưa lọc campaign",
+      "color": "#B54708"
+    },
+    "no-tenant": {
+      "name": "Chưa lọc tenant",
+      "color": "#B42318"
+    },
+    "missing-fields": {
+      "name": "Thiếu field so với design",
+      "color": "#B54708"
+    },
+    "broken": {
+      "name": "Đang lỗi trên dev",
+      "color": "#B42318"
+    },
+    "no-auth": {
+      "name": "Chưa yêu cầu đăng nhập",
+      "color": "#B42318"
+    }
   },
-
   "schemas": {
     "ErrorDTO": {
-      "type": "object", "additionalProperties": true,
+      "type": "object",
+      "additionalProperties": true,
       "description": "Thông tin lỗi khi `success = false`."
     },
     "FilterDefinition": {
       "type": "object",
       "description": "Bộ lọc nâng cao. Rule dùng tên cột của danh sách.",
       "properties": {
-        "logic": { "type": "string", "enum": ["AND", "OR"], "description": "Match all = AND, Match any = OR" },
-        "rules": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+        "logic": {
+          "type": "string",
+          "enum": [
+            "AND",
+            "OR"
+          ],
+          "description": "Match all = AND, Match any = OR"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
       }
     },
     "TotalrowDTO": {
       "type": "object",
       "properties": {
-        "total": { "type": "integer", "format": "int64", "description": "Tổng số dòng khớp bộ lọc (dùng cho phân trang và tab All)." },
-        "status_summary": { "type": "object", "additionalProperties": { "type": "integer" }, "description": "Số dòng theo từng key trạng thái." }
+        "total": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Tổng số dòng khớp bộ lọc (dùng cho phân trang và tab All)."
+        },
+        "status_summary": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Số dòng theo từng key trạng thái."
+        }
       }
     },
     "DynamicRow": {
-      "type": "object", "additionalProperties": true,
+      "type": "object",
+      "additionalProperties": true,
       "description": "1 dòng của danh sách. Các key đúng bằng danh sách `columns` (hoặc bộ cột mặc định)."
     }
   }

@@ -6,7 +6,11 @@
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
       "^/api/v1/reward/web/consumer-wallet-transaction/(list-pageindex|list-totalrow|get-by-id)$",
-      "^/api/v1/reward/web/campaign-leaderboard/list-score-nopaging$"
+      "^/api/v1/reward/web/campaign-leaderboard/list-score-nopaging$",
+      "^/api/v1/reward/web/campaign/(create|update-active|update-status|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
+      "^/api/v1/reward/web/campaign-consumer/(list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
+      "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
+      "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$"
     ]
   },
   "info": {
@@ -15,6 +19,26 @@
     "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 05/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | Wallet transaction chưa lọc theo tenant | — |\n| 4 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 5 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
   },
   "tags": [
+    {
+      "name": "Campaign",
+      "match": "/web/campaign/",
+      "description": "Màn **Campaign list** và tạo/sửa campaign."
+    },
+    {
+      "name": "Participants",
+      "match": "/campaign-consumer/",
+      "description": "Màn **Participants + detail drawer**: người tham gia campaign."
+    },
+    {
+      "name": "Registration form",
+      "match": "/campaign-consumer-field/",
+      "description": "Màn **Settings · Registration form**: field của form đăng ký tham gia campaign."
+    },
+    {
+      "name": "Integrated app",
+      "match": "/campaign-integrated-app/",
+      "description": "Ứng dụng tích hợp gắn với campaign.\n\n⚠️ Route không có `/web/` (giữ nguyên vì đang chạy) và controller **chưa có `[Authorize]`**."
+    },
     {
       "name": "Redemption",
       "match": "/consumer-redemption/",
@@ -78,6 +102,28 @@
     "FnConsumerRedemptionWebListTotalrowRequestDTO": {
       "list_status_key": {
         "description": "**Để null** khi lấy số cho các tab. Chỉ truyền khi cần tổng của 1 tab để phân trang."
+      }
+    },
+    "FnCampaignConsumerWebListPageindexRequestDTO": {
+      "sortby": {
+        "enum": [
+          "id",
+          "name",
+          "phone",
+          "email",
+          "province_name",
+          "total_balance",
+          "total_earned",
+          "total_mission",
+          "total_reward",
+          "status_key",
+          "status_name",
+          "approve_key",
+          "approve_name",
+          "active",
+          "created_date"
+        ],
+        "default": "created_date"
       }
     }
   },
@@ -357,6 +403,269 @@
           "write_date": "2026-08-26T11:01:09",
           "create_date": "2026-07-31T14:33:32"
         }
+      ]
+    },
+    "POST /api/v1/reward/web/campaign/create": {
+      "badges": [],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 0,
+        "code": "OPL-DS-2603",
+        "name": "Reward Opella Dược Sỹ",
+        "tags": [
+          1,
+          2
+        ],
+        "description": "",
+        "server_files": "",
+        "banner_filepath": "",
+        "banner_filename": "",
+        "logo_filepath": "",
+        "logo_filename": "",
+        "start_date": "2026-03-12T00:00:00",
+        "end_date": "2026-04-12T23:59:59",
+        "status_key": "",
+        "config_json": null,
+        "active": true,
+        "redemption_window": 7,
+        "cancel_notes": "",
+        "redemption_window_open": true,
+        "miniapp_active": true,
+        "participation_methods": null
+      }
+    },
+    "POST /api/v1/reward/web/campaign/update-active": {
+      "badges": [
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 2,
+        "active": false
+      }
+    },
+    "POST /api/v1/reward/web/campaign/update-status": {
+      "badges": [
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 2,
+        "status_key": "campaign.status.ongoing"
+      }
+    },
+    "POST /api/v1/reward/web/campaign/delete": {
+      "badges": [
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 2
+      }
+    },
+    "GET /api/v1/reward/web/campaign/get-by-id": {
+      "badges": [
+        "no-tenant"
+      ]
+    },
+    "POST /api/v1/reward/web/campaign/list-pageindex": {
+      "request_example": {
+        "tenant_id": 1,
+        "pageindex": 1,
+        "pagesize": 20,
+        "searchtext": "",
+        "list_status_key": null,
+        "list_tag_id": null,
+        "list_campaign_type_key": [],
+        "from_date": null,
+        "to_date": null,
+        "sortby": "create_date",
+        "sortdir": "DESC"
+      },
+      "ui": "| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |"
+    },
+    "POST /api/v1/reward/web/campaign/list-totalrow": {
+      "request_example": {
+        "tenant_id": 1,
+        "searchtext": "",
+        "list_status_key": null,
+        "list_tag_id": null,
+        "list_campaign_type_key": [],
+        "from_date": null,
+        "to_date": null
+      }
+    },
+    "POST /api/v1/reward/web/campaign/export-excel-list": {
+      "request_example": {
+        "tenant_id": 1,
+        "searchtext": "",
+        "list_status_key": null,
+        "list_tag_id": null,
+        "from_date": null,
+        "to_date": null,
+        "sortby": "create_date",
+        "sortdir": "DESC"
+      },
+      "ui": "> Trả file `.xlsx`. ⚠️ `list_tag_id` hiện **không có tác dụng** khi xuất (SQL không dùng)."
+    },
+    "POST /api/v1/reward/web/campaign-consumer/list-pageindex": {
+      "badges": [
+        "broken",
+        "filter-broken"
+      ],
+      "ui": "> ⚠️ **Đang lỗi trên dev**: function dùng cột `approve_key` nhưng bảng `campaign_consumer` là `approved_key` → API trả `[]`.\n>\n> ⚠️ Khi `columns = null`, bộ cột mặc định của API (`balance`, `earned`, `missions`, `rewards`, `create_date`) **lệch tên** với SQL (`total_balance`, `total_earned`, `total_mission`, `total_reward`, `created_date`) → vẫn trả `[]` kể cả khi DB đã sửa. Tạm thời FE nên gửi `columns` với tên theo SQL.",
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 2,
+        "pageindex": 1,
+        "pagesize": 20,
+        "searchtext": "",
+        "list_status_key": null,
+        "filter_definition": null,
+        "columns": [
+          {
+            "column_name": "id",
+            "column_data_type": "bigint"
+          },
+          {
+            "column_name": "name",
+            "column_data_type": "character varying"
+          },
+          {
+            "column_name": "phone",
+            "column_data_type": "character varying"
+          },
+          {
+            "column_name": "total_balance",
+            "column_data_type": "numeric"
+          }
+        ],
+        "from_date": null,
+        "to_date": null,
+        "sortby": "created_date",
+        "sortdir": "DESC"
+      }
+    },
+    "POST /api/v1/reward/web/campaign-consumer/list-totalrow": {
+      "badges": [
+        "filter-broken"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 2,
+        "searchtext": "",
+        "list_status_key": null,
+        "filter_definition": null,
+        "columns": null,
+        "from_date": null,
+        "to_date": null
+      }
+    },
+    "POST /api/v1/reward/web/campaign-consumer/export-excel-list": {
+      "badges": [
+        "filter-broken"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 2,
+        "searchtext": "",
+        "list_status_key": null,
+        "filter_definition": null,
+        "columns": [
+          {
+            "column_name": "name",
+            "column_data_type": "character varying",
+            "column_display_name": "Tên"
+          },
+          {
+            "column_name": "phone",
+            "column_data_type": "character varying",
+            "column_display_name": "Số điện thoại"
+          }
+        ],
+        "from_date": null,
+        "to_date": null
+      }
+    },
+    "GET /api/v1/reward/web/campaign-consumer/get-by-id": {
+      "badges": [
+        "no-tenant"
+      ]
+    },
+    "POST /api/v1/reward/campaign-integrated-app/create": {
+      "badges": [
+        "no-auth",
+        "no-tenant"
+      ]
+    },
+    "POST /api/v1/reward/campaign-integrated-app/delete": {
+      "badges": [
+        "no-auth",
+        "no-tenant"
+      ]
+    },
+    "POST /api/v1/reward/campaign-integrated-app/view": {
+      "badges": [
+        "no-auth",
+        "no-tenant"
+      ]
+    },
+    "POST /api/v1/reward/web/campaign-consumer/update-active": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 10,
+        "active": false
+      }
+    },
+    "POST /api/v1/reward/web/campaign-consumer/approve": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 10,
+        "approved_key": "campaign.consumer.approved.approved"
+      },
+      "ui": "> `approved_key` là key trạng thái duyệt trong module_config (hỏi BE danh sách key chính xác)."
+    },
+    "POST /api/v1/reward/web/campaign-consumer-field/create": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 2,
+        "field_list": [
+          {
+            "id": 0,
+            "code": "pharmacy_name",
+            "type_key": "text",
+            "data_type_key": "string",
+            "config": {
+              "required": true
+            },
+            "name": "Tên nhà thuốc",
+            "is_system": false,
+            "sequence": 1,
+            "active": true
+          }
+        ],
+        "field_delete_list": [
+          {
+            "id": 15
+          }
+        ]
+      }
+    },
+    "GET /api/v1/reward/web/campaign-consumer-field/get-by-campaign-id": {
+      "badges": [
+        "new"
       ]
     }
   }

@@ -145,7 +145,11 @@ def build(module_id, swagger, shared, overlay):
         for p in list(props):
             if p in drop:
                 del props[p]
-                schema["required"] = [r for r in schema.get("required", []) if r != p]
+                req = [r for r in schema.get("required", []) if r != p]
+                if req:
+                    schema["required"] = req
+                else:
+                    schema.pop("required", None)  # OpenAPI 3.0 không cho required rỗng
             elif p in fields:
                 patch_field(props[p], fields[p])
     # schema patch theo tên schema (overlay module)
@@ -218,7 +222,11 @@ def build(module_id, swagger, shared, overlay):
             resp = {"description": "OK"}
             code_200 = op.get("responses", {}).get("200", {}).get("content", {})
             code_schema = (code_200.get("application/json") or code_200.get("text/json") or {}).get("schema")
-            if code_schema and "result" not in oc:
+            file_types = [ct for ct in code_200 if "json" not in ct and "text/plain" not in ct]
+            if file_types and not code_schema:
+                # endpoint trả file (vd Excel): giữ đúng content type, schema binary
+                resp = {"description": "File tải về", "content": {ct: {"schema": {"type": "string", "format": "binary"}} for ct in file_types}}
+            elif code_schema and "result" not in oc:
                 resp["content"] = {"application/json": {"schema": code_schema}}
                 if "result_example" in oc:
                     resp["content"]["application/json"]["example"] = {"success": True, "result": oc["result_example"], "error": None}
