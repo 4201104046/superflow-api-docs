@@ -1,29 +1,50 @@
 <!doctype html>
-<html lang="vi" data-module="" data-root="">
+<html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SuperFlow API Docs</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/docs.css">
+<meta name="description" content="Tài liệu API SuperFlow cho FE, chia theo module.">
+<style>
+  body { margin: 0; }
+  #boot { font: 14px system-ui, sans-serif; color: #5A665F; padding: 40px 24px; }
+</style>
 </head>
 <body>
-<div class="topbar"><div class="topbar-in">
-  <a class="brand" href="">superflow<span>/</span>api-docs</a>
-  <label class="switch" for="module-select">Module <select id="module-select"></select></label>
-</div></div>
-<main class="home">
-  <header class="intro">
-    <div class="eyebrow">superflow · web api</div>
-    <h1>SuperFlow API Docs</h1>
-    <p class="lede">Tài liệu API cho FE theo từng module. Mỗi module có request/response mẫu, bảng map field sang màn hình design và file OpenAPI để import vào Apidog. Chọn module bên dưới hoặc ở dropdown trên cùng.</p>
-    <div class="facts"><div><span>Host dev</span><code>https://api-staging.superflow.vn</code></div><div><span>Auth</span><code>Authorization: Bearer &lt;JWT&gt;</code></div></div>
-  </header>
-  <div class="mods" id="module-list"></div>
-</main>
-<script src="modules.js"></script>
-<script src="assets/docs.js"></script>
+<div id="boot">Đang tải tài liệu…</div>
+<div id="app"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.74.0/dist/browser/standalone.js"></script>
+<script>
+  // Danh sách module do scripts/build.py ghi vào modules.json
+  fetch('modules.json', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (mods) {
+      document.getElementById('boot').remove();
+      Scalar.createApiReference('#app', {
+        sources: mods.map(function (m) {
+          return { title: m.title, slug: m.id, url: m.url + '?v=' + encodeURIComponent(m.updated || '') };
+        }),
+        metaData: { title: 'SuperFlow API Docs' },
+        persistAuth: true,
+        authentication: { preferredSecurityScheme: 'Bearer' },
+        defaultHttpClient: { targetKey: 'js', clientKey: 'axios' },
+        defaultOpenAllTags: true,
+        theme: 'default',
+        customCss: [
+          ':root { --scalar-font: "IBM Plex Sans", system-ui, sans-serif; --scalar-font-code: "IBM Plex Mono", ui-monospace, monospace; }',
+          '.light-mode { --scalar-color-accent: #0B7A45; --scalar-background-accent: #E3F2EA; }',
+          '.dark-mode  { --scalar-color-accent: #4CC489; --scalar-background-accent: #173327; }',
+          /* ẩn nút quảng cáo của Scalar (Ask AI, Generate SDKs & MCP) — selector theo bản 1.74.0 */
+          '.explore-scalar, .agent-button-container, [class*="generate-sdk"] { display: none !important; }',
+          '.t-doc__sidebar > div > button.whitespace-nowrap { display: none !important; }'
+        ].join('\n')
+      });
+    })
+    .catch(function () {
+      document.getElementById('boot').textContent = 'Không tải được modules.json.';
+    });
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 </body>
 </html>
