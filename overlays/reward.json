@@ -5,7 +5,8 @@
     "swagger_path": "/swagger/v1/swagger.json",
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
-      "^/api/v1/reward/web/consumer-wallet-transaction/(list-pageindex|list-totalrow|get-by-id)$"
+      "^/api/v1/reward/web/consumer-wallet-transaction/(list-pageindex|list-totalrow|get-by-id)$",
+      "^/api/v1/reward/web/campaign-leaderboard/list-score-nopaging$"
     ]
   },
   "info": {
@@ -23,6 +24,11 @@
       "name": "Point",
       "match": "/consumer-wallet-transaction/",
       "description": "Màn **Points history**: bảng sổ điểm (ledger) và drawer *Transaction …*.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
+    },
+    {
+      "name": "Leaderboard",
+      "match": "/campaign-leaderboard/",
+      "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia."
     }
   ],
   "schema_patches": {
@@ -325,6 +331,33 @@
         "status_color": "#0B7A45"
       },
       "ui": "| Mục trên drawer | Field |\n|---|---|\n| Type | ⚠️ chỉ có `transaction_type_id` |\n| Source | `reference_type_name`, `reference_type_color` |\n| Reference + nút \"Open …\" | `reference_no`, `reference_id` (dựa `reference_type_key` để biết mở mission hay redemption) |\n| Event | `name` (+ `description`, `notes`) |\n| Points, Balance after | `quantity`, `after_balance` (+ `before_balance`) |\n| Raw event (JSON) | `metadata_json` |\n| Time, Created by | ❌ get-by-id không trả `create_date`, `create_uid` → lấy Time từ dòng trong bảng |\n| Participant | ❌ chưa có |"
+    },
+    "GET /api/v1/reward/web/campaign-leaderboard/list-score-nopaging": {
+      "operationId": "campaignLeaderboardScoreList",
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "ui": "| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Hạng | `rank` | So với `previous_rank` để hiện ▲/▼ (rank nhỏ hơn previous_rank = tăng hạng) |\n| Ảnh đại diện | `image` → nếu rỗng dùng `zalo_avatar` | ⚠️ `image` đang trả `\"\"` thay vì null khi chưa upload ảnh |\n| Tên, SĐT | `name`, `phone` | |\n| Tỉnh/thành | `province_name` | Có thể null |\n| Điểm | `score` | |\n| Cập nhật lúc | `write_date` | |\n\n> Không phân trang: trả toàn bộ người tham gia của campaign. `campaign_id` bắt buộc (API báo lỗi nếu thiếu).",
+      "result_example": [
+        {
+          "id": 79,
+          "campaign_id": 2,
+          "consumer_id": 87,
+          "name": "User Name",
+          "phone": "0869191023",
+          "image": "",
+          "zalo_avatar": "https://h5.zdn.vn/static/images/avatar.png",
+          "province_id": null,
+          "province_name": null,
+          "score": 6300.0,
+          "rank": 1,
+          "previous_rank": 1,
+          "active": true,
+          "write_date": "2026-08-26T11:01:09",
+          "create_date": "2026-07-31T14:33:32"
+        }
+      ]
     }
   }
 }

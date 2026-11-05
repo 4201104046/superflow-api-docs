@@ -28,9 +28,97 @@
     {
       "name": "Point",
       "description": "Màn **Points history**: bảng sổ điểm (ledger) và drawer *Transaction …*.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
+    },
+    {
+      "name": "Leaderboard",
+      "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia."
     }
   ],
   "paths": {
+    "/api/v1/reward/web/campaign-leaderboard/list-score-nopaging": {
+      "get": {
+        "tags": [
+          "Leaderboard"
+        ],
+        "summary": "Bảng xếp hạng điểm của campaign",
+        "description": "Danh sách người tham gia theo hạng (không phân trang), sắp theo `rank` tăng dần, rồi `score` giảm dần.\r\nBắt buộc `campaign_id`. Search tìm theo tên hoặc SĐT người tham gia.\r\nSo `rank` với `previous_rank` để hiện tăng/giảm hạng.\n\n### Map lên màn hình\n\n| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Hạng | `rank` | So với `previous_rank` để hiện ▲/▼ (rank nhỏ hơn previous_rank = tăng hạng) |\n| Ảnh đại diện | `image` → nếu rỗng dùng `zalo_avatar` | ⚠️ `image` đang trả `\"\"` thay vì null khi chưa upload ảnh |\n| Tên, SĐT | `name`, `phone` | |\n| Tỉnh/thành | `province_name` | Có thể null |\n| Điểm | `score` | |\n| Cập nhật lúc | `write_date` | |\n\n> Không phân trang: trả toàn bộ người tham gia của campaign. `campaign_id` bắt buộc (API báo lỗi nếu thiếu).",
+        "operationId": "campaignLeaderboardScoreList",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignLeaderboardScoreWebItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 79,
+                      "campaign_id": 2,
+                      "consumer_id": 87,
+                      "name": "User Name",
+                      "phone": "0869191023",
+                      "image": "",
+                      "zalo_avatar": "https://h5.zdn.vn/static/images/avatar.png",
+                      "province_id": null,
+                      "province_name": null,
+                      "score": 6300.0,
+                      "rank": 1,
+                      "previous_rank": 1,
+                      "active": true,
+                      "write_date": "2026-08-26T11:01:09",
+                      "create_date": "2026-07-31T14:33:32"
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/consumer-redemption/list-pageindex": {
       "post": {
         "tags": [
@@ -561,6 +649,114 @@
       }
     },
     "schemas": {
+      "CampaignLeaderboardScoreWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "id dòng điểm trên bảng xếp hạng",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "consumer_id": {
+            "type": "integer",
+            "description": "id người tham gia",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên người tham gia",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "description": "SĐT người tham gia",
+            "nullable": true
+          },
+          "image": {
+            "type": "string",
+            "description": "Ảnh đại diện: ảnh đã upload, không có thì ảnh Zalo",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "description": "Ảnh đại diện Zalo",
+            "nullable": true
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "province_name": {
+            "type": "string",
+            "description": "Tên tỉnh/thành của người tham gia",
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "description": "Điểm xếp hạng",
+            "format": "double",
+            "nullable": true
+          },
+          "rank": {
+            "type": "integer",
+            "description": "Hạng hiện tại (1 = cao nhất)",
+            "format": "int32",
+            "nullable": true
+          },
+          "previous_rank": {
+            "type": "integer",
+            "description": "Hạng lần cập nhật trước, dùng để hiện tăng/giảm hạng",
+            "format": "int32",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "write_date": {
+            "type": "string",
+            "description": "Thời điểm điểm/hạng được cập nhật gần nhất",
+            "format": "date-time",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignLeaderboardScoreWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignLeaderboardScoreWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
       "DataCollumnOption": {
         "type": "object",
         "properties": {
@@ -1571,11 +1767,11 @@
       }
     },
     "parameters": {
-      "id": {
-        "name": "id",
+      "tenant_id": {
+        "name": "tenant_id",
         "in": "query",
         "required": true,
-        "description": "`id` của bản ghi (lấy từ cột `id` trong danh sách, không phải mã hiển thị).",
+        "description": "Tenant đang làm việc.",
         "schema": {
           "type": "integer",
           "format": "int64",
@@ -1583,11 +1779,11 @@
         },
         "example": 1
       },
-      "tenant_id": {
-        "name": "tenant_id",
+      "id": {
+        "name": "id",
         "in": "query",
         "required": true,
-        "description": "Tenant đang làm việc.",
+        "description": "`id` của bản ghi (lấy từ cột `id` trong danh sách, không phải mã hiển thị).",
         "schema": {
           "type": "integer",
           "format": "int64",
