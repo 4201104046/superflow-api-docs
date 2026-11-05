@@ -5,27 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SuperFlow API Docs</title>
 <meta name="description" content="Tài liệu API SuperFlow cho FE, chia theo module.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  body { margin: 0; }
+  :root { --hdr-h: 52px; --hdr-bg: #FFFFFF; --hdr-fg: #17201B; --hdr-muted: #5A665F; --hdr-line: #DCE2DE; --hdr-accent: #0B7A45; --hdr-input: #F7F8F7; }
+  @media (prefers-color-scheme: dark) {
+    :root { --hdr-bg: #0F0F0F; --hdr-fg: #E4EBE6; --hdr-muted: #98A69E; --hdr-line: #2A2A2A; --hdr-accent: #4CC489; --hdr-input: #1A1A1A; }
+  }
+  body.light-mode { --hdr-bg: #FFFFFF; --hdr-fg: #17201B; --hdr-muted: #5A665F; --hdr-line: #DCE2DE; --hdr-accent: #0B7A45; --hdr-input: #F7F8F7; }
+  body.dark-mode  { --hdr-bg: #0F0F0F; --hdr-fg: #E4EBE6; --hdr-muted: #98A69E; --hdr-line: #2A2A2A; --hdr-accent: #4CC489; --hdr-input: #1A1A1A; }
+  body { margin: 0; --scalar-custom-header-height: var(--hdr-h); }
+  .sf-header { position: sticky; top: 0; z-index: 100; height: var(--hdr-h); box-sizing: border-box; display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; background: var(--hdr-bg); color: var(--hdr-fg); border-bottom: 1px solid var(--hdr-line);
+    font: 14px "IBM Plex Sans", system-ui, sans-serif; }
+  .sf-brand { font: 600 14px "IBM Plex Mono", ui-monospace, monospace; color: var(--hdr-fg); text-decoration: none; white-space: nowrap; }
+  .sf-brand b { color: var(--hdr-accent); font-weight: 600; }
+  .sf-pick { display: flex; align-items: center; gap: 8px; color: var(--hdr-muted); font-size: 13px; }
+  .sf-pick select { font: 500 14px "IBM Plex Sans", system-ui, sans-serif; color: var(--hdr-fg); background: var(--hdr-input);
+    border: 1px solid var(--hdr-line); border-radius: 7px; padding: 6px 28px 6px 10px; min-width: 170px; cursor: pointer; }
+  .sf-pick select:focus-visible { outline: 2px solid var(--hdr-accent); outline-offset: 1px; }
+  .sf-meta { margin-left: auto; color: var(--hdr-muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sf-meta a { color: var(--hdr-accent); }
   #boot { font: 14px system-ui, sans-serif; color: #5A665F; padding: 40px 24px; }
+  @media (max-width: 640px) { .sf-meta { display: none; } .sf-pick span { display: none; } .sf-pick select { min-width: 0; } }
 </style>
 </head>
 <body>
+<header class="sf-header">
+  <a class="sf-brand" href="./">superflow<b>/</b>api-docs</a>
+  <label class="sf-pick" for="sf-module"><span>Module</span><select id="sf-module" aria-label="Chọn module"></select></label>
+  <div class="sf-meta" id="sf-meta"></div>
+</header>
 <div id="boot">Đang tải tài liệu…</div>
 <div id="app"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.74.0/dist/browser/standalone.js"></script>
 <script>
-  // Danh sách module do scripts/build.py ghi vào modules.json
+  // Danh sách module do scripts/build.py ghi vào modules.json. Mỗi lần chỉ nạp 1 module, chọn qua ?module=<id>.
   fetch('modules.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (mods) {
+      var wanted = new URLSearchParams(location.search).get('module');
+      var cur = mods.find(function (m) { return m.id === wanted; }) || mods[0];
+
+      var sel = document.getElementById('sf-module');
+      mods.forEach(function (m) {
+        var o = document.createElement('option');
+        o.value = m.id; o.textContent = m.title; o.selected = m.id === cur.id;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', function () {
+        location.href = '?module=' + encodeURIComponent(sel.value);
+      });
+
+      var meta = document.getElementById('sf-meta');
+      meta.innerHTML = 'Cập nhật ' + (cur.updated || '—') + ' · <a href="' + cur.url + '">openapi.json</a> (import Apidog)';
+
       document.getElementById('boot').remove();
       Scalar.createApiReference('#app', {
-        sources: mods.map(function (m) {
-          return { title: m.title, slug: m.id, url: m.url + '?v=' + encodeURIComponent(m.updated || '') };
-        }),
-        metaData: { title: 'SuperFlow API Docs' },
+        url: cur.url + '?v=' + encodeURIComponent(cur.updated || ''),
+        metaData: { title: cur.title + ' · SuperFlow API Docs' },
         persistAuth: true,
         authentication: { preferredSecurityScheme: 'Bearer' },
         defaultHttpClient: { targetKey: 'js', clientKey: 'axios' },
@@ -45,6 +83,5 @@
       document.getElementById('boot').textContent = 'Không tải được modules.json.';
     });
 </script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 </body>
 </html>
