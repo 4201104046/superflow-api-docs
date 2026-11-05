@@ -6,6 +6,10 @@
   },
   "servers": [
     {
+      "url": "https://api-staging.superflow.vn",
+      "description": "Dev / staging"
+    },
+    {
       "url": "http://localhost:5000",
       "description": "Local"
     }

@@ -48,6 +48,7 @@
   <h1>Reward Redemption &amp; Points API</h1>
   <p class="lede">Tài liệu cho FE làm 2 tab <b>Redemption</b> và <b>Point</b> trong trang chi tiết campaign (design "Opella Reward · Admin v1.0"). Mỗi endpoint có body mẫu, response mẫu và bảng map từng cột trên UI sang field API. Response mẫu là dữ liệu minh họa, đúng shape thật.</p>
   <div class="facts">
+    <div><span>Host dev</span><code>https://api-staging.superflow.vn</code></div>
     <div><span>Base path</span><code>/api/v1/reward/web</code></div>
     <div><span>Auth</span><code>Authorization: Bearer &lt;JWT&gt;</code></div>
     <div><span>Response wrapper</span><code>{ success, result, error }</code></div>
@@ -518,6 +519,10 @@
     &quot;version&quot;: &quot;1.0&quot;
   },
   &quot;servers&quot;: [
+    {
+      &quot;url&quot;: &quot;https://api-staging.superflow.vn&quot;,
+      &quot;description&quot;: &quot;Dev / staging&quot;
+    },
     {
       &quot;url&quot;: &quot;http://localhost:5000&quot;,
       &quot;description&quot;: &quot;Local&quot;
