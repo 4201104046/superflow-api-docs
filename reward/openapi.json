@@ -1,0 +1,1117 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Reward Web - Consumer Redemption & Wallet Transaction",
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local"
+    }
+  ],
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Reward/Web/Consumer Redemption"
+    },
+    {
+      "name": "Reward/Web/Consumer Wallet Transaction"
+    }
+  ],
+  "paths": {
+    "/api/v1/reward/web/consumer-redemption/list-pageindex": {
+      "post": {
+        "tags": [
+          "Reward/Web/Consumer Redemption"
+        ],
+        "summary": "Danh sách phiếu đổi quà (phân trang)",
+        "operationId": "fn_consumer_redemption_web_list_pageindex",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerRedemptionListPageindexRequest"
+              },
+              "example": {
+                "tenant_id": 1,
+                "pageindex": 1,
+                "pagesize": 20,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "columns": null,
+                "from_date": null,
+                "to_date": null,
+                "sortdir": "DESC",
+                "sortby": "created_date"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerRedemptionListPageindexResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/consumer-redemption/list-totalrow": {
+      "post": {
+        "tags": [
+          "Reward/Web/Consumer Redemption"
+        ],
+        "summary": "Tổng số phiếu đổi quà + status_summary",
+        "operationId": "fn_consumer_redemption_web_list_totalrow",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerRedemptionListTotalrowRequest"
+              },
+              "example": {
+                "tenant_id": 1,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotalrowResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/consumer-redemption/get-by-id": {
+      "get": {
+        "tags": [
+          "Reward/Web/Consumer Redemption"
+        ],
+        "summary": "Chi tiết phiếu đổi quà",
+        "operationId": "fn_consumer_redemption_web_get_by_id",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": 1
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerRedemptionGetByIdResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/consumer-wallet-transaction/list-pageindex": {
+      "post": {
+        "tags": [
+          "Reward/Web/Consumer Wallet Transaction"
+        ],
+        "summary": "Danh sách giao dịch ví (phân trang)",
+        "operationId": "fn_consumer_wallet_transaction_web_list_pageindex",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerWalletTransactionListPageindexRequest"
+              },
+              "example": {
+                "tenant_id": 1,
+                "pageindex": 1,
+                "pagesize": 20,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "columns": null,
+                "from_date": null,
+                "to_date": null,
+                "sortdir": "DESC",
+                "sortby": "create_date"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerWalletTransactionListPageindexResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/consumer-wallet-transaction/list-totalrow": {
+      "post": {
+        "tags": [
+          "Reward/Web/Consumer Wallet Transaction"
+        ],
+        "summary": "Tổng số giao dịch ví + status_summary",
+        "operationId": "fn_consumer_wallet_transaction_web_list_totalrow",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerWalletTransactionListTotalrowRequest"
+              },
+              "example": {
+                "tenant_id": 1,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "from_date": null,
+                "to_date": null,
+                "columns": null
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotalrowResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/consumer-wallet-transaction/get-by-id": {
+      "get": {
+        "tags": [
+          "Reward/Web/Consumer Wallet Transaction"
+        ],
+        "summary": "Chi tiết giao dịch ví",
+        "operationId": "fn_consumer_wallet_transaction_web_get_by_id",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": 1
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerWalletTransactionGetByIdResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "DataCollumnOption": {
+        "type": "object",
+        "properties": {
+          "column_name": {
+            "type": "string"
+          },
+          "column_data_type": {
+            "type": "string",
+            "description": "bigint | integer | numeric | character varying | text | boolean | timestamp without time zone | jsonb ..."
+          }
+        }
+      },
+      "FilterDefinition": {
+        "type": "object",
+        "properties": {
+          "logic": {
+            "type": "string",
+            "enum": [
+              "AND",
+              "OR"
+            ]
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "description": "Bộ lọc động, build WHERE qua fn_rule_definition_build_where_and/or"
+      },
+      "ErrorDTO": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "TotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status_summary": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "Đếm theo status_key"
+          }
+        }
+      },
+      "DynamicRow": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Một dòng; các key theo danh sách columns"
+      },
+      "ConsumerRedemptionListPageindexRequest": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageindex": {
+            "type": "integer",
+            "format": "int32",
+            "default": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "format": "int32",
+            "default": 20
+          },
+          "searchtext": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tìm theo redemption_no, reward_name, reward_code, consumer_name, consumer_code, consumer_phone"
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "filter_definition": {
+            "$ref": "#/components/schemas/FilterDefinition",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Hiện fn chưa dùng tham số này"
+          },
+          "columns": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "description": "Để trống sẽ dùng bộ cột mặc định"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sortby": {
+            "type": "string",
+            "default": "created_date",
+            "enum": [
+              "id",
+              "redemption_no",
+              "consumer_name",
+              "consumer_phone",
+              "reward_name",
+              "reward_type",
+              "total_point_used",
+              "request_date",
+              "status_key",
+              "status_name",
+              "active",
+              "created_date"
+            ]
+          },
+          "sortdir": {
+            "type": "string",
+            "default": "DESC",
+            "enum": [
+              "ASC",
+              "DESC"
+            ]
+          }
+        },
+        "required": [
+          "tenant_id"
+        ]
+      },
+      "ConsumerRedemptionListTotalrowRequest": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "searchtext": {
+            "type": "string",
+            "nullable": true
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "filter_definition": {
+            "$ref": "#/components/schemas/FilterDefinition",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "tenant_id"
+        ]
+      },
+      "ConsumerRedemptionItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "wallet_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "wallet_account_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "redemption_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "number",
+            "nullable": true
+          },
+          "cash_value": {
+            "type": "number",
+            "nullable": true
+          },
+          "total_point_used": {
+            "type": "number",
+            "nullable": true
+          },
+          "total_cash_paid": {
+            "type": "number",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "request_channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "request_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approval_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approval_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approval_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "inventory_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "inventory_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "inventory_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "inventory_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "fulfillment_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "fulfillment_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "fulfillment_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "fulfillment_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "payment_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "payment_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "shipping_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_address": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_tracking_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancel_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancel_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancel_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "metadata_json": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "expired_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ConsumerRedemptionConsumerItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalooa_uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "zaloapp_uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "ref_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "gender_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "verify": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "verify_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "last_login_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "metadata_json": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          }
+        }
+      },
+      "ConsumerRedemptionGetById": {
+        "type": "object",
+        "properties": {
+          "consumer_redemption": {
+            "$ref": "#/components/schemas/ConsumerRedemptionItem"
+          },
+          "consumer_reward": {
+            "$ref": "#/components/schemas/ConsumerRedemptionConsumerItem"
+          }
+        }
+      },
+      "ConsumerWalletTransactionListPageindexRequest": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Bắt buộc ở API nhưng fn chưa lọc theo tenant"
+          },
+          "pageindex": {
+            "type": "integer",
+            "format": "int32",
+            "default": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "format": "int32",
+            "default": 20
+          },
+          "searchtext": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tìm theo transaction_no, reference_no, name"
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "filter_definition": {
+            "$ref": "#/components/schemas/FilterDefinition",
+            "nullable": true
+          },
+          "columns": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "description": "Để trống sẽ dùng bộ cột mặc định"
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Hiện fn chưa dùng tham số này"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sortby": {
+            "type": "string",
+            "default": "create_date",
+            "enum": [
+              "id",
+              "wallet_id",
+              "wallet_account_id",
+              "transaction_no",
+              "reference_no",
+              "name",
+              "quantity",
+              "before_balance",
+              "after_balance",
+              "expire_date",
+              "status_key",
+              "status_name",
+              "active",
+              "create_date"
+            ]
+          },
+          "sortdir": {
+            "type": "string",
+            "default": "DESC",
+            "enum": [
+              "ASC",
+              "DESC"
+            ]
+          }
+        },
+        "required": [
+          "tenant_id"
+        ]
+      },
+      "ConsumerWalletTransactionListTotalrowRequest": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "searchtext": {
+            "type": "string",
+            "nullable": true
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "columns": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            }
+          },
+          "filter_definition": {
+            "$ref": "#/components/schemas/FilterDefinition",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "tenant_id"
+        ]
+      },
+      "ConsumerWalletTransactionItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "wallet_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "wallet_account_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "hold_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "parent_transaction_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reversal_transaction_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reference_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference_type_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference_type_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reference_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "transaction_type_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "transaction_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "before_balance": {
+            "type": "number",
+            "nullable": true
+          },
+          "after_balance": {
+            "type": "number",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "metadata_json": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ConsumerRedemptionListPageindexResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DynamicRow"
+            }
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO",
+            "nullable": true
+          }
+        }
+      },
+      "ConsumerWalletTransactionListPageindexResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DynamicRow"
+            }
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO",
+            "nullable": true
+          }
+        }
+      },
+      "TotalrowResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/TotalrowDTO"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO",
+            "nullable": true
+          }
+        }
+      },
+      "ConsumerRedemptionGetByIdResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ConsumerRedemptionGetById",
+            "nullable": true
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO",
+            "nullable": true
+          }
+        }
+      },
+      "ConsumerWalletTransactionGetByIdResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ConsumerWalletTransactionItem",
+            "nullable": true
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO",
+            "nullable": true
+          }
+        }
+      }
+    }
+  }
+}
