@@ -62,7 +62,7 @@
 
       document.getElementById('boot').remove();
       Scalar.createApiReference('#app', {
-        url: cur.url + '?v=' + encodeURIComponent(cur.updated || ''),
+        url: cur.url + '?v=' + encodeURIComponent(cur.rev || cur.updated || Date.now()),
         metaData: { title: cur.title + ' · SuperFlow API Docs' },
         persistAuth: true,
         authentication: { preferredSecurityScheme: 'Bearer' },

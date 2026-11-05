@@ -10,7 +10,7 @@ Luồng:
   4. Áp overlay của module: tag, mô tả, badge, response (bọc { success, result, error }).
   5. Ghi <module>/openapi.json, cập nhật modules.json, in ra endpoint thêm/bớt so với bản trước.
 """
-import argparse, copy, json, os, re, subprocess, sys, time, urllib.request
+import argparse, copy, hashlib, json, os, re, subprocess, sys, time, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 METHODS = ("get", "post", "put", "patch", "delete")
@@ -284,7 +284,11 @@ def main():
 
     reg_path = os.path.join(ROOT, "modules.json")
     reg = load(reg_path) if os.path.exists(reg_path) else []
-    entry = {"id": a.module, "title": cfg["title"], "url": f"{a.module}/openapi.json", "updated": time.strftime("%d/%m/%Y")}
+    # rev đổi theo nội dung → trình duyệt không dùng lại openapi.json cũ sau mỗi lần cập nhật
+    with open(out, "rb") as f:
+        rev = hashlib.sha1(f.read()).hexdigest()[:10]
+    entry = {"id": a.module, "title": cfg["title"], "url": f"{a.module}/openapi.json",
+             "updated": time.strftime("%H:%M %d/%m/%Y"), "rev": rev}
     reg = [e for e in reg if e["id"] != a.module] + [entry]
     reg.sort(key=lambda e: e["title"])
     dump(reg_path, reg)
