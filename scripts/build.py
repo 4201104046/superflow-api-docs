@@ -97,8 +97,9 @@ def prune_components(doc):
             comps[kind] = {n: s for n, s in comps[kind].items() if f"#/components/{kind}/{n}" in keep}
 
 
-def patch_field(target, patch):
-    """Gộp patch vào schema của 1 field. `$ref` thay hẳn kiểu, các key khác ghi đè."""
+def patch_field(target, patch, override=False):
+    """Gộp patch vào schema của 1 field. `$ref` thay hẳn kiểu.
+    override=False: chỉ điền key code chưa có (mô tả trong /// comment thắng)."""
     if "$ref" in patch:
         nullable = target.get("nullable")
         target.clear()
@@ -106,7 +107,7 @@ def patch_field(target, patch):
         if nullable:
             target["nullable"] = True
     for k, v in patch.items():
-        if k != "$ref":
+        if k != "$ref" and (override or k not in target):
             target[k] = copy.deepcopy(v)
 
 
@@ -135,8 +136,8 @@ def build(module_id, swagger, shared, overlay):
             doc[k] = copy.deepcopy(v)
 
     # schema dùng chung + schema response của module
-    doc["components"]["schemas"].update(copy.deepcopy(shared.get("schemas", {})))
-    doc["components"]["schemas"].update(copy.deepcopy(overlay.get("schemas", {})))
+    for n, sch in {**shared.get("schemas", {}), **overlay.get("schemas", {})}.items():
+        doc["components"]["schemas"].setdefault(n, copy.deepcopy(sch))
 
     # field dùng chung: áp vào mọi property cùng tên trong mọi schema
     for name, schema in doc["components"]["schemas"].items():
@@ -155,7 +156,7 @@ def build(module_id, swagger, shared, overlay):
             continue
         for p, pp in patch.items():
             if p in sch.get("properties", {}):
-                patch_field(sch["properties"][p], pp)
+                patch_field(sch["properties"][p], pp, override=True)
 
     ops_cfg = overlay.get("operations", {})
     used_tags = []
@@ -173,9 +174,13 @@ def build(module_id, swagger, shared, overlay):
             new["tags"] = [tag]
             if tag not in used_tags:
                 used_tags.append(tag)
-            for k in ("summary", "description", "operationId"):
-                if k in oc:
-                    new[k] = oc[k]
+            for k in ("summary", "description"):
+                if oc.get(k) or op.get(k):
+                    new[k] = oc.get(k) or op[k]
+            if oc.get("ui"):
+                new["description"] = (new.get("description", "") + "\n\n### Map lên màn hình\n\n" + oc["ui"]).strip()
+            if "operationId" in oc:
+                new["operationId"] = oc["operationId"]
             new.setdefault("operationId", oc.get("operationId") or re.sub(r"\W+", "_", f"{method}{path}").strip("_"))
             if oc.get("badges"):
                 new["x-badges"] = [dict(shared["badges"][b]) if isinstance(b, str) else b for b in oc["badges"]]
@@ -211,7 +216,13 @@ def build(module_id, swagger, shared, overlay):
 
             # response: bọc { success, result, error }
             resp = {"description": "OK"}
-            if "result" in oc:
+            code_200 = op.get("responses", {}).get("200", {}).get("content", {})
+            code_schema = (code_200.get("application/json") or code_200.get("text/json") or {}).get("schema")
+            if code_schema and "result" not in oc:
+                resp["content"] = {"application/json": {"schema": code_schema}}
+                if "result_example" in oc:
+                    resp["content"]["application/json"]["example"] = {"success": True, "result": oc["result_example"], "error": None}
+            elif "result" in oc:
                 resp["content"] = {"application/json": {"schema": {
                     "type": "object",
                     "properties": {
