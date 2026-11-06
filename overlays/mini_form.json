@@ -1,0 +1,50 @@
+{
+  "module": {
+    "title": "Mini Form",
+    "host_project": "src/mini_form/6.mini_form.api.host",
+    "swagger_path": "/swagger/v1/swagger.json",
+    "include": [
+      "^/api/v1/mini-form/web/module-config/get-by-id$"
+    ]
+  },
+  "info": {
+    "title": "Mini Form",
+    "version": "1.0",
+    "description": "API của module **mini_form**.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\nHiện mới đưa lên doc API `module-config/get-by-id`; các API khác của module sẽ bổ sung dần."
+  },
+  "tags": [
+    {
+      "name": "Module config",
+      "match": "/module-config/",
+      "description": "Cấu hình dùng chung của module (trạng thái, loại, nhãn...) theo `key` / `parent_key`.\n\nCấu hình hệ thống nằm ở `tenant_id = -1`. Cũng gọi được qua route `/mini-form/module/config/...` và `/mini-form/web/module/config/...` (cùng controller)."
+    }
+  ],
+  "schema_patches": {},
+  "operations": {
+    "GET /api/v1/mini-form/web/module-config/get-by-id": {
+      "badges": [
+        "new"
+      ],
+      "result_example": {
+        "id": 61,
+        "tenant_id": 81265,
+        "key": "form.submission.status.new",
+        "parent_key": "form.submission.status",
+        "config_json": {
+          "color": "#2563EB"
+        },
+        "sequence": 1,
+        "name": "Mới",
+        "description": "",
+        "active": true,
+        "active_uid": 1,
+        "active_date": "2026-10-01T09:00:00",
+        "create_uid": 1,
+        "create_date": "2026-10-01T09:00:00",
+        "write_uid": null,
+        "write_date": null
+      },
+      "ui": "| Ghi chú | |\n|---|---|\n| Không tìm thấy | `success = false`, `result = -1` |\n| Tenant | chỉ đọc được cấu hình của tenant đang gọi và cấu hình hệ thống `tenant_id = -1`; tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\" |"
+    }
+  }
+}
