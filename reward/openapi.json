@@ -34,8 +34,20 @@
       "description": "Màn **Participants + detail drawer**: người tham gia campaign."
     },
     {
+      "name": "Participant · Points",
+      "description": "Tab **Points** trong drawer người tham gia: sổ điểm của 1 người tham gia (không phân trang)."
+    },
+    {
+      "name": "Participant · Redemptions",
+      "description": "Tab **Redemptions** trong drawer người tham gia: phiếu đổi quà của 1 người tham gia (không phân trang)."
+    },
+    {
       "name": "Registration form",
       "description": "Màn **Settings · Registration form**: field của form đăng ký tham gia campaign."
+    },
+    {
+      "name": "Import participants",
+      "description": "Import người tham gia campaign từ file Excel.\n\n**Luồng gọi:**\n1. `template` → tải file mẫu (dòng 1 = code field của campaign).\n2. FE upload file lên file server → `create` với `id = 0` → nhận `id` phiên import (status `pending`). Server đọc dòng tiêu đề file vào `data_json.header_list` và chụp field campaign vào `schema_json`.\n3. `get-by-id` → dựng màn mapping: mỗi field trong `schema_json.field_list` chọn 1 cột trong `data_json.header_list` (hoặc `system.not_import`).\n4. `create` với `id > 0`, `status_key = campaign.import.status.preview`, `data_json` = **nguyên data_json từ get-by-id** + `mapping_list` + `identifier_field_code` → server kiểm tra ngầm.\n5. Poll `get-by-id` tới khi `status_key = ...ready_to_run` → `preview` lấy số hợp lệ/lỗi/trùng; `export-error` tải dòng lỗi.\n6. `create` với `id > 0`, `status_key = campaign.import.status.running` → chạy import ngầm; poll `get-by-id` tới `completed` / `failed`.\n7. Hủy: `update-status` với `campaign.import.status.cancel`.\n\n⚠️ Các fn `fn_campaign_import_web_*` không có `p_tenant_id` (chưa lọc tenant theo id phiên import)."
     },
     {
       "name": "Integrated app",
@@ -175,6 +187,116 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FnCampaignConsumerFieldWebGetByCampaignIdResponseDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer": {
+      "get": {
+        "tags": [
+          "Participant · Points"
+        ],
+        "summary": "Sổ điểm của người tham gia campaign",
+        "description": "Danh sách không phân trang theo campaign_consumer_id, thuộc tenant_id hiện tại.\r\nsearchtext tìm theo tên giao dịch hoặc mã tham chiếu.\r\nSắp xếp theo create_date DESC, id DESC.",
+        "operationId": "get_api_v1_reward_web_campaign_consumer_point_ledger_list_by_consumer",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_consumer_id",
+            "in": "query",
+            "description": "ID dòng campaign_consumer (bắt buộc)",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignConsumerPointLedgerWebItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-redemption/list-by-consumer": {
+      "get": {
+        "tags": [
+          "Participant · Redemptions"
+        ],
+        "summary": "Danh sách phiếu đổi quà của người tham gia campaign",
+        "description": "Danh sách không phân trang theo campaign_consumer_id, thuộc tenant_id hiện tại.\r\nsearchtext tìm theo mã phiếu, tên/mã quà, mã vận đơn hoặc SĐT nhận hàng.\r\nSắp xếp theo create_date DESC, id DESC.",
+        "operationId": "get_api_v1_reward_web_campaign_consumer_redemption_list_by_consumer",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_consumer_id",
+            "in": "query",
+            "description": "ID dòng campaign_consumer (bắt buộc)",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignConsumerRedemptionWebItemDTOListResponseDTO"
                 }
               }
             }
@@ -491,7 +613,309 @@
               "example": {
                 "tenant_id": 1,
                 "id": 10,
-                "approved_key": "campaign.consumer.approved.approved"
+                "approved_key": "campaign.consumer.approved.approved",
+                "approved_notes": "Đủ điều kiện"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-import/create": {
+      "post": {
+        "tags": [
+          "Import participants"
+        ],
+        "summary": "Tạo / cập nhật phiên import người tham gia",
+        "description": "id = 0: tạo phiên mới (status pending), server đọc dòng tiêu đề file (server_files + filepath + filename) vào data_json.header_list và sinh schema_json từ field của campaign.\r\nid > 0: lưu mapping (data_json.mapping_list). Đổi status pending → preview: chạy kiểm tra dữ liệu ngầm, xong chuyển ready_to_run. Đổi ready_to_run → running: chạy import ngầm.\r\nTrả result > 0 khi thành công, id = id phiên import.\n\n### Map lên màn hình\n\n**Bước 1 – tạo phiên** (`id = 0`): như ví dụ. `data_json` bắt buộc (gửi `{}`), `status_key` để `null` → `pending`.\n\n**Bước 2 – lưu mapping + kiểm tra** (`id > 0`):\n```json\n{\n  \"tenant_id\": 1, \"id\": 35, \"campaign_id\": 12,\n  \"import_type_key\": \"campaign.import.type.consumer\",\n  \"status_key\": \"campaign.import.status.preview\",\n  \"field_identifier\": \"phone\",\n  \"data_json\": {\n    \"header_list\": [{\"code\": \"ho_ten\", \"name\": \"Họ tên\"}, {\"code\": \"sdt\", \"name\": \"SĐT\"}, {\"code\": \"system.not_import\", \"name\": \"Do not import\"}],\n    \"mapping_list\": [{\"source_code\": \"name\", \"target_code\": \"ho_ten\"}, {\"source_code\": \"phone\", \"target_code\": \"sdt\"}, {\"source_code\": \"email\", \"target_code\": \"system.not_import\"}],\n    \"identifier_field_code\": \"phone\"\n  }\n}\n```\n**Bước 3 – chạy**: gửi lại như bước 2 với `status_key = campaign.import.status.running` (chỉ chạy khi phiên đang `ready_to_run`).\n\n> ⚠️ Khi `id > 0` và **không** gửi `server_files`, server lưu đúng `data_json` FE gửi → phải gửi lại `header_list` (lấy từ get-by-id), thiếu là mất danh sách cột.\n> `source_code` = code field campaign, `target_code` = code cột trong file (tên hơi ngược, giữ nguyên vì đang chạy).",
+        "operationId": "post_api_v1_reward_web_campaign_import_create",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignImportWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 0,
+                "campaign_id": 12,
+                "server_files": "https://files.superflow.vn",
+                "filepath": "/upload/2026/11/",
+                "filename": "participants.xlsx",
+                "field_identifier": "phone",
+                "name": "Import 06/11",
+                "description": "",
+                "data_json": {},
+                "schema_json": null,
+                "total_rows": 0,
+                "total_valid": 0,
+                "total_invalid": 0,
+                "total_duplicate": 0,
+                "import_type_key": "campaign.import.type.consumer",
+                "status_key": null,
+                "active": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-import/get-by-id": {
+      "get": {
+        "tags": [
+          "Import participants"
+        ],
+        "summary": "Chi tiết phiên import",
+        "description": "Dùng để dựng màn mapping (schema_json.field_list ↔ data_json.header_list) và poll trạng thái/tiến độ (status_key, data_json.progress) khi đang preview/running.\r\nKhông tìm thấy: result = -1, message \"Không tìm thấy bản ghi yêu cầu.\"",
+        "operationId": "get_api_v1_reward_web_campaign_import_get_by_id",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignImportWebGetByIdItemDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-import/preview": {
+      "get": {
+        "tags": [
+          "Import participants"
+        ],
+        "summary": "Tổng kết kiểm tra dữ liệu import",
+        "description": "Gọi khi status = ready_to_run (đã kiểm tra xong) hoặc sau khi chạy xong để lấy số dòng hợp lệ / lỗi / trùng / đã import.\r\nHiện chỉ trả summary + status_key, batch_list luôn rỗng.\n\n### Map lên màn hình\n\n> `batch_list` hiện luôn rỗng — chỉ dùng `summary`. Trước khi chạy: `total_valid/invalid/duplicate`; sau khi chạy: `total_imported/import_failed/import_skipped`.",
+        "operationId": "get_api_v1_reward_web_campaign_import_preview",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignImportWebPreviewDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-import/template": {
+      "post": {
+        "tags": [
+          "Import participants"
+        ],
+        "summary": "Tải file Excel mẫu để import",
+        "description": "Dòng 1 = code các field của campaign (campaign_id + import_type_key bắt buộc). Trả file .xlsx; lỗi trả 400 kèm ResponseDTO.",
+        "operationId": "post_api_v1_reward_web_campaign_import_template",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignImportWebTemplateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 0,
+                "campaign_id": 12,
+                "import_type_key": "campaign.import.type.consumer"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File tải về",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-import/export-error": {
+      "post": {
+        "tags": [
+          "Import participants"
+        ],
+        "summary": "Tải file Excel các dòng lỗi",
+        "description": "Truyền id phiên import. File gồm các cột của file gốc + row_number, error_type, message. Không có dòng lỗi: 400 \"Không có dữ liệu lỗi.\"",
+        "operationId": "post_api_v1_reward_web_campaign_import_export_error",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignImportWebTemplateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 35,
+                "campaign_id": 0,
+                "import_type_key": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File tải về",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-import/update-status": {
+      "post": {
+        "tags": [
+          "Import participants"
+        ],
+        "summary": "Đổi trạng thái phiên import",
+        "description": "Chỉ cập nhật status_key (vd hủy: campaign.import.status.cancel). Không kích hoạt kiểm tra/chạy import — muốn chạy thì dùng create với id > 0.",
+        "operationId": "post_api_v1_reward_web_campaign_import_update_status",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignImportWebUpdateStatusRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 35,
+                "status_key": "campaign.import.status.cancel"
               }
             }
           },
@@ -1122,9 +1546,13 @@
           "Redemption"
         ],
         "summary": "Danh sách phiếu đổi quà",
-        "description": "Bảng phiếu đổi quà có phân trang, search, sort, chọn cột. Mỗi dòng là object động, key theo `columns`\r\n(null = bộ cột mặc định). Search tìm trong mã phiếu, tên/mã quà, tên/mã/SĐT người tham gia.\r\n`from_date`/`to_date` lọc theo ngày tạo phiếu.\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption ID | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `participant` (`{name, code, image}`) | `consumer_name` | Có sẵn `consumer_name`, `consumer_code`, `consumer_avatar` |\n| Phone | `consumer_phone` | `consumer_phone` | SĐT giao hàng, trống thì SĐT người tham gia |\n| Province | ❌ chưa có | — | |\n| Reward | `reward_name` | `reward_name` | |\n| Source | ❌ chưa có | — | Points / Mission / Game |\n| Type | `reward_type` | `reward_type` | |\n| Fulfilment | `fulfilment` | — | Mặc định \"Automatic · code\" |\n| Points | `total_point_used` | `total_point_used` | Căn phải |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | Hoặc `status_name` + `status_color` |\n\n> `from_date`/`to_date` lọc theo **ngày tạo phiếu**, không phải `request_date`.",
+        "description": "Bảng phiếu đổi quà có phân trang, search, sort, chọn cột. Mỗi dòng là object động, key theo `columns`\r\n(null = bộ cột mặc định). Search tìm trong mã phiếu, tên/mã quà, tên/mã/SĐT người tham gia.\r\n`from_date`/`to_date` lọc theo ngày tạo phiếu.\n\n### Map lên màn hình\n\n> ❌ **Đang lỗi trên dev**: function `fn_campaign_consumer_redemption_web_list_pageindex` còn dùng cột `r.consumer_id` (bảng đã đổi thành `campaign_consumer_id`) → API trả lỗi. Đã báo team DB; sửa xong FE không phải đổi gì.\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption ID | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `participant` (`{name, code, image}`) | `consumer_name` | Có sẵn `consumer_name`, `consumer_code`, `consumer_avatar` |\n| Phone | `consumer_phone` | `consumer_phone` | SĐT giao hàng, trống thì SĐT người tham gia |\n| Province | ❌ chưa có | — | |\n| Reward | `reward_name` | `reward_name` | |\n| Source | ❌ chưa có | — | Points / Mission / Game |\n| Type | `reward_type` | `reward_type` | |\n| Fulfilment | `fulfilment` | — | Mặc định \"Automatic · code\" |\n| Points | `total_point_used` | `total_point_used` | Căn phải |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | Hoặc `status_name` + `status_color` |\n\n> `from_date`/`to_date` lọc theo **ngày tạo phiếu**, không phải `request_date`.",
         "operationId": "consumerRedemptionListPageindex",
         "x-badges": [
+          {
+            "name": "Đang lỗi trên dev",
+            "color": "#B42318"
+          },
           {
             "name": "Mới",
             "color": "#0B7A45"
@@ -2244,6 +2672,376 @@
       }
     },
     "schemas": {
+      "CampaignConsumerPointLedgerWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reference_type_key": {
+            "type": "string",
+            "description": "Loại tham chiếu, ví dụ mission/redemption",
+            "nullable": true
+          },
+          "reference_id": {
+            "type": "integer",
+            "description": "ID bản ghi được tham chiếu",
+            "format": "int64",
+            "nullable": true
+          },
+          "reference_no": {
+            "type": "string",
+            "description": "Mã tham chiếu hiển thị",
+            "nullable": true
+          },
+          "delta": {
+            "type": "number",
+            "description": "Số điểm thay đổi (âm = trừ, dương = cộng)",
+            "format": "double",
+            "nullable": true
+          },
+          "before_balance": {
+            "type": "number",
+            "description": "Số dư trước giao dịch",
+            "format": "double",
+            "nullable": true
+          },
+          "after_balance": {
+            "type": "number",
+            "description": "Số dư sau giao dịch",
+            "format": "double",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "description": "Hạn của điểm",
+            "format": "date-time",
+            "nullable": true
+          },
+          "metadata_json": {
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên giao dịch",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái (module_config)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái để hiển thị",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu của trạng thái (mã hex)",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignConsumerPointLedgerWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignConsumerPointLedgerWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignConsumerRedemptionWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "redemption_no": {
+            "type": "string",
+            "description": "Mã phiếu hiển thị, ví dụ RD-10414",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_name": {
+            "type": "string",
+            "description": "Tên phần quà",
+            "nullable": true
+          },
+          "reward_type": {
+            "type": "string",
+            "description": "Loại quà",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "number",
+            "description": "Điểm cho 1 phần quà",
+            "format": "double",
+            "nullable": true
+          },
+          "cash_value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_point_used": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_cash_paid": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái (module_config)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "request_channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "request_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approval_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approval_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approval_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "inventory_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "inventory_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "inventory_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "inventory_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "fulfillment_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "fulfillment_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "fulfillment_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "fulfillment_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "payment_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "payment_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "shipping_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_address": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_tracking_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancel_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancel_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancel_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "metadata_json": {
+            "nullable": true
+          },
+          "expired_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignConsumerRedemptionWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignConsumerRedemptionWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
       "CampaignLeaderboardScoreWebItemDTO": {
         "type": "object",
         "properties": {
@@ -3169,6 +3967,93 @@
           "approved_key": {
             "type": "string",
             "nullable": true
+          },
+          "approved_notes": {
+            "type": "string",
+            "description": "Ghi chú duyệt (tùy chọn, tối đa 1024 ký tự)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerWebGetByIdConsentItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "customapp_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "category_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "consent_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "consent_value": {
+            "type": "string",
+            "nullable": true
+          },
+          "consent_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference_source_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference_source_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "data_json": {
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái consent",
+            "nullable": true
+          },
+          "consent_type_name": {
+            "type": "string",
+            "description": "Tên loại consent",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -3331,6 +4216,11 @@
             "format": "int64",
             "nullable": true
           },
+          "approved_notes": {
+            "type": "string",
+            "description": "Ghi chú duyệt",
+            "nullable": true
+          },
           "job_title": {
             "type": "string",
             "nullable": true
@@ -3340,6 +4230,38 @@
             "nullable": true
           },
           "data_json": {
+            "nullable": true
+          },
+          "utm_source": {
+            "type": "string",
+            "nullable": true
+          },
+          "utm_medium": {
+            "type": "string",
+            "nullable": true
+          },
+          "utm_campaign": {
+            "type": "string",
+            "nullable": true
+          },
+          "utm_content": {
+            "type": "string",
+            "nullable": true
+          },
+          "utm_term": {
+            "type": "string",
+            "nullable": true
+          },
+          "utm_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_ref_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_ref_value": {
+            "type": "string",
             "nullable": true
           },
           "balance": {
@@ -3379,6 +4301,18 @@
           "create_date": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "dynamic_campaign_consumer": {
+            "description": "Giá trị các field động của campaign_consumer_field (name → value)",
+            "nullable": true
+          },
+          "campaign_consumer_consent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerWebGetByIdConsentItemDTO"
+            },
+            "description": "Danh sách consent của người tham gia",
             "nullable": true
           }
         },
@@ -3700,6 +4634,486 @@
             "format": "date-time",
             "nullable": true,
             "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "0 = tạo mới, > 0 = cập nhật",
+            "format": "int64"
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign cần import dữ liệu consumer",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "server_files": {
+            "type": "string",
+            "description": "URL gốc chứa file upload (server_files)",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "description": "Đường dẫn file (filepath)",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "description": "Tên file (filename)",
+            "nullable": true
+          },
+          "field_identifier": {
+            "type": "string",
+            "description": "Field dùng để nhận diện bản ghi trùng (vd: phone)",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên phiên import",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả",
+            "nullable": true
+          },
+          "data_json": {
+            "description": "header_list + mapping_list phục vụ parse/validate",
+            "nullable": true
+          },
+          "schema_json": {
+            "description": "Schema field của campaign (server tự sinh khi tạo mới)",
+            "nullable": true
+          },
+          "total_rows": {
+            "type": "integer",
+            "description": "Do server cập nhật, FE gửi 0",
+            "format": "int64"
+          },
+          "total_valid": {
+            "type": "integer",
+            "description": "Do server cập nhật, FE gửi 0",
+            "format": "int64"
+          },
+          "total_invalid": {
+            "type": "integer",
+            "description": "Do server cập nhật, FE gửi 0",
+            "format": "int64"
+          },
+          "total_duplicate": {
+            "type": "integer",
+            "description": "Do server cập nhật, FE gửi 0",
+            "format": "int64"
+          },
+          "import_type_key": {
+            "type": "string",
+            "description": "campaign.import.type.consumer",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "campaign.import.status.pending / preview / ready_to_run / running ...",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Bật/tắt"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebGetByIdItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id phiên import",
+            "format": "int64"
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign được import",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "server_files": {
+            "type": "string",
+            "description": "Domain file server",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "description": "Đường dẫn file",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "description": "Tên file",
+            "nullable": true
+          },
+          "field_identifier": {
+            "type": "string",
+            "description": "Field nhận diện bản ghi trùng (vd phone)",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên phiên import",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả",
+            "nullable": true
+          },
+          "data_json": {
+            "description": "{ header_list, mapping_list, identifier_field_code, process, progress, lock_info, error }",
+            "nullable": true
+          },
+          "schema_json": {
+            "description": "{ field_list }: field của campaign tại thời điểm tạo phiên",
+            "nullable": true
+          },
+          "total_rows": {
+            "type": "integer",
+            "description": "Tổng số dòng trong file",
+            "format": "int64"
+          },
+          "total_valid": {
+            "type": "integer",
+            "description": "Số dòng hợp lệ",
+            "format": "int64"
+          },
+          "total_invalid": {
+            "type": "integer",
+            "description": "Số dòng lỗi",
+            "format": "int64"
+          },
+          "total_duplicate": {
+            "type": "integer",
+            "description": "Số dòng trùng",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "description": "campaign.import.status.pending | preview | ready_to_run | running | completed | failed | cancel",
+            "nullable": true
+          },
+          "data_entity_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "import_type_key": {
+            "type": "string",
+            "description": "campaign.import.type.consumer",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái",
+            "nullable": true
+          },
+          "import_type_name": {
+            "type": "string",
+            "description": "Tên loại import",
+            "nullable": true
+          },
+          "import_type_color": {
+            "type": "string",
+            "description": "Màu loại import",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebGetByIdItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignImportWebGetByIdItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebPreviewBatchDTO": {
+        "type": "object",
+        "properties": {
+          "batch_index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "row_start": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "row_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "submissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignImportWebPreviewSubmissionDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebPreviewDTO": {
+        "type": "object",
+        "properties": {
+          "total_rows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total_batches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái hiện tại của phiên import",
+            "nullable": true
+          },
+          "batch_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignImportWebPreviewBatchDTO"
+            },
+            "description": "Hiện luôn rỗng",
+            "nullable": true
+          },
+          "summary": {
+            "$ref": "#/components/schemas/FnCampaignImportWebPreviewSummaryDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebPreviewDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignImportWebPreviewDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebPreviewSubmissionDTO": {
+        "type": "object",
+        "properties": {
+          "form_submission": {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true
+            },
+            "nullable": true
+          },
+          "submission_data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignImportWebPreviewSubmissionDataDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebPreviewSubmissionDataDTO": {
+        "type": "object",
+        "properties": {
+          "form_field_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "form_field_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "field_code_snapshot": {
+            "type": "string",
+            "nullable": true
+          },
+          "type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "data_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebPreviewSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "total_field": {
+            "type": "integer",
+            "description": "Số field của campaign",
+            "format": "int32"
+          },
+          "total_field_imported": {
+            "type": "integer",
+            "description": "Số field được map",
+            "format": "int32"
+          },
+          "total_field_skipped": {
+            "type": "integer",
+            "description": "Số field chọn Do not import",
+            "format": "int32"
+          },
+          "field_identifier": {
+            "type": "string",
+            "description": "Field nhận diện trùng",
+            "nullable": true
+          },
+          "total_batches": {
+            "type": "integer",
+            "description": "Số lô đã kiểm tra",
+            "format": "int32"
+          },
+          "total_rows": {
+            "type": "integer",
+            "description": "Tổng số dòng",
+            "format": "int32"
+          },
+          "total_valid": {
+            "type": "integer",
+            "description": "Số dòng hợp lệ",
+            "format": "int32"
+          },
+          "total_invalid": {
+            "type": "integer",
+            "description": "Số dòng lỗi",
+            "format": "int32"
+          },
+          "total_duplicate": {
+            "type": "integer",
+            "description": "Số dòng trùng trong file",
+            "format": "int32"
+          },
+          "total_imported": {
+            "type": "integer",
+            "description": "Số dòng đã import (sau khi chạy)",
+            "format": "int32"
+          },
+          "total_import_failed": {
+            "type": "integer",
+            "description": "Số dòng import lỗi",
+            "format": "int32"
+          },
+          "total_import_skipped": {
+            "type": "integer",
+            "description": "Số dòng bỏ qua khi import",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebTemplateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Id phiên import (bắt buộc với export-error)",
+            "format": "int64"
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign (bắt buộc với template)",
+            "format": "int64",
+            "example": null
+          },
+          "import_type_key": {
+            "type": "string",
+            "description": "campaign.import.type.consumer (bắt buộc với template)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignImportWebUpdateStatusRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Id phiên import",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái mới, vd campaign.import.status.cancel",
+            "nullable": true
           }
         },
         "additionalProperties": false

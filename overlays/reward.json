@@ -12,7 +12,10 @@
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
       "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$",
-      "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$"
+      "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$",
+      "^/api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer$",
+      "^/api/v1/reward/web/campaign-consumer-redemption/list-by-consumer$",
+      "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status)$"
     ]
   },
   "info": {
@@ -37,9 +40,24 @@
       "description": "Màn **Participants + detail drawer**: người tham gia campaign."
     },
     {
+      "name": "Participant · Points",
+      "match": "/campaign-consumer-point-ledger/",
+      "description": "Tab **Points** trong drawer người tham gia: sổ điểm của 1 người tham gia (không phân trang)."
+    },
+    {
+      "name": "Participant · Redemptions",
+      "match": "/campaign-consumer-redemption/",
+      "description": "Tab **Redemptions** trong drawer người tham gia: phiếu đổi quà của 1 người tham gia (không phân trang)."
+    },
+    {
       "name": "Registration form",
       "match": "/campaign-consumer-field/",
       "description": "Màn **Settings · Registration form**: field của form đăng ký tham gia campaign."
+    },
+    {
+      "name": "Import participants",
+      "match": "/campaign-import/",
+      "description": "Import người tham gia campaign từ file Excel.\n\n**Luồng gọi:**\n1. `template` → tải file mẫu (dòng 1 = code field của campaign).\n2. FE upload file lên file server → `create` với `id = 0` → nhận `id` phiên import (status `pending`). Server đọc dòng tiêu đề file vào `data_json.header_list` và chụp field campaign vào `schema_json`.\n3. `get-by-id` → dựng màn mapping: mỗi field trong `schema_json.field_list` chọn 1 cột trong `data_json.header_list` (hoặc `system.not_import`).\n4. `create` với `id > 0`, `status_key = campaign.import.status.preview`, `data_json` = **nguyên data_json từ get-by-id** + `mapping_list` + `identifier_field_code` → server kiểm tra ngầm.\n5. Poll `get-by-id` tới khi `status_key = ...ready_to_run` → `preview` lấy số hợp lệ/lỗi/trùng; `export-error` tải dòng lỗi.\n6. `create` với `id > 0`, `status_key = campaign.import.status.running` → chạy import ngầm; poll `get-by-id` tới `completed` / `failed`.\n7. Hủy: `update-status` với `campaign.import.status.cancel`.\n\n⚠️ Các fn `fn_campaign_import_web_*` không có `p_tenant_id` (chưa lọc tenant theo id phiên import)."
     },
     {
       "name": "Integrated app",
@@ -192,6 +210,7 @@
     "POST /api/v1/reward/web/consumer-redemption/list-pageindex": {
       "operationId": "consumerRedemptionListPageindex",
       "badges": [
+        "broken",
         "new",
         "filter-broken",
         "no-campaign",
@@ -249,7 +268,7 @@
           "created_date": "2026-03-21T10:48:00"
         }
       ],
-      "ui": "| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption ID | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `participant` (`{name, code, image}`) | `consumer_name` | Có sẵn `consumer_name`, `consumer_code`, `consumer_avatar` |\n| Phone | `consumer_phone` | `consumer_phone` | SĐT giao hàng, trống thì SĐT người tham gia |\n| Province | ❌ chưa có | — | |\n| Reward | `reward_name` | `reward_name` | |\n| Source | ❌ chưa có | — | Points / Mission / Game |\n| Type | `reward_type` | `reward_type` | |\n| Fulfilment | `fulfilment` | — | Mặc định \"Automatic · code\" |\n| Points | `total_point_used` | `total_point_used` | Căn phải |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | Hoặc `status_name` + `status_color` |\n\n> `from_date`/`to_date` lọc theo **ngày tạo phiếu**, không phải `request_date`."
+      "ui": "> ❌ **Đang lỗi trên dev**: function `fn_campaign_consumer_redemption_web_list_pageindex` còn dùng cột `r.consumer_id` (bảng đã đổi thành `campaign_consumer_id`) → API trả lỗi. Đã báo team DB; sửa xong FE không phải đổi gì.\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption ID | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `participant` (`{name, code, image}`) | `consumer_name` | Có sẵn `consumer_name`, `consumer_code`, `consumer_avatar` |\n| Phone | `consumer_phone` | `consumer_phone` | SĐT giao hàng, trống thì SĐT người tham gia |\n| Province | ❌ chưa có | — | |\n| Reward | `reward_name` | `reward_name` | |\n| Source | ❌ chưa có | — | Points / Mission / Game |\n| Type | `reward_type` | `reward_type` | |\n| Fulfilment | `fulfilment` | — | Mặc định \"Automatic · code\" |\n| Points | `total_point_used` | `total_point_used` | Căn phải |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | Hoặc `status_name` + `status_color` |\n\n> `from_date`/`to_date` lọc theo **ngày tạo phiếu**, không phải `request_date`."
     },
     "GET /api/v1/reward/web/consumer-redemption/get-by-id": {
       "operationId": "consumerRedemptionGetById",
@@ -669,7 +688,8 @@
       "request_example": {
         "tenant_id": 1,
         "id": 10,
-        "approved_key": "campaign.consumer.approved.approved"
+        "approved_key": "campaign.consumer.approved.approved",
+        "approved_notes": "Đủ điều kiện"
       },
       "ui": "> `approved_key` là key trạng thái duyệt trong module_config (hỏi BE danh sách key chính xác)."
     },
@@ -893,6 +913,90 @@
       "result_example": {
         "total": 12,
         "status_summary": {}
+      }
+    },
+    "GET /api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer": {
+      "badges": [
+        "new"
+      ]
+    },
+    "GET /api/v1/reward/web/campaign-consumer-redemption/list-by-consumer": {
+      "badges": [
+        "new"
+      ]
+    },
+    "POST /api/v1/reward/web/campaign-import/template": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 0,
+        "campaign_id": 12,
+        "import_type_key": "campaign.import.type.consumer"
+      }
+    },
+    "POST /api/v1/reward/web/campaign-import/create": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 0,
+        "campaign_id": 12,
+        "server_files": "https://files.superflow.vn",
+        "filepath": "/upload/2026/11/",
+        "filename": "participants.xlsx",
+        "field_identifier": "phone",
+        "name": "Import 06/11",
+        "description": "",
+        "data_json": {},
+        "schema_json": null,
+        "total_rows": 0,
+        "total_valid": 0,
+        "total_invalid": 0,
+        "total_duplicate": 0,
+        "import_type_key": "campaign.import.type.consumer",
+        "status_key": null,
+        "active": true
+      },
+      "ui": "**Bước 1 – tạo phiên** (`id = 0`): như ví dụ. `data_json` bắt buộc (gửi `{}`), `status_key` để `null` → `pending`.\n\n**Bước 2 – lưu mapping + kiểm tra** (`id > 0`):\n```json\n{\n  \"tenant_id\": 1, \"id\": 35, \"campaign_id\": 12,\n  \"import_type_key\": \"campaign.import.type.consumer\",\n  \"status_key\": \"campaign.import.status.preview\",\n  \"field_identifier\": \"phone\",\n  \"data_json\": {\n    \"header_list\": [{\"code\": \"ho_ten\", \"name\": \"Họ tên\"}, {\"code\": \"sdt\", \"name\": \"SĐT\"}, {\"code\": \"system.not_import\", \"name\": \"Do not import\"}],\n    \"mapping_list\": [{\"source_code\": \"name\", \"target_code\": \"ho_ten\"}, {\"source_code\": \"phone\", \"target_code\": \"sdt\"}, {\"source_code\": \"email\", \"target_code\": \"system.not_import\"}],\n    \"identifier_field_code\": \"phone\"\n  }\n}\n```\n**Bước 3 – chạy**: gửi lại như bước 2 với `status_key = campaign.import.status.running` (chỉ chạy khi phiên đang `ready_to_run`).\n\n> ⚠️ Khi `id > 0` và **không** gửi `server_files`, server lưu đúng `data_json` FE gửi → phải gửi lại `header_list` (lấy từ get-by-id), thiếu là mất danh sách cột.\n> `source_code` = code field campaign, `target_code` = code cột trong file (tên hơi ngược, giữ nguyên vì đang chạy)."
+    },
+    "GET /api/v1/reward/web/campaign-import/get-by-id": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ]
+    },
+    "GET /api/v1/reward/web/campaign-import/preview": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "ui": "> `batch_list` hiện luôn rỗng — chỉ dùng `summary`. Trước khi chạy: `total_valid/invalid/duplicate`; sau khi chạy: `total_imported/import_failed/import_skipped`."
+    },
+    "POST /api/v1/reward/web/campaign-import/export-error": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 35,
+        "campaign_id": 0,
+        "import_type_key": null
+      }
+    },
+    "POST /api/v1/reward/web/campaign-import/update-status": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 35,
+        "status_key": "campaign.import.status.cancel"
       }
     }
   }
