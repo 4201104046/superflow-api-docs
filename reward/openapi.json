@@ -52,6 +52,10 @@
     {
       "name": "Leaderboard",
       "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia."
+    },
+    {
+      "name": "Module config",
+      "description": "Cấu hình dùng chung của module (trạng thái, loại, nhãn...) theo `key` / `parent_key`.\n\nCấu hình hệ thống nằm ở `tenant_id = -1`. Cũng gọi được qua route `/reward/web/module/config/...` (cùng controller)."
     }
   ],
   "paths": {
@@ -1611,6 +1615,390 @@
                     "status_key": "consumer.wallet.transaction.status.success",
                     "status_name": "Success",
                     "status_color": "#0B7A45"
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-config/create": {
+      "post": {
+        "tags": [
+          "Module config"
+        ],
+        "summary": "Tạo hoặc cập nhật cấu hình module",
+        "description": "`id = 0`/null → tạo mới; `id > 0` → cập nhật cấu hình đó (field null giữ giá trị cũ).\r\nThành công trả `id` của cấu hình. Lưu ý: khi cập nhật, fn chỉ tìm theo `id`, không kiểm tra tenant.\n\n### Map lên màn hình\n\n> ⚠️ Khi cập nhật (`id > 0`) function chỉ lọc theo `id`, không kiểm tra cấu hình thuộc tenant đang gọi, và ghi đè `tenant_id` bằng tenant đang gọi.",
+        "operationId": "post_api_v1_reward_web_module_config_create",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnModuleConfigWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 0,
+                "key": "campaign.leaderboard.status.draft",
+                "parent_key": "campaign.leaderboard.status",
+                "config_json": {
+                  "color": "#9CA3AF"
+                },
+                "sequence": 1,
+                "active": true,
+                "name": "Draft",
+                "description": "Leaderboard is in draft status."
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "id": 217,
+                    "result": 1,
+                    "message": "Thêm mới thành công"
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-config/delete": {
+      "post": {
+        "tags": [
+          "Module config"
+        ],
+        "summary": "Xóa cấu hình module",
+        "description": "Xóa mềm cấu hình theo `id`. Lưu ý: fn chỉ nhận `id`, không kiểm tra tenant.\n\n### Map lên màn hình\n\n> ⚠️ Function chỉ nhận `id`, không kiểm tra tenant.",
+        "operationId": "post_api_v1_reward_web_module_config_delete",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnModuleConfigWebDeleteRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 217
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-config/list-nopaging": {
+      "get": {
+        "tags": [
+          "Module config"
+        ],
+        "summary": "Danh sách cấu hình module (không phân trang)",
+        "description": "Toàn bộ cấu hình của tenant, tìm theo `key` / `parent_key`.\n\n### Map lên màn hình\n\n> Chỉ trả cấu hình của đúng `tenant_id` gửi lên (không lấy cấu hình hệ thống `-1`).",
+        "operationId": "get_api_v1_reward_web_module_config_list_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleConfigWebItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 140,
+                      "tenant_id": -1,
+                      "key": "consumer.wallet.transaction.reference.type.mission",
+                      "parent_key": "consumer.wallet.transaction.reference.type",
+                      "config_json": {},
+                      "name": "MISSION",
+                      "description": "Hoàn thành nhiệm vụ",
+                      "sequence": 1,
+                      "active": true,
+                      "active_date": "2026-07-04T08:25:59",
+                      "write_date": null
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-config/list-by-parent-key": {
+      "get": {
+        "tags": [
+          "Module config"
+        ],
+        "summary": "Danh sách cấu hình theo nhóm cha",
+        "description": "Lấy các cấu hình con của `parent_key` (bắt buộc) trong tenant, dùng cho dropdown / danh sách trạng thái.\r\nTenant chưa có cấu hình riêng → trả cấu hình hệ thống (`tenant_id = -1`).\n\n### Map lên màn hình\n\n| Ghi chú | |\n|---|---|\n| `parent_key` | bắt buộc, ví dụ `consumer.wallet.transaction.reference.type` |\n| Fallback | tenant chưa có cấu hình riêng → trả cấu hình hệ thống `tenant_id = -1` |",
+        "operationId": "get_api_v1_reward_web_module_config_list_by_parent_key",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_key",
+            "in": "query",
+            "description": "Key nhóm cha cần lấy (bắt buộc), ví dụ consumer.redemption.status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnModuleConfigWebListByParentKeyItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 140,
+                      "tenant_id": -1,
+                      "key": "consumer.wallet.transaction.reference.type.mission",
+                      "parent_key": "consumer.wallet.transaction.reference.type",
+                      "config_json": {},
+                      "name": "MISSION",
+                      "description": "Hoàn thành nhiệm vụ",
+                      "value": null,
+                      "sequence": 1,
+                      "active": true,
+                      "active_date": "2026-07-04T08:25:59",
+                      "write_date": null
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-config/list-pageindex": {
+      "post": {
+        "tags": [
+          "Module config"
+        ],
+        "summary": "Danh sách cấu hình module (phân trang)",
+        "description": "Màn quản trị cấu hình: tìm theo `key` / `parent_key` / nội dung `config_json`, lọc `parent_key`, `active`.\r\nTổng số bản ghi lấy từ `list-totalrow` với cùng bộ lọc.\n\n### Map lên màn hình\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `key`, `parent_key`, `config_json` |\n| Tenant | chỉ trả cấu hình của đúng `tenant_id` (không gộp cấu hình hệ thống `-1`) |",
+        "operationId": "post_api_v1_reward_web_module_config_list_pageindex",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnModuleConfigWebListPageindexRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "pageindex": 1,
+                "pagesize": 20,
+                "searchtext": "",
+                "parent_key": "campaign.leaderboard.status",
+                "active": null,
+                "sortby": "sequence",
+                "sortdir": "ASC"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnModuleConfigWebListPageindexItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 216,
+                      "tenant_id": 1,
+                      "key": "campaign.leaderboard.status.draft",
+                      "parent_key": "campaign.leaderboard.status",
+                      "config_json": {},
+                      "sequence": 1,
+                      "name": "Draft",
+                      "description": "Leaderboard is in draft status.",
+                      "active": true,
+                      "active_date": "2026-07-21T21:16:04",
+                      "active_uid": 1,
+                      "write_uid": null,
+                      "write_date": null,
+                      "create_uid": 1,
+                      "create_date": "2026-07-21T21:16:04"
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-config/list-totalrow": {
+      "post": {
+        "tags": [
+          "Module config"
+        ],
+        "summary": "Tổng số cấu hình module",
+        "description": "Tổng số bản ghi cho phân trang của `list-pageindex`, cùng bộ lọc.",
+        "operationId": "post_api_v1_reward_web_module_config_list_totalrow",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnModuleConfigWebListTotalrowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "searchtext": "",
+                "parent_key": "campaign.leaderboard.status",
+                "active": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnModuleConfigWebListTotalrowDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "total": 12,
+                    "status_summary": {}
                   },
                   "error": null
                 }
@@ -4810,6 +5198,414 @@
         },
         "additionalProperties": false
       },
+      "FnModuleConfigWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "0 hoặc null → tạo mới; > 0 → cập nhật cấu hình có id này",
+            "format": "int64",
+            "nullable": true
+          },
+          "key": {
+            "type": "string",
+            "description": "Key duy nhất của cấu hình, ví dụ consumer.redemption.status.pending",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "description": "Key nhóm cha, dùng để lấy danh sách theo nhóm (list-by-parent-key)",
+            "nullable": true
+          },
+          "config_json": {
+            "description": "Dữ liệu cấu hình dạng JSON tự do (màu, icon, nhãn...). Khi cập nhật, null = giữ giá trị cũ",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Bật/tắt cấu hình",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên hiển thị",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebDeleteRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id cấu hình cần xóa (xóa mềm)",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListByParentKeyItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "key": {
+            "type": "string",
+            "description": "Key của cấu hình",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "description": "Key nhóm cha",
+            "nullable": true
+          },
+          "config_json": {
+            "description": "Dữ liệu cấu hình dạng JSON",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên hiển thị",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "description": "Giá trị của cấu hình",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "active_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "write_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListByParentKeyItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnModuleConfigWebListByParentKeyItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListPageindexItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "key": {
+            "type": "string",
+            "description": "Key của cấu hình",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "description": "Key nhóm cha",
+            "nullable": true
+          },
+          "config_json": {
+            "description": "Dữ liệu cấu hình dạng JSON",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên hiển thị",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "active_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "active_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "write_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "write_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "create_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListPageindexItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnModuleConfigWebListPageindexItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListPageindexRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "pageindex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Trang hiện tại, bắt đầu từ 1.",
+            "default": 1,
+            "minimum": 1,
+            "example": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Số dòng mỗi trang.",
+            "default": 20,
+            "minimum": 1,
+            "example": 20
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm trong key, parent_key, config_json",
+            "nullable": true,
+            "example": ""
+          },
+          "parent_key": {
+            "type": "string",
+            "description": "Lọc theo key nhóm cha; null/rỗng = tất cả",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Lọc theo trạng thái bật/tắt; null = tất cả",
+            "nullable": true
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp; giá trị khác danh sách → `create_date`.",
+            "nullable": true,
+            "enum": [
+              "id",
+              "tenant_id",
+              "key",
+              "parent_key",
+              "sequence",
+              "active",
+              "active_date",
+              "create_date",
+              "write_date",
+              "create_uid",
+              "write_uid",
+              "active_uid"
+            ],
+            "default": "create_date",
+            "example": "sequence"
+          },
+          "sortdir": {
+            "type": "string",
+            "nullable": true,
+            "description": "Chiều sắp xếp.",
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListTotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số cấu hình khớp bộ lọc",
+            "format": "int64"
+          },
+          "status_summary": {
+            "description": "Luôn là {} (fn chưa tính theo trạng thái)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListTotalrowDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnModuleConfigWebListTotalrowDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleConfigWebListTotalrowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: giống list-pageindex",
+            "nullable": true,
+            "example": ""
+          },
+          "parent_key": {
+            "type": "string",
+            "description": "Lọc theo key nhóm cha; null/rỗng = tất cả",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Lọc theo trạng thái bật/tắt; null = tất cả",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "FnModuleTagsWebCreateRequestDTO": {
         "required": [
           "tenant_id"
@@ -4859,6 +5655,88 @@
             "type": "integer",
             "description": "id tag cần xóa",
             "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModuleConfigWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "key": {
+            "type": "string",
+            "description": "Key của cấu hình",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "description": "Key nhóm cha",
+            "nullable": true
+          },
+          "config_json": {
+            "description": "Dữ liệu cấu hình dạng JSON",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên hiển thị",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "active_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "write_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModuleConfigWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModuleConfigWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false

@@ -11,7 +11,8 @@
       "^/api/v1/reward/web/campaign-consumer/(list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
-      "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$"
+      "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$",
+      "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$"
     ]
   },
   "info": {
@@ -59,6 +60,11 @@
       "name": "Leaderboard",
       "match": "/campaign-leaderboard/",
       "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia."
+    },
+    {
+      "name": "Module config",
+      "match": "/module-config/",
+      "description": "Cấu hình dùng chung của module (trạng thái, loại, nhãn...) theo `key` / `parent_key`.\n\nCấu hình hệ thống nằm ở `tenant_id = -1`. Cũng gọi được qua route `/reward/web/module/config/...` (cùng controller)."
     }
   ],
   "schema_patches": {
@@ -130,6 +136,27 @@
           "created_date"
         ],
         "default": "created_date"
+      }
+    },
+    "FnModuleConfigWebListPageindexRequestDTO": {
+      "sortby": {
+        "enum": [
+          "id",
+          "tenant_id",
+          "key",
+          "parent_key",
+          "sequence",
+          "active",
+          "active_date",
+          "create_date",
+          "write_date",
+          "create_uid",
+          "write_uid",
+          "active_uid"
+        ],
+        "default": "create_date",
+        "example": "sequence",
+        "description": "Cột sắp xếp; giá trị khác danh sách → `create_date`."
       }
     }
   },
@@ -731,6 +758,135 @@
           "write_date": "2026-11-02T08:00:00"
         }
       ]
+    },
+    "POST /api/v1/reward/web/module-config/create": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 0,
+        "key": "campaign.leaderboard.status.draft",
+        "parent_key": "campaign.leaderboard.status",
+        "config_json": {
+          "color": "#9CA3AF"
+        },
+        "sequence": 1,
+        "active": true,
+        "name": "Draft",
+        "description": "Leaderboard is in draft status."
+      },
+      "result_example": {
+        "id": 217,
+        "result": 1,
+        "message": "Thêm mới thành công"
+      },
+      "ui": "> ⚠️ Khi cập nhật (`id > 0`) function chỉ lọc theo `id`, không kiểm tra cấu hình thuộc tenant đang gọi, và ghi đè `tenant_id` bằng tenant đang gọi."
+    },
+    "POST /api/v1/reward/web/module-config/delete": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 217
+      },
+      "ui": "> ⚠️ Function chỉ nhận `id`, không kiểm tra tenant."
+    },
+    "GET /api/v1/reward/web/module-config/list-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "id": 140,
+          "tenant_id": -1,
+          "key": "consumer.wallet.transaction.reference.type.mission",
+          "parent_key": "consumer.wallet.transaction.reference.type",
+          "config_json": {},
+          "name": "MISSION",
+          "description": "Hoàn thành nhiệm vụ",
+          "sequence": 1,
+          "active": true,
+          "active_date": "2026-07-04T08:25:59",
+          "write_date": null
+        }
+      ],
+      "ui": "> Chỉ trả cấu hình của đúng `tenant_id` gửi lên (không lấy cấu hình hệ thống `-1`)."
+    },
+    "GET /api/v1/reward/web/module-config/list-by-parent-key": {
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "id": 140,
+          "tenant_id": -1,
+          "key": "consumer.wallet.transaction.reference.type.mission",
+          "parent_key": "consumer.wallet.transaction.reference.type",
+          "config_json": {},
+          "name": "MISSION",
+          "description": "Hoàn thành nhiệm vụ",
+          "value": null,
+          "sequence": 1,
+          "active": true,
+          "active_date": "2026-07-04T08:25:59",
+          "write_date": null
+        }
+      ],
+      "ui": "| Ghi chú | |\n|---|---|\n| `parent_key` | bắt buộc, ví dụ `consumer.wallet.transaction.reference.type` |\n| Fallback | tenant chưa có cấu hình riêng → trả cấu hình hệ thống `tenant_id = -1` |"
+    },
+    "POST /api/v1/reward/web/module-config/list-pageindex": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "pageindex": 1,
+        "pagesize": 20,
+        "searchtext": "",
+        "parent_key": "campaign.leaderboard.status",
+        "active": null,
+        "sortby": "sequence",
+        "sortdir": "ASC"
+      },
+      "result_example": [
+        {
+          "id": 216,
+          "tenant_id": 1,
+          "key": "campaign.leaderboard.status.draft",
+          "parent_key": "campaign.leaderboard.status",
+          "config_json": {},
+          "sequence": 1,
+          "name": "Draft",
+          "description": "Leaderboard is in draft status.",
+          "active": true,
+          "active_date": "2026-07-21T21:16:04",
+          "active_uid": 1,
+          "write_uid": null,
+          "write_date": null,
+          "create_uid": 1,
+          "create_date": "2026-07-21T21:16:04"
+        }
+      ],
+      "ui": "| Ghi chú | |\n|---|---|\n| Search | tìm trong `key`, `parent_key`, `config_json` |\n| Tenant | chỉ trả cấu hình của đúng `tenant_id` (không gộp cấu hình hệ thống `-1`) |"
+    },
+    "POST /api/v1/reward/web/module-config/list-totalrow": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "searchtext": "",
+        "parent_key": "campaign.leaderboard.status",
+        "active": null
+      },
+      "result_example": {
+        "total": 12,
+        "status_summary": {}
+      }
     }
   }
 }
