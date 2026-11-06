@@ -10,7 +10,8 @@
       "^/api/v1/reward/web/campaign/(create|update-active|update-status|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
       "^/api/v1/reward/web/campaign-consumer/(list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
-      "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$"
+      "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
+      "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$"
     ]
   },
   "info": {
@@ -23,6 +24,11 @@
       "name": "Campaign",
       "match": "/web/campaign/",
       "description": "Màn **Campaign list** và tạo/sửa campaign."
+    },
+    {
+      "name": "Tags",
+      "match": "/module-tags/",
+      "description": "Tag dùng để phân loại campaign (chọn tag khi tạo campaign, lọc campaign theo `list_tag_id`)."
     },
     {
       "name": "Participants",
@@ -666,6 +672,64 @@
     "GET /api/v1/reward/web/campaign-consumer-field/get-by-campaign-id": {
       "badges": [
         "new"
+      ]
+    },
+    "POST /api/v1/reward/web/module-tags/create": {
+      "badges": [
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 0,
+        "name": "Dược sỹ",
+        "active": true
+      },
+      "ui": "> ⚠️ Khi cập nhật (`id > 0`) function chỉ lọc theo `id`, không kiểm tra tag thuộc tenant đang gọi."
+    },
+    "POST /api/v1/reward/web/module-tags/delete": {
+      "badges": [
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 5
+      }
+    },
+    "GET /api/v1/reward/web/module-tags/get-active": {
+      "ui": "> Dùng cho dropdown chọn tag. `id` của tag dùng làm `list_tag_id` khi lọc danh sách campaign.",
+      "result_example": [
+        {
+          "id": 5,
+          "tenant_id": 1,
+          "name": "Dược sỹ",
+          "active": true,
+          "created_date": "2026-11-04T10:00:00",
+          "write_date": null
+        }
+      ]
+    },
+    "GET /api/v1/reward/web/module-tags/get-all": {
+      "badges": [
+        "no-tenant"
+      ],
+      "ui": "> ⚠️ Function **không lọc tenant**: trả tag của mọi tenant. Tạm thời FE lọc `tenant_id` phía client nếu cần.",
+      "result_example": [
+        {
+          "id": 5,
+          "tenant_id": 1,
+          "name": "Dược sỹ",
+          "active": true,
+          "created_date": "2026-11-04T10:00:00",
+          "write_date": null
+        },
+        {
+          "id": 3,
+          "tenant_id": 1,
+          "name": "Bác sĩ",
+          "active": false,
+          "created_date": "2026-11-01T09:00:00",
+          "write_date": "2026-11-02T08:00:00"
+        }
       ]
     }
   }

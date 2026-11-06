@@ -26,6 +26,10 @@
       "description": "Màn **Campaign list** và tạo/sửa campaign."
     },
     {
+      "name": "Tags",
+      "description": "Tag dùng để phân loại campaign (chọn tag khi tạo campaign, lọc campaign theo `list_tag_id`)."
+    },
+    {
       "name": "Participants",
       "description": "Màn **Participants + detail drawer**: người tham gia campaign."
     },
@@ -1618,6 +1622,220 @@
           }
         }
       }
+    },
+    "/api/v1/reward/web/module-tags/create": {
+      "post": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Tạo hoặc cập nhật tag",
+        "description": "`id` trống hoặc 0 → tạo mới; `id > 0` → cập nhật tag đó.\r\n`name` bắt buộc, tối đa 1024 ký tự. Thành công trả `record_id` của tag.\n\n### Map lên màn hình\n\n> ⚠️ Khi cập nhật (`id > 0`) function chỉ lọc theo `id`, không kiểm tra tag thuộc tenant đang gọi.",
+        "operationId": "post_api_v1_reward_web_module_tags_create",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnModuleTagsWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 0,
+                "name": "Dược sỹ",
+                "active": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-tags/delete": {
+      "post": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Xóa tag",
+        "description": "Xóa mềm tag theo `id`. Tag không tồn tại hoặc đã xóa → lỗi \"Không tìm thấy bản ghi để xóa hoặc đã bị xóa\".",
+        "operationId": "post_api_v1_reward_web_module_tags_delete",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnModuleTagsWebDeleteRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 5
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-tags/get-active": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Danh sách tag đang bật",
+        "description": "Tag đang `active` của tenant, dùng cho dropdown chọn tag (vd form tạo campaign, bộ lọc theo tag).\r\nTìm theo tên, sắp theo tên A→Z.\n\n### Map lên màn hình\n\n> Dùng cho dropdown chọn tag. `id` của tag dùng làm `list_tag_id` khi lọc danh sách campaign.",
+        "operationId": "get_api_v1_reward_web_module_tags_get_active",
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleTagsWebItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 5,
+                      "tenant_id": 1,
+                      "name": "Dược sỹ",
+                      "active": true,
+                      "created_date": "2026-11-04T10:00:00",
+                      "write_date": null
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/module-tags/get-all": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Danh sách tất cả tag",
+        "description": "Gồm cả tag đang tắt, dùng cho màn quản lý tag. Tìm theo tên, mới nhất trước.\n\n### Map lên màn hình\n\n> ⚠️ Function **không lọc tenant**: trả tag của mọi tenant. Tạm thời FE lọc `tenant_id` phía client nếu cần.",
+        "operationId": "get_api_v1_reward_web_module_tags_get_all",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleTagsWebItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 5,
+                      "tenant_id": 1,
+                      "name": "Dược sỹ",
+                      "active": true,
+                      "created_date": "2026-11-04T10:00:00",
+                      "write_date": null
+                    },
+                    {
+                      "id": 3,
+                      "tenant_id": 1,
+                      "name": "Bác sĩ",
+                      "active": false,
+                      "created_date": "2026-11-01T09:00:00",
+                      "write_date": "2026-11-02T08:00:00"
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2263,6 +2481,52 @@
         },
         "additionalProperties": false
       },
+      "FnCampaignConsumerFieldWebCreateLegalConfigRequestDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "0 = tạo mới, > 0 = cập nhật",
+            "format": "int64",
+            "nullable": true
+          },
+          "key": {
+            "type": "string",
+            "description": "Key định danh cấu hình",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "description": "Parent key nhóm cấu hình (campaign.consumer.field.legal)",
+            "nullable": true
+          },
+          "config_json": {
+            "description": "Cấu hình chi tiết dưới dạng JSON",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Bật/tắt điều khoản",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên điều khoản",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả điều khoản",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "FnCampaignConsumerFieldWebCreateRequestDTO": {
         "required": [
           "tenant_id"
@@ -2298,6 +2562,14 @@
             },
             "description": "Field cần xóa (chỉ cần id)",
             "nullable": true
+          },
+          "legal_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerFieldWebCreateLegalConfigRequestDTO"
+            },
+            "description": "Danh sách cấu hình điều khoản pháp lý (legal) của campaign (parent_key: campaign.consumer.field.legal)",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -2311,6 +2583,14 @@
               "$ref": "#/components/schemas/FnCampaignConsumerFieldWebItemDTO"
             },
             "description": "Danh sách field, sắp theo sequence",
+            "nullable": true
+          },
+          "legal_list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerFieldWebLegalConfigResponseDTO"
+            },
+            "description": "Danh sách cấu hình điều khoản pháp lý (legal) của campaign (parent_key: campaign.consumer.field.legal)",
             "nullable": true
           }
         },
@@ -2403,6 +2683,58 @@
             "type": "integer",
             "description": "Thứ tự hiển thị",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerFieldWebLegalConfigResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "active_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "write_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -4474,6 +4806,121 @@
             "nullable": true,
             "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
             "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleTagsWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Trống hoặc 0 = tạo mới, > 0 = cập nhật tag này",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên tag (bắt buộc, tối đa 1024 ký tự)",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Bật/tắt tag; trống thì mặc định bật",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnModuleTagsWebDeleteRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id tag cần xóa",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModuleTagsWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "id tag (dùng trong list_tag_id khi lọc campaign)",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên tag",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Tag đang bật",
+            "nullable": true
+          },
+          "created_date": {
+            "type": "string",
+            "description": "Thời điểm tạo",
+            "format": "date-time",
+            "nullable": true
+          },
+          "write_date": {
+            "type": "string",
+            "description": "Thời điểm sửa gần nhất",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModuleTagsWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModuleTagsWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false
