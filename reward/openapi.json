@@ -739,7 +739,7 @@
           "Campaign"
         ],
         "summary": "Tạo hoặc cập nhật campaign",
-        "description": "`id = 0` → tạo mới (status mặc định `campaign.status.draft`); `id > 0` → cập nhật campaign đó.\r\nThành công trả `record_id` của campaign.",
+        "description": "`id = 0` → tạo mới (status mặc định `campaign.status.draft`); `id > 0` → cập nhật campaign đó.\r\nThành công trả `record_id` của campaign.\n\n### Map lên màn hình\n\n| Field | Gửi gì | Ghi chú |\n|---|---|---|\n| `id` | 0 = tạo mới, > 0 = cập nhật | |\n| `tags` | mảng **id** tag `[1, 2]` | lấy từ `module-tags/get-active`; có phần tử không phải số → khi xem trả `[]` |\n| `participation_methods` | mảng **key** | `campaign.participation.method.form` (Registration form) · `.auto` (Auto-enroll) · `.invite` (Invite list only). **Không** gửi object hay tên ngắn |\n| `redemption_window` | số ngày | hạn đổi quà = `end_date` + N ngày (hiện ở danh sách là `redemption_closes_at`) |\n| `status_key` | trống = draft | |\n| `campaign_config` | tùy chọn | lưu kèm sau khi campaign lưu thành công |\n\n> **Cập nhật (`id > 0`)**: field gửi `null` = **giữ nguyên** giá trị cũ (`tags`, `participation_methods`, `config_json`...). Muốn xóa hết danh sách → gửi `[]`.",
         "operationId": "post_api_v1_reward_web_campaign_create",
         "requestBody": {
           "content": {
@@ -752,11 +752,11 @@
                 "id": 0,
                 "code": "OPL-DS-2603",
                 "name": "Reward Opella Dược Sỹ",
+                "description": "",
                 "tags": [
                   1,
                   2
                 ],
-                "description": "",
                 "server_files": "",
                 "banner_filepath": "",
                 "banner_filename": "",
@@ -771,7 +771,11 @@
                 "cancel_notes": "",
                 "redemption_window_open": true,
                 "miniapp_active": true,
-                "participation_methods": null
+                "participation_methods": [
+                  "campaign.participation.method.form",
+                  "campaign.participation.method.auto"
+                ],
+                "campaign_config": null
               }
             }
           },
@@ -937,9 +941,13 @@
           "Campaign"
         ],
         "summary": "Chi tiết campaign",
-        "description": "Thông tin campaign theo `id` cho màn chỉnh sửa / overview.",
+        "description": "Thông tin campaign theo `id` cho màn chỉnh sửa / overview.\n\n### Map lên màn hình\n\n> ⚠️ **`campaign.participation_methods` đang luôn trả `[]` trên dev** dù đã lưu: function join `module_config` với `parent_key = 'campaign.participation.method.key'` (thừa `.key`; dữ liệu thật là `campaign.participation.method`). Đã báo team DB; sửa xong dữ liệu cũ hiện lại, FE không cần đổi gì.\n\n| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, color, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled / ended giữ nguyên; còn lại upcoming · ongoing · ended theo ngày |\n| `campaign_config` | cấu hình kèm theo (có thể null) |",
         "operationId": "get_api_v1_reward_web_campaign_get_by_id",
         "x-badges": [
+          {
+            "name": "Có nhánh đang lỗi",
+            "color": "#B54708"
+          },
           {
             "name": "Chưa lọc tenant",
             "color": "#B42318"
@@ -2367,10 +2375,12 @@
           },
           "name": {
             "type": "string",
+            "description": "Tên campaign",
             "nullable": true
           },
           "description": {
             "type": "string",
+            "description": "Mô tả campaign",
             "nullable": true
           },
           "server_files": {
@@ -2423,6 +2433,7 @@
           },
           "config_json": {
             "type": "string",
+            "description": "Cấu hình tự do của campaign (JSON)",
             "nullable": true
           },
           "active": {
@@ -2486,6 +2497,7 @@
           },
           "cancel_notes": {
             "type": "string",
+            "description": "Ghi chú / lý do hủy",
             "nullable": true
           }
         },
@@ -2665,32 +2677,40 @@
         "properties": {
           "id": {
             "type": "integer",
+            "description": "0 = tạo mới, > 0 = cập nhật cấu hình này",
             "format": "int64"
           },
           "key": {
             "type": "string",
+            "description": "Key cấu hình",
             "nullable": true
           },
           "parent_key": {
             "type": "string",
+            "description": "Nhóm cấu hình",
             "nullable": true
           },
           "config_json": {
+            "description": "Giá trị cấu hình (JSON)",
             "nullable": true
           },
           "sequence": {
             "type": "integer",
+            "description": "Thứ tự",
             "format": "int32"
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Bật/tắt cấu hình"
           },
           "name": {
             "type": "string",
+            "description": "Tên hiển thị",
             "nullable": true
           },
           "description": {
             "type": "string",
+            "description": "Mô tả",
             "nullable": true
           }
         },
@@ -2714,17 +2734,19 @@
           },
           "campaign_id": {
             "type": "integer",
+            "description": "Campaign sở hữu cấu hình",
             "format": "int64",
             "nullable": true,
-            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
             "example": null
           },
           "key": {
             "type": "string",
+            "description": "Key cấu hình",
             "nullable": true
           },
           "parent_key": {
             "type": "string",
+            "description": "Nhóm cấu hình",
             "nullable": true
           },
           "config_json": {
@@ -3803,9 +3825,11 @@
           },
           "description": {
             "type": "string",
+            "description": "Mô tả campaign",
             "nullable": true
           },
           "tags": {
+            "description": "Mảng id tag, vd [1, 2] (lấy từ module-tags/get-active). Phần tử phải là số",
             "nullable": true
           },
           "server_files": {
@@ -3851,29 +3875,36 @@
             "nullable": true
           },
           "config_json": {
+            "description": "Cấu hình tự do của campaign (JSON)",
             "nullable": true
           },
           "active": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Bật/tắt campaign"
           },
           "redemption_window": {
             "type": "integer",
+            "description": "Số ngày còn được đổi quà sau end_date (hạn đổi quà = end_date + N ngày)",
             "format": "int32",
             "nullable": true
           },
           "cancel_notes": {
             "type": "string",
+            "description": "Ghi chú / lý do hủy campaign",
             "nullable": true
           },
           "redemption_window_open": {
             "type": "boolean",
+            "description": "Cho phép đổi quà trong khoảng redemption_window sau khi campaign kết thúc",
             "nullable": true
           },
           "miniapp_active": {
             "type": "boolean",
+            "description": "Hiển thị campaign trên Zalo Mini App",
             "nullable": true
           },
           "participation_methods": {
+            "description": "Mảng key hình thức tham gia: campaign.participation.method.form | .auto | .invite. Cập nhật: null = giữ nguyên, [] = xóa hết",
             "nullable": true
           },
           "campaign_config": {
@@ -3948,82 +3979,102 @@
           },
           "code": {
             "type": "string",
+            "description": "Mã campaign",
             "nullable": true
           },
           "name": {
             "type": "string",
+            "description": "Tên campaign",
             "nullable": true
           },
           "description": {
             "type": "string",
+            "description": "Mô tả campaign",
             "nullable": true
           },
           "server_files": {
             "type": "string",
+            "description": "Domain file server của ảnh",
             "nullable": true
           },
           "banner_filepath": {
             "type": "string",
+            "description": "Đường dẫn ảnh banner",
             "nullable": true
           },
           "banner_filename": {
             "type": "string",
+            "description": "Tên file ảnh banner",
             "nullable": true
           },
           "logo_filepath": {
             "type": "string",
+            "description": "Đường dẫn logo",
             "nullable": true
           },
           "logo_filename": {
             "type": "string",
+            "description": "Tên file logo",
             "nullable": true
           },
           "start_date": {
             "type": "string",
+            "description": "Thời điểm bắt đầu",
             "format": "date-time",
             "nullable": true
           },
           "end_date": {
             "type": "string",
+            "description": "Thời điểm kết thúc",
             "format": "date-time",
             "nullable": true
           },
           "status_key": {
             "type": "string",
+            "description": "Trạng thái tính theo thời điểm hiện tại: draft/cancelled/ended giữ nguyên, còn lại = upcoming | ongoing | ended theo start_date/end_date",
             "nullable": true
           },
           "status_name": {
             "type": "string",
+            "description": "Tên trạng thái",
             "nullable": true
           },
           "status_color": {
             "type": "string",
+            "description": "Màu trạng thái",
             "nullable": true
           },
           "config_json": {
+            "description": "Cấu hình tự do của campaign (JSON)",
             "nullable": true
           },
           "redemption_window": {
             "type": "integer",
+            "description": "Số ngày còn được đổi quà sau end_date",
             "format": "int32",
             "nullable": true
           },
           "cancel_notes": {
             "type": "string",
+            "description": "Ghi chú / lý do hủy",
             "nullable": true
           },
           "redemption_window_open": {
             "type": "boolean",
+            "description": "Cho phép đổi quà sau khi kết thúc",
             "nullable": true
           },
           "miniapp_active": {
             "type": "boolean",
+            "description": "Hiển thị trên Zalo Mini App",
             "nullable": true
           },
           "tags": {
+            "description": "Tag đã gắn: [{ id, name }]",
             "nullable": true
           },
           "participation_methods": {
+            "description": "Hình thức tham gia: [{ key, name, color, sequence }] (đã ghép tên từ module_config)",
             "nullable": true
           }
         },

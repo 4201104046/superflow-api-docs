@@ -445,11 +445,11 @@
         "id": 0,
         "code": "OPL-DS-2603",
         "name": "Reward Opella Dược Sỹ",
+        "description": "",
         "tags": [
           1,
           2
         ],
-        "description": "",
         "server_files": "",
         "banner_filepath": "",
         "banner_filename": "",
@@ -464,8 +464,13 @@
         "cancel_notes": "",
         "redemption_window_open": true,
         "miniapp_active": true,
-        "participation_methods": null
-      }
+        "participation_methods": [
+          "campaign.participation.method.form",
+          "campaign.participation.method.auto"
+        ],
+        "campaign_config": null
+      },
+      "ui": "| Field | Gửi gì | Ghi chú |\n|---|---|---|\n| `id` | 0 = tạo mới, > 0 = cập nhật | |\n| `tags` | mảng **id** tag `[1, 2]` | lấy từ `module-tags/get-active`; có phần tử không phải số → khi xem trả `[]` |\n| `participation_methods` | mảng **key** | `campaign.participation.method.form` (Registration form) · `.auto` (Auto-enroll) · `.invite` (Invite list only). **Không** gửi object hay tên ngắn |\n| `redemption_window` | số ngày | hạn đổi quà = `end_date` + N ngày (hiện ở danh sách là `redemption_closes_at`) |\n| `status_key` | trống = draft | |\n| `campaign_config` | tùy chọn | lưu kèm sau khi campaign lưu thành công |\n\n> **Cập nhật (`id > 0`)**: field gửi `null` = **giữ nguyên** giá trị cũ (`tags`, `participation_methods`, `config_json`...). Muốn xóa hết danh sách → gửi `[]`."
     },
     "POST /api/v1/reward/web/campaign/update-active": {
       "badges": [
@@ -498,8 +503,10 @@
     },
     "GET /api/v1/reward/web/campaign/get-by-id": {
       "badges": [
+        "partial-broken",
         "no-tenant"
-      ]
+      ],
+      "ui": "> ⚠️ **`campaign.participation_methods` đang luôn trả `[]` trên dev** dù đã lưu: function join `module_config` với `parent_key = 'campaign.participation.method.key'` (thừa `.key`; dữ liệu thật là `campaign.participation.method`). Đã báo team DB; sửa xong dữ liệu cũ hiện lại, FE không cần đổi gì.\n\n| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, color, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled / ended giữ nguyên; còn lại upcoming · ongoing · ended theo ngày |\n| `campaign_config` | cấu hình kèm theo (có thể null) |"
     },
     "POST /api/v1/reward/web/campaign/list-pageindex": {
       "request_example": {
