@@ -1,0 +1,1570 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Core",
+    "version": "1.0",
+    "description": "API dùng chung cho mọi màn **danh sách** (bảng có Columns · Filter · Save views).\n\n## Luồng mở 1 màn danh sách\n1. `ui-list-definition/get-by-key` (list_key + application_key + module_key) → `ui_list_definition.id` và field.\n2. `ui-list-view/get-by-user-id` (list_definition_id) → view đang áp dụng (`config_json`: cột, thứ tự, bộ lọc, sort).\n3. Popup **Columns** → `ui-list-field/list` với `view_mode_key = ui.list.field.view.mode.column`.\n4. Popup **Filter** → `ui-list-field/list` với `view_mode_key = ui.list.field.view.mode.filter` (có `operators`).\n5. Popup **Save views** → `ui-list-view/list-by-user-id`; lưu `ui-list-view/create`; xóa `ui-list-view/delete`;\n   đặt mặc định `ui-list-user-preference/create`; yêu thích `ui-list-user-preference/update-favorite`.\n\nHeader `lang_id` (tùy chọn) chọn ngôn ngữ hiển thị."
+  },
+  "servers": [
+    {
+      "url": "https://api-staging.superflow.vn",
+      "description": "Dev / staging"
+    },
+    {
+      "url": "http://localhost:112",
+      "description": "Local (dotnet run host reward)"
+    }
+  ],
+  "security": [
+    {
+      "Bearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Màn danh sách",
+      "description": "Định nghĩa màn danh sách."
+    },
+    {
+      "name": "Cột & bộ lọc",
+      "description": "Field cho popup Columns và Filter."
+    },
+    {
+      "name": "Saved views",
+      "description": "View đã lưu của người dùng (popup Save views)."
+    },
+    {
+      "name": "Tùy chọn người dùng",
+      "description": "View mặc định và view yêu thích của người dùng."
+    }
+  ],
+  "paths": {
+    "/api/v1/core/web/ui-list-definition/get-by-key": {
+      "get": {
+        "tags": [
+          "Màn danh sách"
+        ],
+        "summary": "Cấu hình màn danh sách theo key",
+        "description": "Định nghĩa 1 màn danh sách (`ui_list_definition`) và toàn bộ field của nó (`ui_list_field`), tìm theo `list_key` + `application_key` + `module_key`.\r\nGọi 1 lần khi mở màn danh sách để biết cột, bộ lọc, quyền.",
+        "operationId": "get_api_v1_core_web_ui_list_definition_get_by_key",
+        "parameters": [
+          {
+            "name": "list_key",
+            "in": "query",
+            "description": "Key màn danh sách (vd danh sách campaign)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "application_key",
+            "in": "query",
+            "description": "Key ứng dụng chứa màn",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "module_key",
+            "in": "query",
+            "description": "Key module chứa màn",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          },
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnUiListDefinitionGetByKeyItemDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-field/list": {
+      "get": {
+        "tags": [
+          "Cột & bộ lọc"
+        ],
+        "summary": "Danh sách field của màn danh sách",
+        "description": "Lọc theo `view_mode_key`: `ui.list.field.view.mode.column` → field làm cột (popup Columns); `ui.list.field.view.mode.filter` → field lọc được, kèm `operators` (popup Filter); null → tất cả.\r\nSắp theo `sequence`.\n\n### Map lên màn hình\n\n> ⚠️ `view_mode_key = ui.list.field.view.mode.all` đang trả **0 dòng** (lỗi SQL so `UPPER(...)` với chuỗi thường). Muốn lấy tất cả field → gửi `view_mode_key` **null**.\n\n| view_mode_key | Dùng cho | Kết quả |\n|---|---|---|\n| `…view.mode.column` | Popup Columns | field `is_column` |\n| `…view.mode.filter` | Popup Filter | field `is_filterable` + `operators` |\n| null | – | tất cả field |",
+        "operationId": "get_api_v1_core_web_ui_list_field_list",
+        "x-badges": [
+          {
+            "name": "Có nhánh đang lỗi",
+            "color": "#B54708"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_definition_id",
+            "in": "query",
+            "description": "id định nghĩa màn danh sách",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "view_mode_key",
+            "in": "query",
+            "description": "column → field làm cột (Columns); filter → field lọc được + operators (Filter); null → tất cả. ⚠️ `…view.mode.all` đang trả 0 dòng, dùng null.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ui.list.field.view.mode.column",
+                "ui.list.field.view.mode.filter",
+                "ui.list.field.view.mode.all"
+              ],
+              "description": "column → field làm cột (Columns); filter → field lọc được + operators (Filter); null → tất cả. ⚠️ `…view.mode.all` đang trả 0 dòng, dùng null."
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          },
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UiListFieldWebItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-user-preference/create": {
+      "post": {
+        "tags": [
+          "Tùy chọn người dùng"
+        ],
+        "summary": "Đặt view mặc định của tôi",
+        "description": "Lưu view mặc định (`default_view_id`) của người dùng đang đăng nhập cho 1 màn danh sách.",
+        "operationId": "post_api_v1_core_web_ui_list_user_preference_create",
+        "parameters": [
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnUiListUserPreferenceWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "workspace_id": null,
+                "list_definition_id": 1,
+                "default_view_id": 12
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AzicloudCreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-user-preference/update-favorite": {
+      "post": {
+        "tags": [
+          "Tùy chọn người dùng"
+        ],
+        "summary": "Đánh dấu / bỏ yêu thích view",
+        "description": "`id` là `user_view_preference_id` của view (lấy từ `list-by-user-id`), không phải id của view.\n\n### Map lên màn hình\n\n> `id` = `user_view_preference_id` lấy từ `ui-list-view/list-by-user-id`. ⚠️ Function chỉ lọc theo `id`, không kiểm tra preference thuộc người đang gọi.",
+        "operationId": "post_api_v1_core_web_ui_list_user_preference_update_favorite",
+        "x-badges": [
+          {
+            "name": "Chưa kiểm tra người sở hữu",
+            "color": "#B54708"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnUiListUserViewPreferenceWebUpdateFavoriteRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 34,
+                "is_favorite": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-view/get-by-user-id": {
+      "get": {
+        "tags": [
+          "Saved views"
+        ],
+        "summary": "View đang áp dụng cho màn danh sách",
+        "description": "Có `view_id` → trả view đó; không có → view mặc định của người dùng, nếu chưa đặt thì view mặc định hệ thống.\r\nGọi khi mở màn để áp cấu hình cột/bộ lọc.",
+        "operationId": "get_api_v1_core_web_ui_list_view_get_by_user_id",
+        "parameters": [
+          {
+            "name": "list_definition_id",
+            "in": "query",
+            "description": "id định nghĩa màn danh sách",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "view_id",
+            "in": "query",
+            "description": "View cụ thể; trống → view mặc định",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          },
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnUiListViewWebGetByUserIdItemDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-view/view": {
+      "get": {
+        "tags": [
+          "Saved views"
+        ],
+        "summary": "Chi tiết view",
+        "description": "View theo `id` (gồm `config_json`: cột, thứ tự, bộ lọc, sort đã lưu).",
+        "operationId": "get_api_v1_core_web_ui_list_view_view",
+        "x-badges": [
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          },
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnUiListViewWebGetByIdItemDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-view/list-by-user-id": {
+      "get": {
+        "tags": [
+          "Saved views"
+        ],
+        "summary": "Danh sách view đã lưu",
+        "description": "Các view người dùng thấy được ở 1 màn danh sách (popup Save views), view mặc định đứng đầu; có `is_default_view`, `is_favorite`.\n\n### Map lên màn hình\n\n> ⚠️ Danh sách đang sắp `is_favorite` tăng dần → view **yêu thích nằm cuối**. Nếu UI cần yêu thích lên đầu thì sắp lại phía FE (hoặc chờ sửa SQL).",
+        "operationId": "get_api_v1_core_web_ui_list_view_list_by_user_id",
+        "parameters": [
+          {
+            "name": "list_definition_id",
+            "in": "query",
+            "description": "id định nghĩa màn danh sách",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          },
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UiListViewWebItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-view/create": {
+      "post": {
+        "tags": [
+          "Saved views"
+        ],
+        "summary": "Lưu view (tạo hoặc cập nhật)",
+        "description": "`id = 0` → tạo view mới; `id > 0` → cập nhật view đó.\r\nTạo mới: tự gắn view vào danh sách view của người dùng; `is_my_default_view = true` thì đặt làm view mặc định luôn.\n\n### Map lên màn hình\n\n> Giá trị `view_type_key`, `owner_type_key`, `visibility_key`, cấu trúc `config_json` trong ví dụ là minh họa — lấy giá trị thật từ BE/module_config.\n>\n> ⚠️ Cập nhật (`id > 0`) chỉ lọc theo `id`, không kiểm tra người sở hữu view.",
+        "operationId": "post_api_v1_core_web_ui_list_view_create",
+        "x-badges": [
+          {
+            "name": "Chưa kiểm tra người sở hữu",
+            "color": "#B54708"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnUiListViewWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 0,
+                "list_definition_id": 1,
+                "workspace_id": null,
+                "name": "Campaign đang chạy",
+                "description": "",
+                "view_type_key": "ui.list.view.type.table",
+                "owner_type_key": "ui.list.view.owner.user",
+                "owner_id": null,
+                "visibility_key": "ui.list.view.visibility.private",
+                "config_json": {
+                  "columns": [
+                    "code",
+                    "name",
+                    "status"
+                  ],
+                  "filters": {
+                    "logic": "AND",
+                    "rules": []
+                  },
+                  "sort": {
+                    "by": "create_date",
+                    "dir": "DESC"
+                  }
+                },
+                "active": true,
+                "is_my_default_view": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AzicloudCreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/core/web/ui-list-view/delete": {
+      "post": {
+        "tags": [
+          "Saved views"
+        ],
+        "summary": "Xóa view",
+        "description": "Xóa mềm view và preference của người dùng với view đó. Không xóa được view mặc định hệ thống.\n\n### Map lên màn hình\n\n> Không xóa được view mặc định hệ thống. ⚠️ Không kiểm tra view thuộc người đang gọi.",
+        "operationId": "post_api_v1_core_web_ui_list_view_delete",
+        "x-badges": [
+          {
+            "name": "Chưa kiểm tra người sở hữu",
+            "color": "#B54708"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Ngôn ngữ hiển thị (tùy chọn)."
+            },
+            "description": "Ngôn ngữ hiển thị (tùy chọn)."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnUiListViewWebDeleteRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 12
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AzicloudDeleteActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Dán access token (không cần chữ `Bearer`). Trang doc nhớ token cho lần sau."
+      }
+    },
+    "schemas": {
+      "AzicloudCreateActionResultDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AzicloudCreateActionResultDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/AzicloudCreateActionResultDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AzicloudDeleteActionResultDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AzicloudDeleteActionResultDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/AzicloudDeleteActionResultDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AzicloudErrorDTO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListDefinitionGetByKeyItemDTO": {
+        "type": "object",
+        "properties": {
+          "ui_list_field": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UiListFieldItemDTO"
+            },
+            "description": "Toàn bộ field của màn (cột + bộ lọc), sắp theo sequence",
+            "nullable": true
+          },
+          "ui_list_definition": {
+            "$ref": "#/components/schemas/UiListDefinitionItemDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListDefinitionGetByKeyItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnUiListDefinitionGetByKeyItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListUserPreferenceWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "workspace_id": {
+            "type": "integer",
+            "description": "Workspace (nếu có)",
+            "format": "int64",
+            "nullable": true
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "description": "id định nghĩa màn danh sách",
+            "format": "int64"
+          },
+          "default_view_id": {
+            "type": "integer",
+            "description": "id view muốn đặt làm mặc định",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListUserViewPreferenceWebUpdateFavoriteRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "user_view_preference_id (từ list-by-user-id), không phải id view",
+            "format": "int64"
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "true = yêu thích, false = bỏ yêu thích"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListViewWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "0 = tạo mới, > 0 = cập nhật view này",
+            "format": "int64"
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "description": "id định nghĩa màn danh sách",
+            "format": "int64"
+          },
+          "workspace_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên view",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "view_type_key": {
+            "type": "string",
+            "description": "Loại view",
+            "nullable": true
+          },
+          "owner_type_key": {
+            "type": "string",
+            "description": "Kiểu chủ sở hữu",
+            "nullable": true
+          },
+          "owner_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "visibility_key": {
+            "type": "string",
+            "description": "Phạm vi chia sẻ (chỉ tôi / tenant...)",
+            "nullable": true
+          },
+          "config_json": {
+            "description": "Cấu hình lưu: cột, thứ tự, bộ lọc, sort"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "is_my_default_view": {
+            "type": "boolean",
+            "description": "Đặt làm view mặc định của tôi sau khi lưu"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListViewWebDeleteRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id view cần xóa",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListViewWebGetByIdItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "workspace_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "system_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "view_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "view_type_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_type_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "visibility_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "config_schema_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "definition_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "row_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_default": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListViewWebGetByIdItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnUiListViewWebGetByIdItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListViewWebGetByUserIdItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "workspace_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "system_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "view_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "view_type_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_type_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "owner_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "visibility_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "visibility_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "config_schema_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "definition_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "row_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_default": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnUiListViewWebGetByUserIdItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnUiListViewWebGetByUserIdItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RuleDefinitionSourceWebOperatorItemDTO": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "nullable": true
+          },
+          "operator_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "input_schema": {
+            "nullable": true
+          },
+          "semantic_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListDefinitionItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "list_key": {
+            "type": "string",
+            "description": "Key màn danh sách",
+            "nullable": true
+          },
+          "application_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "module_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "resource_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "query_adapter_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "read_permission_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "field_provider_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "capabilities_json": {
+            "description": "Tính năng bật cho màn (search, filter, export...)",
+            "nullable": true
+          },
+          "actions_json": {
+            "description": "Các action trên màn",
+            "nullable": true
+          },
+          "default_config_json": {
+            "description": "Cấu hình mặc định (cột, sort...)",
+            "nullable": true
+          },
+          "definition_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "active_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "active_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "write_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "write_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListFieldItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "field_key": {
+            "type": "string",
+            "description": "Key field = tên cột dữ liệu trả về",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên hiển thị",
+            "nullable": true
+          },
+          "data_type_key": {
+            "type": "string",
+            "description": "Kiểu dữ liệu",
+            "nullable": true
+          },
+          "semantic_type_key": {
+            "type": "string",
+            "description": "Kiểu ngữ nghĩa, quyết định toán tử lọc",
+            "nullable": true
+          },
+          "group_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "query_field_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "renderer_key": {
+            "type": "string",
+            "description": "Cách hiển thị ô (tag, avatar, số, ngày...)",
+            "nullable": true
+          },
+          "is_column": {
+            "type": "boolean",
+            "description": "Hiển thị được làm cột"
+          },
+          "is_filterable": {
+            "type": "boolean",
+            "description": "Lọc được"
+          },
+          "is_sortable": {
+            "type": "boolean",
+            "description": "Sắp xếp được"
+          },
+          "is_searchable": {
+            "type": "boolean",
+            "description": "Tham gia ô tìm kiếm"
+          },
+          "is_required_column": {
+            "type": "boolean",
+            "description": "Cột bắt buộc, không cho ẩn"
+          },
+          "allowed_operators_json": {
+            "nullable": true
+          },
+          "options_json": {
+            "nullable": true
+          },
+          "lookup_provider_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "read_permission_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "default_width": {
+            "type": "integer",
+            "description": "Độ rộng mặc định (px)",
+            "format": "int32",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự mặc định",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListFieldWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "field_key": {
+            "type": "string",
+            "description": "Key field = tên cột dữ liệu",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên hiển thị",
+            "nullable": true
+          },
+          "data_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "semantic_type_key": {
+            "type": "string",
+            "description": "Kiểu ngữ nghĩa, quyết định toán tử lọc",
+            "nullable": true
+          },
+          "group_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "query_field_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_column": {
+            "type": "boolean",
+            "description": "Hiển thị được làm cột"
+          },
+          "is_required_column": {
+            "type": "boolean",
+            "description": "Cột bắt buộc, không cho ẩn"
+          },
+          "is_filterable": {
+            "type": "boolean",
+            "description": "Lọc được"
+          },
+          "default_width": {
+            "type": "integer",
+            "description": "Độ rộng mặc định (px)",
+            "format": "int32"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự mặc định",
+            "format": "int32"
+          },
+          "value_data_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "value_field_key": {
+            "type": "string",
+            "description": "Field giá trị khi lọc (vd lọc theo key thay vì tên)",
+            "nullable": true
+          },
+          "is_system": {
+            "type": "boolean",
+            "description": "Field hệ thống",
+            "nullable": true
+          },
+          "operators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleDefinitionSourceWebOperatorItemDTO"
+            },
+            "description": "Toán tử lọc của field (chỉ có khi view_mode_key = filter)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListFieldWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UiListFieldWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListViewWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "user_view_preference_id": {
+            "type": "integer",
+            "description": "Dùng làm id khi gọi update-favorite",
+            "format": "int64"
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "workspace_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "view_type_key": {
+            "type": "string",
+            "description": "Loại view",
+            "nullable": true
+          },
+          "view_type_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "config_json": {
+            "description": "Cấu hình đã lưu: cột, thứ tự, bộ lọc, sort",
+            "nullable": true
+          },
+          "is_default_view": {
+            "type": "boolean",
+            "description": "View mặc định của người dùng"
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "View yêu thích"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListViewWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UiListViewWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateActionResultDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateActionResultDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/UpdateActionResultDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/AzicloudErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "parameters": {
+      "tenant_id": {
+        "name": "tenant_id",
+        "in": "query",
+        "required": true,
+        "description": "Tenant đang làm việc.",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "example": 1
+      },
+      "id": {
+        "name": "id",
+        "in": "query",
+        "required": true,
+        "description": "`id` của bản ghi (lấy từ cột `id` trong danh sách, không phải mã hiển thị).",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "example": 1
+      }
+    }
+  },
+  "x-scalar-environments": {
+    "staging": {
+      "description": "Biến dùng chung khi gọi thử. Sửa 1 lần, mọi request đều dùng.",
+      "color": "#0B7A45",
+      "variables": [
+        {
+          "name": "tenant_id",
+          "value": {
+            "default": "1",
+            "description": "Tenant đang làm việc"
+          }
+        },
+        {
+          "name": "campaign_id",
+          "value": {
+            "default": "",
+            "description": "Campaign đang mở (hiện API chưa lọc theo campaign)"
+          }
+        }
+      ]
+    }
+  }
+}

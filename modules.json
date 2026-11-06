@@ -1,5 +1,12 @@
 [
   {
+    "id": "core",
+    "title": "Core",
+    "url": "core/openapi.json",
+    "updated": "11:01 06/11/2026",
+    "rev": "1261fe9985"
+  },
+  {
     "id": "reward",
     "title": "Reward",
     "url": "reward/openapi.json",

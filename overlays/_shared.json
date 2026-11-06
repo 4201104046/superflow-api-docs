@@ -171,6 +171,14 @@
     "no-auth": {
       "name": "Chưa yêu cầu đăng nhập",
       "color": "#B42318"
+    },
+    "no-owner": {
+      "name": "Chưa kiểm tra người sở hữu",
+      "color": "#B54708"
+    },
+    "partial-broken": {
+      "name": "Có nhánh đang lỗi",
+      "color": "#B54708"
     }
   },
   "schemas": {

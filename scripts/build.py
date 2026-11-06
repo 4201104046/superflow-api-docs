@@ -193,7 +193,7 @@ def build(module_id, swagger, shared, overlay):
             params = []
             for prm in op.get("parameters", []):
                 n = prm.get("name")
-                if n in drop:
+                if n in drop and prm.get("in") == "query":  # field server tự điền (BaseRequestDTO); header thật thì giữ
                     continue
                 if n in shared.get("parameters", {}):
                     doc["components"]["parameters"][n] = copy.deepcopy(shared["parameters"][n])
@@ -204,6 +204,12 @@ def build(module_id, swagger, shared, overlay):
                     patch_field(prm.setdefault("schema", {}), fields[n])
                     if "description" in fields[n]:
                         prm["description"] = fields[n]["description"]
+                # vá tham số query/header của module (GET tách DTO thành param nên schema_patches không áp được)
+                pp = overlay.get("param_patches", {}).get(n)
+                if pp:
+                    patch_field(prm.setdefault("schema", {}), pp, override=True)
+                    if "description" in pp:
+                        prm["description"] = pp["description"]
                 params.append(prm)
             if params:
                 new["parameters"] = params

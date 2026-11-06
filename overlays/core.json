@@ -1,0 +1,135 @@
+{
+  "module": {
+    "title": "Core",
+    "host_project": "src/core/6.core.api.host",
+    "swagger_path": "/swagger/v1/swagger.json",
+    "include": [
+      "^/api/v1/core/web/ui-list-definition/(get-by-key)$",
+      "^/api/v1/core/web/ui-list-field/(list)$",
+      "^/api/v1/core/web/ui-list-user-preference/(create|update-favorite)$",
+      "^/api/v1/core/web/ui-list-view/(get-by-user-id|view|list-by-user-id|create|delete)$"
+    ]
+  },
+  "info": {
+    "title": "Core",
+    "version": "1.0",
+    "description": "API dùng chung cho mọi màn **danh sách** (bảng có Columns · Filter · Save views).\n\n## Luồng mở 1 màn danh sách\n1. `ui-list-definition/get-by-key` (list_key + application_key + module_key) → `ui_list_definition.id` và field.\n2. `ui-list-view/get-by-user-id` (list_definition_id) → view đang áp dụng (`config_json`: cột, thứ tự, bộ lọc, sort).\n3. Popup **Columns** → `ui-list-field/list` với `view_mode_key = ui.list.field.view.mode.column`.\n4. Popup **Filter** → `ui-list-field/list` với `view_mode_key = ui.list.field.view.mode.filter` (có `operators`).\n5. Popup **Save views** → `ui-list-view/list-by-user-id`; lưu `ui-list-view/create`; xóa `ui-list-view/delete`;\n   đặt mặc định `ui-list-user-preference/create`; yêu thích `ui-list-user-preference/update-favorite`.\n\nHeader `lang_id` (tùy chọn) chọn ngôn ngữ hiển thị."
+  },
+  "tags": [
+    {
+      "name": "Màn danh sách",
+      "match": "/ui-list-definition/",
+      "description": "Định nghĩa màn danh sách."
+    },
+    {
+      "name": "Cột & bộ lọc",
+      "match": "/ui-list-field/",
+      "description": "Field cho popup Columns và Filter."
+    },
+    {
+      "name": "Saved views",
+      "match": "/ui-list-view/",
+      "description": "View đã lưu của người dùng (popup Save views)."
+    },
+    {
+      "name": "Tùy chọn người dùng",
+      "match": "/ui-list-user-preference/",
+      "description": "View mặc định và view yêu thích của người dùng."
+    }
+  ],
+  "operations": {
+    "GET /api/v1/core/web/ui-list-definition/get-by-key": {},
+    "GET /api/v1/core/web/ui-list-field/list": {
+      "badges": [
+        "partial-broken"
+      ],
+      "ui": "> ⚠️ `view_mode_key = ui.list.field.view.mode.all` đang trả **0 dòng** (lỗi SQL so `UPPER(...)` với chuỗi thường). Muốn lấy tất cả field → gửi `view_mode_key` **null**.\n\n| view_mode_key | Dùng cho | Kết quả |\n|---|---|---|\n| `…view.mode.column` | Popup Columns | field `is_column` |\n| `…view.mode.filter` | Popup Filter | field `is_filterable` + `operators` |\n| null | – | tất cả field |"
+    },
+    "POST /api/v1/core/web/ui-list-user-preference/create": {
+      "request_example": {
+        "tenant_id": 1,
+        "workspace_id": null,
+        "list_definition_id": 1,
+        "default_view_id": 12
+      }
+    },
+    "POST /api/v1/core/web/ui-list-user-preference/update-favorite": {
+      "badges": [
+        "no-owner"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 34,
+        "is_favorite": true
+      },
+      "ui": "> `id` = `user_view_preference_id` lấy từ `ui-list-view/list-by-user-id`. ⚠️ Function chỉ lọc theo `id`, không kiểm tra preference thuộc người đang gọi."
+    },
+    "GET /api/v1/core/web/ui-list-view/get-by-user-id": {},
+    "GET /api/v1/core/web/ui-list-view/view": {
+      "badges": [
+        "no-tenant"
+      ]
+    },
+    "GET /api/v1/core/web/ui-list-view/list-by-user-id": {
+      "ui": "> ⚠️ Danh sách đang sắp `is_favorite` tăng dần → view **yêu thích nằm cuối**. Nếu UI cần yêu thích lên đầu thì sắp lại phía FE (hoặc chờ sửa SQL)."
+    },
+    "POST /api/v1/core/web/ui-list-view/create": {
+      "badges": [
+        "no-owner"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 0,
+        "list_definition_id": 1,
+        "workspace_id": null,
+        "name": "Campaign đang chạy",
+        "description": "",
+        "view_type_key": "ui.list.view.type.table",
+        "owner_type_key": "ui.list.view.owner.user",
+        "owner_id": null,
+        "visibility_key": "ui.list.view.visibility.private",
+        "config_json": {
+          "columns": [
+            "code",
+            "name",
+            "status"
+          ],
+          "filters": {
+            "logic": "AND",
+            "rules": []
+          },
+          "sort": {
+            "by": "create_date",
+            "dir": "DESC"
+          }
+        },
+        "active": true,
+        "is_my_default_view": false
+      },
+      "ui": "> Giá trị `view_type_key`, `owner_type_key`, `visibility_key`, cấu trúc `config_json` trong ví dụ là minh họa — lấy giá trị thật từ BE/module_config.\n>\n> ⚠️ Cập nhật (`id > 0`) chỉ lọc theo `id`, không kiểm tra người sở hữu view."
+    },
+    "POST /api/v1/core/web/ui-list-view/delete": {
+      "badges": [
+        "no-owner"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 12
+      },
+      "ui": "> Không xóa được view mặc định hệ thống. ⚠️ Không kiểm tra view thuộc người đang gọi."
+    }
+  },
+  "param_patches": {
+    "view_mode_key": {
+      "enum": [
+        "ui.list.field.view.mode.column",
+        "ui.list.field.view.mode.filter",
+        "ui.list.field.view.mode.all"
+      ],
+      "description": "column → field làm cột (Columns); filter → field lọc được + operators (Filter); null → tất cả. ⚠️ `…view.mode.all` đang trả 0 dòng, dùng null."
+    },
+    "lang_id": {
+      "description": "Ngôn ngữ hiển thị (tùy chọn)."
+    }
+  }
+}
