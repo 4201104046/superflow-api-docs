@@ -38,8 +38,8 @@
       "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
     },
     {
-      "name": "Participant · Redemptions",
-      "description": "Tab **Redemptions** trong drawer người tham gia: phiếu đổi quà của 1 người tham gia (không phân trang)."
+      "name": "Campaign redemption",
+      "description": "Phiếu đổi quà của campaign (bảng `campaign_consumer_redemption`).\n\n- Màn **Redemption**: `list-totalrow` (số trên tab) + `list-pageindex` (bảng).\n- Nút **Approve**: `approve`; **Reject / Mark delivered**: `update-status`.\n- Tab **Redemptions** trong drawer người tham gia: `list-by-consumer` (không phân trang).\n\nTenant của phiếu lấy theo người tham gia (`campaign_consumer.tenant_id`)."
     },
     {
       "name": "Registration form",
@@ -504,10 +504,271 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign-consumer-redemption/list-pageindex": {
+      "post": {
+        "tags": [
+          "Campaign redemption"
+        ],
+        "summary": "Danh sách phiếu đổi quà",
+        "description": "Màn **Redemption** của tenant hiện tại: phân trang, search, sort, chọn cột. Mỗi dòng là object động, key theo `columns`\r\n(null = bộ cột mặc định: id, redemption_no, consumer, reward_name, reward_type, source, fulfillment, total_point_used,\r\nrequest_date, status...). Search tìm theo mã phiếu, tên/SĐT người tham gia, tên/mã quà, mã nguồn, hình thức giao quà.\r\n`from_date`/`to_date` lọc theo ngày tạo phiếu (to_date tính hết ngày).\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `consumer` (`{name, id}`) | `consumer_name` | |\n| Reward | `reward_name` | `reward_name` | |\n| Type | `reward_type` | `reward_type` | |\n| Source | `source` | `source_no` | `Points` hoặc `Mission: <tên>` |\n| Fulfilment | `fulfillment` (`{name, color}`), `fulfillment_name` | `fulfillment_name` | |\n| Points | `total_point_used` | `total_point_used` | |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | |\n\n> Cột thêm khi gửi `columns`: `tenant_id`, `campaign_id`, `campaign_consumer_id`, `province_name`, `reward_code`, `source_no`, `source_type_name`, `quantity`, `point_cost`, `approval_status`, `approval_status_name`, `fulfillment_status_name`, `shipping_*`, `note`, `cancel_reason`…",
+        "operationId": "campaignConsumerRedemptionListPageindex",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerRedemptionWebListPageindexRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "pageindex": 1,
+                "pagesize": 20,
+                "campaign_id": 1,
+                "searchtext": "",
+                "list_status_key": [
+                  "campaign.consumer.redemption.status.pending"
+                ],
+                "sortby": "request_date",
+                "sortdir": "DESC",
+                "columns": null,
+                "filter_definition": null,
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringObjectDictionaryListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 7,
+                      "redemption_no": "RED-TEST-007",
+                      "consumer": {
+                        "id": 65,
+                        "name": "Phương Anh",
+                        "control": "name_id"
+                      },
+                      "consumer_name": "Phương Anh",
+                      "consumer_phone": "0858467429",
+                      "reward_name": null,
+                      "reward_type": null,
+                      "source": "Points",
+                      "fulfillment": {
+                        "name": null,
+                        "color": null,
+                        "control": "tag"
+                      },
+                      "fulfillment_name": "",
+                      "total_point_used": 1000.0,
+                      "request_date": "2026-11-08T16:02:04",
+                      "status": {
+                        "name": "Pending approval",
+                        "color": "#D08700",
+                        "control": "tag"
+                      },
+                      "status_key": "campaign.consumer.redemption.status.pending",
+                      "status_name": "Pending approval",
+                      "status_color": "#D08700",
+                      "active": true,
+                      "created_date": "2026-11-08T16:02:04"
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-redemption/list-totalrow": {
+      "post": {
+        "tags": [
+          "Campaign redemption"
+        ],
+        "summary": "Tổng số phiếu đổi quà + số theo trạng thái",
+        "description": "Tổng số phiếu khớp bộ lọc (`total`) và `status_summary` (pending / approved / rejected / delivered) cho các tab.\r\nGọi cùng bộ lọc với `list-pageindex`.\n\n### Map lên màn hình\n\n| Tab | `status_summary` key |\n|---|---|\n| All | `...metric.total` |\n| Pending / Approved / Rejected / Delivered | `campaign.consumer.redemption.status.<tên>` |\n\n> `columns` gửi lên không có tác dụng.",
+        "operationId": "campaignConsumerRedemptionListTotalrow",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerRedemptionWebListTotalrowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "campaign_id": 1,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "columns": null,
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerRedemptionWebListTotalrowDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "total": 7,
+                    "status_summary": {
+                      "campaign.consumer.redemption.metric.total": 7,
+                      "campaign.consumer.redemption.status.pending": 2,
+                      "campaign.consumer.redemption.status.approved": 2,
+                      "campaign.consumer.redemption.status.rejected": 1,
+                      "campaign.consumer.redemption.status.delivered": 2
+                    }
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-redemption/update-status": {
+      "post": {
+        "tags": [
+          "Campaign redemption"
+        ],
+        "summary": "Đổi trạng thái phiếu đổi quà",
+        "description": "Gán `status_key` mới cho phiếu (vd Reject, Mark delivered). Phiếu phải thuộc tenant hiện tại.\r\nChỉ đổi `status_key`, không đổi trạng thái duyệt / giao hàng.\n\n### Map lên màn hình\n\n| Nút | `status_key` |\n|---|---|\n| Reject | `campaign.consumer.redemption.status.rejected` |\n| Mark delivered | `campaign.consumer.redemption.status.delivered` |\n\n> Chỉ đổi `status_key`; không ghi lý do hủy, không đổi trạng thái giao hàng.",
+        "operationId": "campaignConsumerRedemptionUpdateStatus",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerRedemptionWebUpdateStatusRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 7,
+                "status_key": "campaign.consumer.redemption.status.rejected"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-redemption/approve": {
+      "post": {
+        "tags": [
+          "Campaign redemption"
+        ],
+        "summary": "Duyệt phiếu đổi quà",
+        "description": "Nút **Approve**: ghi nhận đã duyệt (ngày + người duyệt), kèm `status_key` mới và `note` nếu gửi.\r\nBỏ trống `status_key` / `note` thì giữ giá trị cũ. Phiếu phải thuộc tenant hiện tại.\n\n### Map lên màn hình\n\n| Ghi chú | |\n|---|---|\n| `status_key` | gửi `campaign.consumer.redemption.status.approved`; bỏ trống = giữ trạng thái cũ |\n| `note` | tùy chọn; bỏ trống = giữ ghi chú cũ |\n| Ghi nhận | ngày duyệt + người duyệt |\n\n> ⚠️ DB ghi `approval_status_key = 'approved'` (không khớp key module_config) → `approval_status_name` sau khi duyệt đang trống.",
+        "operationId": "campaignConsumerRedemptionApprove",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerRedemptionWebApproveRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 7,
+                "status_key": "campaign.consumer.redemption.status.approved",
+                "note": "Đã kiểm tra"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign-consumer-redemption/list-by-consumer": {
       "get": {
         "tags": [
-          "Participant · Redemptions"
+          "Campaign redemption"
         ],
         "summary": "Danh sách phiếu đổi quà của người tham gia campaign",
         "description": "Danh sách không phân trang theo campaign_consumer_id, thuộc tenant_id hiện tại.\r\nsearchtext tìm theo mã phiếu, tên/mã quà, mã vận đơn hoặc SĐT nhận hàng.\r\nSắp xếp theo create_date DESC, id DESC.",
@@ -4659,6 +4920,279 @@
             "nullable": true,
             "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
             "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionWebApproveRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id phiếu đổi quà",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái sau khi duyệt, ví dụ campaign.consumer.redemption.status.approved. Bỏ trống = giữ trạng thái hiện tại",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "description": "Ghi chú duyệt (tùy chọn, tối đa 1024 ký tự). Bỏ trống = giữ ghi chú cũ",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionWebListPageindexRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "pageindex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Trang hiện tại, bắt đầu từ 1.",
+            "default": 1,
+            "minimum": 1,
+            "example": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Số dòng mỗi trang.",
+            "default": 20,
+            "minimum": 1,
+            "example": 20
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: mã phiếu, tên/SĐT người tham gia, tên/mã quà, mã nguồn (source_no), hình thức giao quà",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái: campaign.consumer.redemption.status.pending / approved / rejected / delivered",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "description": "Cột cần lấy; null = bộ cột mặc định",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo phiếu từ ngày",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo phiếu đến hết ngày này",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp. Nhận cả tên cũ `reference_no` / `reference_type_key` / `fulfillment_type_name`. Giá trị lạ → `created_date`.",
+            "nullable": true,
+            "enum": [
+              "id",
+              "redemption_no",
+              "consumer_name",
+              "reward_name",
+              "reward_type",
+              "source_no",
+              "source_type_key",
+              "total_point_used",
+              "request_date",
+              "status_key",
+              "status_name",
+              "fulfillment_status_key",
+              "fulfillment_name",
+              "active",
+              "created_date"
+            ],
+            "default": "created_date",
+            "example": "request_date"
+          },
+          "sortdir": {
+            "type": "string",
+            "description": "ASC hoặc DESC",
+            "nullable": true,
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionWebListTotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số phiếu khớp bộ lọc (dùng để phân trang)",
+            "format": "int64"
+          },
+          "status_summary": {
+            "description": "Số phiếu theo từng status_key (pending/approved/rejected/delivered) và metric.total",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionWebListTotalrowDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerRedemptionWebListTotalrowDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionWebListTotalrowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: giống list-pageindex",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái: giống list-pageindex",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "description": "Không có tác dụng (fn không dùng)",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionWebUpdateStatusRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id phiếu đổi quà",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái mới (bắt buộc), ví dụ campaign.consumer.redemption.status.rejected / delivered",
+            "nullable": true
           }
         },
         "additionalProperties": false

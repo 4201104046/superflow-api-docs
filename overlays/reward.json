@@ -13,7 +13,7 @@
       "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$",
       "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$",
       "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer)$",
-      "^/api/v1/reward/web/campaign-consumer-redemption/list-by-consumer$",
+      "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status)$"
     ]
   },
@@ -44,9 +44,9 @@
       "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
     },
     {
-      "name": "Participant · Redemptions",
+      "name": "Campaign redemption",
       "match": "/campaign-consumer-redemption/",
-      "description": "Tab **Redemptions** trong drawer người tham gia: phiếu đổi quà của 1 người tham gia (không phân trang)."
+      "description": "Phiếu đổi quà của campaign (bảng `campaign_consumer_redemption`).\n\n- Màn **Redemption**: `list-totalrow` (số trên tab) + `list-pageindex` (bảng).\n- Nút **Approve**: `approve`; **Reject / Mark delivered**: `update-status`.\n- Tab **Redemptions** trong drawer người tham gia: `list-by-consumer` (không phân trang).\n\nTenant của phiếu lấy theo người tham gia (`campaign_consumer.tenant_id`)."
     },
     {
       "name": "Registration form",
@@ -174,6 +174,30 @@
         "default": "created_date",
         "example": "created_date",
         "description": "Cột sắp xếp. Nhận cả tên cũ `reference_no` / `reference_type_key` / `reference_type_name`. Giá trị lạ → `created_date`."
+      }
+    },
+    "FnCampaignConsumerRedemptionWebListPageindexRequestDTO": {
+      "sortby": {
+        "enum": [
+          "id",
+          "redemption_no",
+          "consumer_name",
+          "reward_name",
+          "reward_type",
+          "source_no",
+          "source_type_key",
+          "total_point_used",
+          "request_date",
+          "status_key",
+          "status_name",
+          "fulfillment_status_key",
+          "fulfillment_name",
+          "active",
+          "created_date"
+        ],
+        "default": "created_date",
+        "example": "request_date",
+        "description": "Cột sắp xếp. Nhận cả tên cũ `reference_no` / `reference_type_key` / `fulfillment_type_name`. Giá trị lạ → `created_date`."
       }
     }
   },
@@ -1045,6 +1069,117 @@
         }
       ],
       "ui": "| Ghi chú | |\n|---|---|\n| Dùng cho | dropdown chọn người tham gia (không phân trang) |\n| Chỉ trả | người `active = true` và `approved_key = campaign.consumer.approved.approved` |\n| Search | theo `name`, `phone` |"
+    },
+    "POST /api/v1/reward/web/campaign-consumer-redemption/list-totalrow": {
+      "operationId": "campaignConsumerRedemptionListTotalrow",
+      "badges": [
+        "new",
+        "filter-broken"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 1,
+        "searchtext": "",
+        "list_status_key": null,
+        "filter_definition": null,
+        "columns": null,
+        "from_date": null,
+        "to_date": null
+      },
+      "result_example": {
+        "total": 7,
+        "status_summary": {
+          "campaign.consumer.redemption.metric.total": 7,
+          "campaign.consumer.redemption.status.pending": 2,
+          "campaign.consumer.redemption.status.approved": 2,
+          "campaign.consumer.redemption.status.rejected": 1,
+          "campaign.consumer.redemption.status.delivered": 2
+        }
+      },
+      "ui": "| Tab | `status_summary` key |\n|---|---|\n| All | `...metric.total` |\n| Pending / Approved / Rejected / Delivered | `campaign.consumer.redemption.status.<tên>` |\n\n> `columns` gửi lên không có tác dụng."
+    },
+    "POST /api/v1/reward/web/campaign-consumer-redemption/list-pageindex": {
+      "operationId": "campaignConsumerRedemptionListPageindex",
+      "badges": [
+        "new",
+        "filter-broken"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "pageindex": 1,
+        "pagesize": 20,
+        "campaign_id": 1,
+        "searchtext": "",
+        "list_status_key": [
+          "campaign.consumer.redemption.status.pending"
+        ],
+        "sortby": "request_date",
+        "sortdir": "DESC",
+        "columns": null,
+        "filter_definition": null,
+        "from_date": null,
+        "to_date": null
+      },
+      "result_example": [
+        {
+          "id": 7,
+          "redemption_no": "RED-TEST-007",
+          "consumer": {
+            "id": 65,
+            "name": "Phương Anh",
+            "control": "name_id"
+          },
+          "consumer_name": "Phương Anh",
+          "consumer_phone": "0858467429",
+          "reward_name": null,
+          "reward_type": null,
+          "source": "Points",
+          "fulfillment": {
+            "name": null,
+            "color": null,
+            "control": "tag"
+          },
+          "fulfillment_name": "",
+          "total_point_used": 1000.0,
+          "request_date": "2026-11-08T16:02:04",
+          "status": {
+            "name": "Pending approval",
+            "color": "#D08700",
+            "control": "tag"
+          },
+          "status_key": "campaign.consumer.redemption.status.pending",
+          "status_name": "Pending approval",
+          "status_color": "#D08700",
+          "active": true,
+          "created_date": "2026-11-08T16:02:04"
+        }
+      ],
+      "ui": "| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `consumer` (`{name, id}`) | `consumer_name` | |\n| Reward | `reward_name` | `reward_name` | |\n| Type | `reward_type` | `reward_type` | |\n| Source | `source` | `source_no` | `Points` hoặc `Mission: <tên>` |\n| Fulfilment | `fulfillment` (`{name, color}`), `fulfillment_name` | `fulfillment_name` | |\n| Points | `total_point_used` | `total_point_used` | |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | |\n\n> Cột thêm khi gửi `columns`: `tenant_id`, `campaign_id`, `campaign_consumer_id`, `province_name`, `reward_code`, `source_no`, `source_type_name`, `quantity`, `point_cost`, `approval_status`, `approval_status_name`, `fulfillment_status_name`, `shipping_*`, `note`, `cancel_reason`…"
+    },
+    "POST /api/v1/reward/web/campaign-consumer-redemption/update-status": {
+      "operationId": "campaignConsumerRedemptionUpdateStatus",
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 7,
+        "status_key": "campaign.consumer.redemption.status.rejected"
+      },
+      "ui": "| Nút | `status_key` |\n|---|---|\n| Reject | `campaign.consumer.redemption.status.rejected` |\n| Mark delivered | `campaign.consumer.redemption.status.delivered` |\n\n> Chỉ đổi `status_key`; không ghi lý do hủy, không đổi trạng thái giao hàng."
+    },
+    "POST /api/v1/reward/web/campaign-consumer-redemption/approve": {
+      "operationId": "campaignConsumerRedemptionApprove",
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 7,
+        "status_key": "campaign.consumer.redemption.status.approved",
+        "note": "Đã kiểm tra"
+      },
+      "ui": "| Ghi chú | |\n|---|---|\n| `status_key` | gửi `campaign.consumer.redemption.status.approved`; bỏ trống = giữ trạng thái cũ |\n| `note` | tùy chọn; bỏ trống = giữ ghi chú cũ |\n| Ghi nhận | ngày duyệt + người duyệt |\n\n> ⚠️ DB ghi `approval_status_key = 'approved'` (không khớp key module_config) → `approval_status_name` sau khi duyệt đang trống."
     }
   }
 }
