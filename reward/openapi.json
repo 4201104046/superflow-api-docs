@@ -3,7 +3,7 @@
   "info": {
     "title": "Reward",
     "version": "1.0",
-    "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 05/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | Wallet transaction chưa lọc theo tenant | — |\n| 4 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 5 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
+    "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 09/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | `campaign-consumer-point-ledger/list-by-consumer` lỗi trên DB (fn còn dùng cột `reference_*` đã đổi thành `source_*`) | Dùng `list-pageindex` |\n| 4 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 5 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
   },
   "servers": [
     {
@@ -34,8 +34,8 @@
       "description": "Màn **Participants + detail drawer**: người tham gia campaign."
     },
     {
-      "name": "Participant · Points",
-      "description": "Tab **Points** trong drawer người tham gia: sổ điểm của 1 người tham gia (không phân trang)."
+      "name": "Point",
+      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
     },
     {
       "name": "Participant · Redemptions",
@@ -56,10 +56,6 @@
     {
       "name": "Redemption",
       "description": "Màn **Redemption + detail drawer**: tab trạng thái, bảng phiếu đổi quà, drawer chi tiết.\n\nChưa có API cho các nút: Approve, Reject, Mark delivered, Approve pending (bulk), Import shipping status, Resend ZNS, Export."
-    },
-    {
-      "name": "Point",
-      "description": "Màn **Points history**: bảng sổ điểm (ledger) và drawer *Transaction …*.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
     },
     {
       "name": "Leaderboard",
@@ -197,10 +193,262 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign-consumer-point-ledger/list-pageindex": {
+      "post": {
+        "tags": [
+          "Point"
+        ],
+        "summary": "Danh sách giao dịch điểm",
+        "description": "Sổ điểm (ledger) của tenant hiện tại: phân trang, search, sort, chọn cột. Mỗi dòng là object động, key theo `columns`\r\n(null = bộ cột mặc định: id, source_code, created_date, consumer, status, source, name, delta, before/after_balance,\r\ncreated_by_name, expire_date, active...). Giao dịch quá `expire_date` tự có trạng thái `...status.expire`.\r\n`from_date`/`to_date` lọc theo ngày tạo giao dịch (to_date tính hết ngày).\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `source_code` | `source_code` | Mở drawer bằng `id` |\n| Time | `created_date` | `created_date` | |\n| Participant | `consumer` (`{name, phone}`) | `consumer_name` | |\n| Type / Status | `status` (`{name, color}`) | `status_name` | Earn / Redeem / Refund / Adjust / Revoke / Expire |\n| Source | `source` (`source_type_name`, `source_name`, `source_code`) | `source_type_name` | Hết hạn → `source_name = \"System expiry\"` |\n| Description | `name` | `name` | |\n| Points (±) | `delta` | `delta` | Có dấu: âm = trừ |\n| Balance after | `after_balance` | `after_balance` | |\n| By | `created_by_name` | — | |\n\n> Cột thêm khi gửi `columns`: `consumer_email`, `consumer_zalo_avatar`, `source_type_key`, `source_type_color`, `source_id`, `description`, `notes`, `metadata_json`, `create_by_key`, `status_key`, `status_name`, `status_color`, `write_date`…",
+        "operationId": "campaignConsumerPointLedgerListPageindex",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebListPageindexRequestDTO"
+              },
+              "example": {
+                "tenant_id": 91265,
+                "pageindex": 1,
+                "pagesize": 20,
+                "campaign_id": 1,
+                "searchtext": "",
+                "list_status_key": null,
+                "sortby": "created_date",
+                "sortdir": "DESC",
+                "columns": null,
+                "filter_definition": null,
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringObjectDictionaryListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 18,
+                      "tenant_id": 91265,
+                      "campaign_id": 1,
+                      "campaign_consumer_id": 65,
+                      "source_code": "ADJ-2",
+                      "created_date": "2026-11-07T11:06:58",
+                      "consumer": {
+                        "name": "Phương Anh",
+                        "phone": "0858467429",
+                        "control": "name_phone"
+                      },
+                      "consumer_name": "Phương Anh",
+                      "consumer_phone": "0858467429",
+                      "status": {
+                        "name": "Expire",
+                        "color": "#6A7282",
+                        "control": "tag"
+                      },
+                      "source": {
+                        "source_name": "System expiry",
+                        "source_key": "campaign.consumer.point.ledger.reference.type.adjust",
+                        "source_type_name": "Ghi chú quản trị",
+                        "source_id": 2,
+                        "source_code": "ADJ-2",
+                        "control": "source"
+                      },
+                      "name": "Other",
+                      "delta": -200.0,
+                      "before_balance": 500.0,
+                      "after_balance": 300.0,
+                      "created_by_name": "Adjust",
+                      "expire_date": "2026-11-07T11:06:58",
+                      "active": true
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-point-ledger/list-totalrow": {
+      "post": {
+        "tags": [
+          "Point"
+        ],
+        "summary": "Tổng số giao dịch điểm + số theo trạng thái",
+        "description": "Tổng số giao dịch khớp bộ lọc (`total`) và `status_summary` theo từng trạng thái. Gọi cùng bộ lọc với `list-pageindex`.\n\n### Map lên màn hình\n\n| Tab | `status_summary` key |\n|---|---|\n| All | `...metric.total` |\n| Earn / Redeem / Refund / Adjust / Revoke / Expire | `campaign.consumer.point.ledger.status.<tên>` |",
+        "operationId": "campaignConsumerPointLedgerListTotalrow",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebListTotalrowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 91265,
+                "campaign_id": 1,
+                "searchtext": "",
+                "list_status_key": null,
+                "filter_definition": null,
+                "columns": null,
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebListTotalrowDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "total": 3,
+                    "status_summary": {
+                      "campaign.consumer.point.ledger.status.earn": 0,
+                      "campaign.consumer.point.ledger.status.redeem": 0,
+                      "campaign.consumer.point.ledger.status.refund": 0,
+                      "campaign.consumer.point.ledger.status.adjust": 1,
+                      "campaign.consumer.point.ledger.status.revoke": 0,
+                      "campaign.consumer.point.ledger.status.expire": 2,
+                      "campaign.consumer.point.ledger.metric.total": 3
+                    }
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-point-ledger/get-by-id": {
+      "get": {
+        "tags": [
+          "Point"
+        ],
+        "summary": "Chi tiết giao dịch điểm",
+        "description": "Trả 1 giao dịch kèm tên/màu trạng thái, loại nguồn, người tạo và thông tin người tham gia (`campaign_consumer`).\r\nKhông tìm thấy hoặc khác tenant thì trả lỗi.\n\n### Map lên màn hình\n\n| Mục trên drawer | Field |\n|---|---|\n| Badge trạng thái | `status_name`, `status_color` |\n| Participant | `campaign_consumer.name`, `.phone` |\n| Source | `source_type_name`, `source_type_color` |\n| Reference + nút \"Open …\" | `source_code`, `source_id` (dựa `source_type_key` để biết mở mission / redemption) |\n| Event | `source_name` / `name` (+ `description`, `notes`) |\n| Points, Balance after | `delta`, `after_balance` (+ `before_balance`) |\n| Time, Created by | `create_date`, `create_by_name` |\n| Raw event (JSON) | `metadata_json` |",
+        "operationId": "campaignConsumerPointLedgerGetById",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebGetByIdItemDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "id": 18,
+                    "tenant_id": 91265,
+                    "campaign_id": 1,
+                    "campaign_consumer_id": 65,
+                    "source_type_key": "campaign.consumer.point.ledger.reference.type.adjust",
+                    "source_type_name": "Ghi chú quản trị",
+                    "source_type_color": "#D08700",
+                    "source_id": 2,
+                    "source_code": "ADJ-2",
+                    "source_name": "System expiry",
+                    "delta": -200.0,
+                    "before_balance": 500.0,
+                    "after_balance": 300.0,
+                    "expire_date": "2026-11-07T11:06:58",
+                    "metadata_json": {
+                      "reason": "Test trừ điểm",
+                      "source": "manual",
+                      "reference": "TEST-ADJ-002"
+                    },
+                    "name": "Other",
+                    "description": "Other",
+                    "notes": "Test điều chỉnh trừ 200 điểm",
+                    "create_by_key": "campaign.consumer.point.ledger.create.by.adjust",
+                    "create_by_name": "Adjust",
+                    "status_key": "campaign.consumer.point.ledger.status.expire",
+                    "status_name": "Expire",
+                    "status_color": "#6A7282",
+                    "create_date": "2026-11-07T11:06:58",
+                    "campaign_consumer": {
+                      "id": 65,
+                      "consumer_id": 57,
+                      "name": "Phương Anh",
+                      "phone": "0858467429",
+                      "email": "anh@gmail.com",
+                      "total_balance": 300.0
+                    }
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer": {
       "get": {
         "tags": [
-          "Participant · Points"
+          "Point"
         ],
         "summary": "Sổ điểm của người tham gia campaign",
         "description": "Danh sách không phân trang theo campaign_consumer_id, thuộc tenant_id hiện tại.\r\nsearchtext tìm theo tên giao dịch hoặc mã tham chiếu.\r\nSắp xếp theo create_date DESC, id DESC.",
@@ -209,6 +457,10 @@
           {
             "name": "Mới",
             "color": "#0B7A45"
+          },
+          {
+            "name": "Đang lỗi trên dev",
+            "color": "#B42318"
           }
         ],
         "parameters": [
@@ -373,6 +625,87 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StringObjectDictionaryListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer/list": {
+      "get": {
+        "tags": [
+          "Participants"
+        ],
+        "summary": "Danh sách người tham gia (không phân trang)",
+        "description": "Dùng cho dropdown/chọn người tham gia: chỉ trả người đang `active` và đã duyệt\r\n(`approved_key = campaign.consumer.approved.approved`) thuộc tenant hiện tại.\r\nLọc theo `campaign_id`; `searchtext` tìm theo tên hoặc SĐT.\n\n### Map lên màn hình\n\n| Ghi chú | |\n|---|---|\n| Dùng cho | dropdown chọn người tham gia (không phân trang) |\n| Chỉ trả | người `active = true` và `approved_key = campaign.consumer.approved.approved` |\n| Search | theo `name`, `phone` |",
+        "operationId": "campaignConsumerList",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignConsumerWebListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 132,
+                      "tenant_id": 71268,
+                      "campaign_id": 26,
+                      "consumer_id": null,
+                      "name": "Nguyễn Văn A",
+                      "phone": "0901234567",
+                      "email": "a@gmail.com",
+                      "province_name": null,
+                      "ward_name": null,
+                      "status_key": "campaign.consumer.status.active",
+                      "status_name": "Active",
+                      "status_color": "",
+                      "approved_key": "campaign.consumer.approved.approved",
+                      "approved_name": "Approved",
+                      "active": true,
+                      "create_date": "2026-11-06T12:02:57"
+                    }
+                  ],
+                  "error": null
                 }
               }
             }
@@ -1810,259 +2143,6 @@
         }
       }
     },
-    "/api/v1/reward/web/consumer-wallet-transaction/list-pageindex": {
-      "post": {
-        "tags": [
-          "Point"
-        ],
-        "summary": "Danh sách giao dịch điểm",
-        "description": "Sổ điểm (ledger) có phân trang, search, sort, chọn cột. Mỗi dòng là object động, key theo `columns`\r\n(null = bộ cột mặc định). Search tìm trong mã giao dịch, mã tham chiếu, mô tả.\r\n`from_date`/`to_date` lọc theo ngày tạo giao dịch.\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `transaction_no` | `transaction_no` | Mở drawer bằng `id` |\n| Time | `create_date` | `create_date` | |\n| Participant | ❌ chưa có | — | Chỉ có `wallet_id`, `wallet_account_id` |\n| Type | ⚠️ `transaction_type_id` | — | Chưa có tên loại (Earn / Redeem / …) |\n| Source | `reference_type` (`{name, color}`) | — | Loại đổi quà đang có `reference_type_name = null` → hiện theo `reference_type_key` |\n| Description | `name` | `name` | |\n| Reference | `reference_no` | `reference_no` | |\n| Points (±) | `quantity` | `quantity` | ⚠️ Không có dấu: tạm suy từ `after_balance − before_balance` |\n| Balance after | `after_balance` | `after_balance` | |\n| By | ⚠️ `create_uid` | — | Phải tự gửi `columns` mới có, chỉ là ID |",
-        "operationId": "consumerWalletTransactionListPageindex",
-        "x-badges": [
-          {
-            "name": "Mới",
-            "color": "#0B7A45"
-          },
-          {
-            "name": "Filter nâng cao đang lỗi",
-            "color": "#B42318"
-          },
-          {
-            "name": "Chưa lọc campaign",
-            "color": "#B54708"
-          },
-          {
-            "name": "Chưa lọc tenant",
-            "color": "#B42318"
-          },
-          {
-            "name": "Thiếu field so với design",
-            "color": "#B54708"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FnConsumerWalletTransactionWebListPageindexRequestDTO"
-              },
-              "example": {
-                "tenant_id": 1,
-                "pageindex": 1,
-                "pagesize": 20,
-                "searchtext": "",
-                "list_status_key": null,
-                "sortby": "create_date",
-                "sortdir": "DESC",
-                "columns": null,
-                "campaign_id": null,
-                "filter_definition": null,
-                "from_date": null,
-                "to_date": null
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StringObjectDictionaryListResponseDTO"
-                },
-                "example": {
-                  "success": true,
-                  "result": [
-                    {
-                      "id": 812,
-                      "wallet_id": 41,
-                      "wallet_account_id": 57,
-                      "transaction_no": "TXN-20260321-000812",
-                      "reference_no": "MS-0007",
-                      "reference_type_key": "consumer.wallet.transaction.reference.type.mission",
-                      "reference_type_name": "MISSION",
-                      "reference_type_color": "#1D5FB8",
-                      "reference_type": {
-                        "name": "MISSION",
-                        "color": "#1D5FB8",
-                        "control": "tag"
-                      },
-                      "transaction_type_id": 1,
-                      "quantity": 50.0,
-                      "before_balance": 950.0,
-                      "after_balance": 1000.0,
-                      "expire_date": null,
-                      "name": "Thưởng điểm nhiệm vụ",
-                      "status_key": "consumer.wallet.transaction.status.success",
-                      "status_name": "Success",
-                      "status_color": "#0B7A45",
-                      "status": {
-                        "name": "Success",
-                        "color": "#0B7A45",
-                        "control": "tag"
-                      },
-                      "active": true,
-                      "create_date": "2026-03-21T10:52:00"
-                    }
-                  ],
-                  "error": null
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Thiếu hoặc sai Bearer token"
-          }
-        }
-      }
-    },
-    "/api/v1/reward/web/consumer-wallet-transaction/list-totalrow": {
-      "post": {
-        "tags": [
-          "Point"
-        ],
-        "summary": "Tổng số giao dịch điểm",
-        "description": "Tổng số giao dịch khớp bộ lọc (`total`) để phân trang. Gọi cùng bộ lọc với `list-pageindex`.",
-        "operationId": "consumerWalletTransactionListTotalrow",
-        "x-badges": [
-          {
-            "name": "Mới",
-            "color": "#0B7A45"
-          },
-          {
-            "name": "Filter nâng cao đang lỗi",
-            "color": "#B42318"
-          },
-          {
-            "name": "Chưa lọc campaign",
-            "color": "#B54708"
-          },
-          {
-            "name": "Chưa lọc tenant",
-            "color": "#B42318"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FnConsumerWalletTransactionWebListTotalrowRequestDTO"
-              },
-              "example": {
-                "tenant_id": 1,
-                "searchtext": "",
-                "list_status_key": null,
-                "columns": null,
-                "campaign_id": null,
-                "filter_definition": null,
-                "from_date": null,
-                "to_date": null
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FnConsumerWalletTransactionWebListTotalrowDTOResponseDTO"
-                },
-                "example": {
-                  "success": true,
-                  "result": {
-                    "total": 373,
-                    "status_summary": {
-                      "consumer.wallet.transaction.metric.total": 373,
-                      "consumer.wallet.transaction.status.completed": 7,
-                      "consumer.wallet.transaction.status.cancelled": 0
-                    }
-                  },
-                  "error": null
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Thiếu hoặc sai Bearer token"
-          }
-        }
-      }
-    },
-    "/api/v1/reward/web/consumer-wallet-transaction/get-by-id": {
-      "get": {
-        "tags": [
-          "Point"
-        ],
-        "summary": "Chi tiết giao dịch điểm",
-        "description": "Trả 1 giao dịch kèm tên/màu trạng thái và loại tham chiếu. Không tìm thấy thì `result = null`.\n\n### Map lên màn hình\n\n| Mục trên drawer | Field |\n|---|---|\n| Type | ⚠️ chỉ có `transaction_type_id` |\n| Source | `reference_type_name`, `reference_type_color` |\n| Reference + nút \"Open …\" | `reference_no`, `reference_id` (dựa `reference_type_key` để biết mở mission hay redemption) |\n| Event | `name` (+ `description`, `notes`) |\n| Points, Balance after | `quantity`, `after_balance` (+ `before_balance`) |\n| Raw event (JSON) | `metadata_json` |\n| Time, Created by | ❌ get-by-id không trả `create_date`, `create_uid` → lấy Time từ dòng trong bảng |\n| Participant | ❌ chưa có |",
-        "operationId": "consumerWalletTransactionGetById",
-        "x-badges": [
-          {
-            "name": "Mới",
-            "color": "#0B7A45"
-          },
-          {
-            "name": "Chưa lọc tenant",
-            "color": "#B42318"
-          },
-          {
-            "name": "Thiếu field so với design",
-            "color": "#B54708"
-          }
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/id"
-          },
-          {
-            "$ref": "#/components/parameters/tenant_id"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FnConsumerWalletTransactionWebGetByIdItemDTOResponseDTO"
-                },
-                "example": {
-                  "success": true,
-                  "result": {
-                    "id": 812,
-                    "wallet_id": 41,
-                    "wallet_account_id": 57,
-                    "transaction_no": "TXN-20260321-000812",
-                    "reference_no": "MS-0007",
-                    "reference_type_key": "consumer.wallet.transaction.reference.type.mission",
-                    "reference_type_name": "MISSION",
-                    "reference_type_color": "#1D5FB8",
-                    "transaction_type_id": 1,
-                    "quantity": 50.0,
-                    "before_balance": 950.0,
-                    "after_balance": 1000.0,
-                    "expire_date": null,
-                    "name": "Thưởng điểm nhiệm vụ",
-                    "status_key": "consumer.wallet.transaction.status.success",
-                    "status_name": "Success",
-                    "status_color": "#0B7A45"
-                  },
-                  "error": null
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Thiếu hoặc sai Bearer token"
-          }
-        }
-      }
-    },
     "/api/v1/reward/web/module-config/create": {
       "post": {
         "tags": [
@@ -3042,6 +3122,144 @@
         },
         "additionalProperties": false
       },
+      "CampaignConsumerWebListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID dòng campaign_consumer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "ward_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "province_name": {
+            "type": "string",
+            "description": "Tên tỉnh/thành",
+            "nullable": true
+          },
+          "ward_name": {
+            "type": "string",
+            "description": "Tên phường/xã",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái (module_config campaign.consumer.status)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái để hiển thị",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu của trạng thái (mã hex)",
+            "nullable": true
+          },
+          "approved_key": {
+            "type": "string",
+            "description": "Key trạng thái duyệt (luôn là campaign.consumer.approved.approved)",
+            "nullable": true
+          },
+          "approved_name": {
+            "type": "string",
+            "description": "Tên trạng thái duyệt",
+            "nullable": true
+          },
+          "job_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "workplace": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata_json": {
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignConsumerWebListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignConsumerWebListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
       "CampaignLeaderboardScoreWebItemDTO": {
         "type": "object",
         "properties": {
@@ -3943,6 +4161,504 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebGetByIdConsumerDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID dòng campaign_consumer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "ref_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "gender_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata_json": {
+            "nullable": true
+          },
+          "total_balance": {
+            "type": "number",
+            "description": "Số dư điểm hiện tại",
+            "format": "double",
+            "nullable": true
+          },
+          "total_earned": {
+            "type": "number",
+            "description": "Tổng điểm đã tích lũy",
+            "format": "double",
+            "nullable": true
+          },
+          "total_mission": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "total_reward": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_key": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebGetByIdItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "description": "ID dòng campaign_consumer",
+            "format": "int64",
+            "nullable": true
+          },
+          "consumer_point_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_type_key": {
+            "type": "string",
+            "description": "Key loại nguồn phát sinh (module_config)",
+            "nullable": true
+          },
+          "source_type_name": {
+            "type": "string",
+            "description": "Tên loại nguồn phát sinh",
+            "nullable": true
+          },
+          "source_type_color": {
+            "type": "string",
+            "description": "Màu loại nguồn phát sinh (mã hex)",
+            "nullable": true
+          },
+          "source_id": {
+            "type": "integer",
+            "description": "id bản ghi nguồn (mission, phiếu đổi quà, điều chỉnh...)",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_code": {
+            "type": "string",
+            "description": "Mã nguồn hiển thị",
+            "nullable": true
+          },
+          "source_name": {
+            "type": "string",
+            "description": "Tên nguồn hiển thị (\"System expiry\" khi điểm đã hết hạn)",
+            "nullable": true
+          },
+          "reference_type_name": {
+            "type": "string",
+            "description": "Giữ tương thích cũ: = source_type_name",
+            "nullable": true
+          },
+          "reference_name": {
+            "type": "string",
+            "description": "Giữ tương thích cũ: = source_name",
+            "nullable": true
+          },
+          "delta": {
+            "type": "number",
+            "description": "Số điểm thay đổi (âm = trừ, dương = cộng)",
+            "format": "double",
+            "nullable": true
+          },
+          "before_balance": {
+            "type": "number",
+            "description": "Số dư trước giao dịch",
+            "format": "double",
+            "nullable": true
+          },
+          "after_balance": {
+            "type": "number",
+            "description": "Số dư sau giao dịch",
+            "format": "double",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "description": "Hạn của điểm",
+            "format": "date-time",
+            "nullable": true
+          },
+          "metadata_json": {
+            "description": "Dữ liệu sự kiện gốc dạng JSON",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên giao dịch",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "create_by_key": {
+            "type": "string",
+            "description": "Key người/nguồn tạo (module_config campaign.consumer.point.ledger.create.by)",
+            "nullable": true
+          },
+          "create_by_name": {
+            "type": "string",
+            "description": "Tên người/nguồn tạo",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái (tự thành ...status.expire khi quá expire_date)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái để hiển thị",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu của trạng thái (mã hex)",
+            "nullable": true
+          },
+          "status_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "campaign_consumer": {
+            "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebGetByIdConsumerDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebGetByIdItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebGetByIdItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebListPageindexRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "pageindex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Trang hiện tại, bắt đầu từ 1.",
+            "default": 1,
+            "minimum": 1,
+            "example": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Số dòng mỗi trang.",
+            "default": 20,
+            "minimum": 1,
+            "example": 20
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm trong tên giao dịch, mã nguồn (source_code), tên/SĐT người tham gia, ghi chú, tên trạng thái, tên loại nguồn",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái, ví dụ campaign.consumer.point.ledger.status.earn / redeem / refund / adjust / revoke / expire",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "description": "Cột cần lấy; null = bộ cột mặc định",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo giao dịch từ ngày",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo giao dịch đến hết ngày này",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp. Nhận cả tên cũ `reference_no` / `reference_type_key` / `reference_type_name`. Giá trị lạ → `created_date`.",
+            "nullable": true,
+            "enum": [
+              "id",
+              "campaign_id",
+              "campaign_consumer_id",
+              "consumer_name",
+              "consumer_phone",
+              "source_code",
+              "delta",
+              "before_balance",
+              "after_balance",
+              "expire_date",
+              "name",
+              "status_key",
+              "status_name",
+              "source_type_key",
+              "source_type_name",
+              "active",
+              "write_date",
+              "created_date"
+            ],
+            "default": "created_date",
+            "example": "created_date"
+          },
+          "sortdir": {
+            "type": "string",
+            "description": "ASC hoặc DESC",
+            "nullable": true,
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebListTotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số giao dịch khớp bộ lọc (dùng để phân trang)",
+            "format": "int64"
+          },
+          "status_summary": {
+            "description": "Số giao dịch theo từng status_key (earn/redeem/refund/adjust/revoke/expire) và metric.total",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebListTotalrowDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebListTotalrowDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebListTotalrowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: giống list-pageindex",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái: giống list-pageindex",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOption"
+            },
+            "nullable": true,
+            "description": "Danh sách cột muốn lấy. Null = bộ cột mặc định của API."
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+            "example": null
           }
         },
         "additionalProperties": false
@@ -6275,367 +6991,6 @@
             "nullable": true,
             "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
             "example": null
-          },
-          "filter_definition": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/FilterDefinition"
-              }
-            ],
-            "nullable": true,
-            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
-          },
-          "from_date": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
-            "example": null
-          },
-          "to_date": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
-            "example": null
-          }
-        },
-        "additionalProperties": false
-      },
-      "FnConsumerWalletTransactionWebGetByIdItemDTO": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "wallet_id": {
-            "type": "integer",
-            "description": "Ví của người tham gia",
-            "format": "int64",
-            "nullable": true
-          },
-          "wallet_account_id": {
-            "type": "integer",
-            "description": "Tài khoản điểm trong ví",
-            "format": "int64",
-            "nullable": true
-          },
-          "hold_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "parent_transaction_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "reversal_transaction_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "reference_type_key": {
-            "type": "string",
-            "description": "Loại tham chiếu, ví dụ consumer.wallet.transaction.reference.type.mission",
-            "nullable": true
-          },
-          "reference_type_name": {
-            "type": "string",
-            "description": "Tên loại tham chiếu (cột Source)",
-            "nullable": true
-          },
-          "reference_type_color": {
-            "type": "string",
-            "description": "Màu của loại tham chiếu",
-            "nullable": true
-          },
-          "reference_id": {
-            "type": "integer",
-            "description": "id bản ghi được tham chiếu (mission, phiếu đổi quà...)",
-            "format": "int64",
-            "nullable": true
-          },
-          "reference_no": {
-            "type": "string",
-            "description": "Mã tham chiếu hiển thị",
-            "nullable": true
-          },
-          "transaction_type_id": {
-            "type": "integer",
-            "description": "Loại giao dịch (chưa có tên loại)",
-            "format": "int64",
-            "nullable": true
-          },
-          "transaction_no": {
-            "type": "string",
-            "description": "Mã giao dịch hiển thị",
-            "nullable": true
-          },
-          "quantity": {
-            "type": "number",
-            "description": "Số điểm của giao dịch (chưa có dấu ±)",
-            "format": "double",
-            "nullable": true
-          },
-          "before_balance": {
-            "type": "number",
-            "description": "Số dư trước giao dịch",
-            "format": "double",
-            "nullable": true
-          },
-          "after_balance": {
-            "type": "number",
-            "description": "Số dư sau giao dịch",
-            "format": "double",
-            "nullable": true
-          },
-          "expire_date": {
-            "type": "string",
-            "description": "Hạn của điểm",
-            "format": "date-time",
-            "nullable": true
-          },
-          "metadata_json": {
-            "description": "Dữ liệu sự kiện gốc dạng JSON",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "description": "Mô tả giao dịch",
-            "nullable": true
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          },
-          "status_key": {
-            "type": "string",
-            "description": "Key trạng thái (module_config)",
-            "nullable": true
-          },
-          "status_name": {
-            "type": "string",
-            "description": "Tên trạng thái để hiển thị",
-            "nullable": true
-          },
-          "status_color": {
-            "type": "string",
-            "description": "Màu của trạng thái (mã hex)",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "FnConsumerWalletTransactionWebGetByIdItemDTOResponseDTO": {
-        "type": "object",
-        "properties": {
-          "result": {
-            "$ref": "#/components/schemas/FnConsumerWalletTransactionWebGetByIdItemDTO"
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "error": {
-            "$ref": "#/components/schemas/ErrorDTO"
-          }
-        },
-        "additionalProperties": false
-      },
-      "FnConsumerWalletTransactionWebListPageindexRequestDTO": {
-        "required": [
-          "tenant_id"
-        ],
-        "type": "object",
-        "properties": {
-          "tenant_id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
-            "example": 1,
-            "minimum": 1
-          },
-          "pageindex": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Trang hiện tại, bắt đầu từ 1.",
-            "default": 1,
-            "minimum": 1,
-            "example": 1
-          },
-          "pagesize": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Số dòng mỗi trang.",
-            "default": 20,
-            "minimum": 1,
-            "example": 20
-          },
-          "searchtext": {
-            "type": "string",
-            "description": "Từ khóa: tìm trong mã giao dịch, mã tham chiếu, mô tả",
-            "nullable": true,
-            "example": ""
-          },
-          "list_status_key": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Lọc theo trạng thái giao dịch, ví dụ consumer.wallet.transaction.status.success",
-            "nullable": true
-          },
-          "filter_definition": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/FilterDefinition"
-              }
-            ],
-            "nullable": true,
-            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
-          },
-          "columns": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DataCollumnOption"
-            },
-            "nullable": true,
-            "description": "Danh sách cột muốn lấy. Null = bộ cột mặc định của API."
-          },
-          "campaign_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
-            "example": null
-          },
-          "from_date": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
-            "example": null
-          },
-          "to_date": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
-            "example": null
-          },
-          "sortby": {
-            "type": "string",
-            "nullable": true,
-            "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo.",
-            "enum": [
-              "id",
-              "wallet_id",
-              "wallet_account_id",
-              "transaction_no",
-              "reference_no",
-              "name",
-              "quantity",
-              "before_balance",
-              "after_balance",
-              "expire_date",
-              "status_key",
-              "status_name",
-              "active",
-              "create_date"
-            ],
-            "default": "create_date",
-            "example": "create_date"
-          },
-          "sortdir": {
-            "type": "string",
-            "nullable": true,
-            "description": "Chiều sắp xếp.",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "default": "DESC"
-          }
-        },
-        "additionalProperties": false
-      },
-      "FnConsumerWalletTransactionWebListTotalrowDTO": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "integer",
-            "description": "Tổng số giao dịch khớp bộ lọc (dùng để phân trang)",
-            "format": "int64"
-          },
-          "status_summary": {
-            "description": "Số giao dịch theo trạng thái (hiện chỉ đếm completed/cancelled)",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "FnConsumerWalletTransactionWebListTotalrowDTOResponseDTO": {
-        "type": "object",
-        "properties": {
-          "result": {
-            "$ref": "#/components/schemas/FnConsumerWalletTransactionWebListTotalrowDTO"
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "error": {
-            "$ref": "#/components/schemas/ErrorDTO"
-          }
-        },
-        "additionalProperties": false
-      },
-      "FnConsumerWalletTransactionWebListTotalrowRequestDTO": {
-        "required": [
-          "tenant_id"
-        ],
-        "type": "object",
-        "properties": {
-          "tenant_id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
-            "example": 1,
-            "minimum": 1
-          },
-          "searchtext": {
-            "type": "string",
-            "description": "Từ khóa: giống list-pageindex",
-            "nullable": true,
-            "example": ""
-          },
-          "list_status_key": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true,
-            "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
-          },
-          "campaign_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
-            "example": null
-          },
-          "columns": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DataCollumnOption"
-            },
-            "nullable": true,
-            "description": "Danh sách cột muốn lấy. Null = bộ cột mặc định của API."
           },
           "filter_definition": {
             "allOf": [

@@ -5,15 +5,14 @@
     "swagger_path": "/swagger/v1/swagger.json",
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
-      "^/api/v1/reward/web/consumer-wallet-transaction/(list-pageindex|list-totalrow|get-by-id)$",
       "^/api/v1/reward/web/campaign-leaderboard/list-score-nopaging$",
       "^/api/v1/reward/web/campaign/(create|update-active|update-status|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
-      "^/api/v1/reward/web/campaign-consumer/(list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
+      "^/api/v1/reward/web/campaign-consumer/(list|list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
       "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$",
       "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$",
-      "^/api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer$",
+      "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-consumer-redemption/list-by-consumer$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status)$"
     ]
@@ -21,7 +20,7 @@
   "info": {
     "title": "Reward",
     "version": "1.0",
-    "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 05/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | Wallet transaction chưa lọc theo tenant | — |\n| 4 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 5 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
+    "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 09/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | `campaign-consumer-point-ledger/list-by-consumer` lỗi trên DB (fn còn dùng cột `reference_*` đã đổi thành `source_*`) | Dùng `list-pageindex` |\n| 4 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 5 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
   },
   "tags": [
     {
@@ -40,9 +39,9 @@
       "description": "Màn **Participants + detail drawer**: người tham gia campaign."
     },
     {
-      "name": "Participant · Points",
+      "name": "Point",
       "match": "/campaign-consumer-point-ledger/",
-      "description": "Tab **Points** trong drawer người tham gia: sổ điểm của 1 người tham gia (không phân trang)."
+      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
     },
     {
       "name": "Participant · Redemptions",
@@ -68,11 +67,6 @@
       "name": "Redemption",
       "match": "/consumer-redemption/",
       "description": "Màn **Redemption + detail drawer**: tab trạng thái, bảng phiếu đổi quà, drawer chi tiết.\n\nChưa có API cho các nút: Approve, Reject, Mark delivered, Approve pending (bulk), Import shipping status, Resend ZNS, Export."
-    },
-    {
-      "name": "Point",
-      "match": "/consumer-wallet-transaction/",
-      "description": "Màn **Points history**: bảng sổ điểm (ledger) và drawer *Transaction …*.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
     },
     {
       "name": "Leaderboard",
@@ -105,28 +99,6 @@
         "default": "created_date",
         "example": "request_date",
         "description": "Cột sắp xếp. UI mặc định sort \"Requested\" giảm dần → gửi `request_date`."
-      }
-    },
-    "FnConsumerWalletTransactionWebListPageindexRequestDTO": {
-      "sortby": {
-        "enum": [
-          "id",
-          "wallet_id",
-          "wallet_account_id",
-          "transaction_no",
-          "reference_no",
-          "name",
-          "quantity",
-          "before_balance",
-          "after_balance",
-          "expire_date",
-          "status_key",
-          "status_name",
-          "active",
-          "create_date"
-        ],
-        "default": "create_date",
-        "example": "create_date"
       }
     },
     "FnConsumerRedemptionWebListTotalrowRequestDTO": {
@@ -175,6 +147,33 @@
         "default": "create_date",
         "example": "sequence",
         "description": "Cột sắp xếp; giá trị khác danh sách → `create_date`."
+      }
+    },
+    "FnCampaignConsumerPointLedgerWebListPageindexRequestDTO": {
+      "sortby": {
+        "enum": [
+          "id",
+          "campaign_id",
+          "campaign_consumer_id",
+          "consumer_name",
+          "consumer_phone",
+          "source_code",
+          "delta",
+          "before_balance",
+          "after_balance",
+          "expire_date",
+          "name",
+          "status_key",
+          "status_name",
+          "source_type_key",
+          "source_type_name",
+          "active",
+          "write_date",
+          "created_date"
+        ],
+        "default": "created_date",
+        "example": "created_date",
+        "description": "Cột sắp xếp. Nhận cả tên cũ `reference_no` / `reference_type_key` / `reference_type_name`. Giá trị lạ → `created_date`."
       }
     }
   },
@@ -315,120 +314,6 @@
         }
       },
       "ui": "| Mục trên drawer | Field |\n|---|---|\n| Badge trạng thái | `consumer_redemption.status_name`, `.status_color` |\n| Participant · Name · #pid | `consumer_reward.name`, `consumer_reward.ref_code` (trống → `#P-{consumer_reward.id}`) |\n| Phone | `consumer_reward.phone` |\n| Reward, Type, Points | `reward_name`, `reward_type`, `total_point_used` |\n| Fulfilment | `shipping_provider`, trống thì `request_channel` (get-by-id không có field `fulfilment`) |\n| Source, Issued code | ❌ chưa có (\"Valid until\" tạm dùng `expired_date`) |\n| Delivery details | `shipping_name`, `shipping_phone`, `shipping_address`, `shipping_tracking_no`, `note` |\n| Timeline | FE tự dựng: `request_date` → `approval_date` + `approval_status_name` → `fulfillment_date` + `fulfillment_status_name` → `cancel_date` + `cancel_reason`. Bỏ mốc có ngày null |"
-    },
-    "POST /api/v1/reward/web/consumer-wallet-transaction/list-totalrow": {
-      "operationId": "consumerWalletTransactionListTotalrow",
-      "badges": [
-        "new",
-        "filter-broken",
-        "no-campaign",
-        "no-tenant"
-      ],
-      "request_example": {
-        "tenant_id": 1,
-        "searchtext": "",
-        "list_status_key": null,
-        "columns": null,
-        "campaign_id": null,
-        "filter_definition": null,
-        "from_date": null,
-        "to_date": null
-      },
-      "result_example": {
-        "total": 373,
-        "status_summary": {
-          "consumer.wallet.transaction.metric.total": 373,
-          "consumer.wallet.transaction.status.completed": 7,
-          "consumer.wallet.transaction.status.cancelled": 0
-        }
-      },
-      "ui": ""
-    },
-    "POST /api/v1/reward/web/consumer-wallet-transaction/list-pageindex": {
-      "operationId": "consumerWalletTransactionListPageindex",
-      "badges": [
-        "new",
-        "filter-broken",
-        "no-campaign",
-        "no-tenant",
-        "missing-fields"
-      ],
-      "request_example": {
-        "tenant_id": 1,
-        "pageindex": 1,
-        "pagesize": 20,
-        "searchtext": "",
-        "list_status_key": null,
-        "sortby": "create_date",
-        "sortdir": "DESC",
-        "columns": null,
-        "campaign_id": null,
-        "filter_definition": null,
-        "from_date": null,
-        "to_date": null
-      },
-      "result_example": [
-        {
-          "id": 812,
-          "wallet_id": 41,
-          "wallet_account_id": 57,
-          "transaction_no": "TXN-20260321-000812",
-          "reference_no": "MS-0007",
-          "reference_type_key": "consumer.wallet.transaction.reference.type.mission",
-          "reference_type_name": "MISSION",
-          "reference_type_color": "#1D5FB8",
-          "reference_type": {
-            "name": "MISSION",
-            "color": "#1D5FB8",
-            "control": "tag"
-          },
-          "transaction_type_id": 1,
-          "quantity": 50.0,
-          "before_balance": 950.0,
-          "after_balance": 1000.0,
-          "expire_date": null,
-          "name": "Thưởng điểm nhiệm vụ",
-          "status_key": "consumer.wallet.transaction.status.success",
-          "status_name": "Success",
-          "status_color": "#0B7A45",
-          "status": {
-            "name": "Success",
-            "color": "#0B7A45",
-            "control": "tag"
-          },
-          "active": true,
-          "create_date": "2026-03-21T10:52:00"
-        }
-      ],
-      "ui": "| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `transaction_no` | `transaction_no` | Mở drawer bằng `id` |\n| Time | `create_date` | `create_date` | |\n| Participant | ❌ chưa có | — | Chỉ có `wallet_id`, `wallet_account_id` |\n| Type | ⚠️ `transaction_type_id` | — | Chưa có tên loại (Earn / Redeem / …) |\n| Source | `reference_type` (`{name, color}`) | — | Loại đổi quà đang có `reference_type_name = null` → hiện theo `reference_type_key` |\n| Description | `name` | `name` | |\n| Reference | `reference_no` | `reference_no` | |\n| Points (±) | `quantity` | `quantity` | ⚠️ Không có dấu: tạm suy từ `after_balance − before_balance` |\n| Balance after | `after_balance` | `after_balance` | |\n| By | ⚠️ `create_uid` | — | Phải tự gửi `columns` mới có, chỉ là ID |"
-    },
-    "GET /api/v1/reward/web/consumer-wallet-transaction/get-by-id": {
-      "operationId": "consumerWalletTransactionGetById",
-      "badges": [
-        "new",
-        "no-tenant",
-        "missing-fields"
-      ],
-      "result_example": {
-        "id": 812,
-        "wallet_id": 41,
-        "wallet_account_id": 57,
-        "transaction_no": "TXN-20260321-000812",
-        "reference_no": "MS-0007",
-        "reference_type_key": "consumer.wallet.transaction.reference.type.mission",
-        "reference_type_name": "MISSION",
-        "reference_type_color": "#1D5FB8",
-        "transaction_type_id": 1,
-        "quantity": 50.0,
-        "before_balance": 950.0,
-        "after_balance": 1000.0,
-        "expire_date": null,
-        "name": "Thưởng điểm nhiệm vụ",
-        "status_key": "consumer.wallet.transaction.status.success",
-        "status_name": "Success",
-        "status_color": "#0B7A45"
-      },
-      "ui": "| Mục trên drawer | Field |\n|---|---|\n| Type | ⚠️ chỉ có `transaction_type_id` |\n| Source | `reference_type_name`, `reference_type_color` |\n| Reference + nút \"Open …\" | `reference_no`, `reference_id` (dựa `reference_type_key` để biết mở mission hay redemption) |\n| Event | `name` (+ `description`, `notes`) |\n| Points, Balance after | `quantity`, `after_balance` (+ `before_balance`) |\n| Raw event (JSON) | `metadata_json` |\n| Time, Created by | ❌ get-by-id không trả `create_date`, `create_uid` → lấy Time từ dòng trong bảng |\n| Participant | ❌ chưa có |"
     },
     "GET /api/v1/reward/web/campaign-leaderboard/list-score-nopaging": {
       "operationId": "campaignLeaderboardScoreList",
@@ -917,7 +802,8 @@
     },
     "GET /api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer": {
       "badges": [
-        "new"
+        "new",
+        "broken"
       ]
     },
     "GET /api/v1/reward/web/campaign-consumer-redemption/list-by-consumer": {
@@ -998,6 +884,167 @@
         "id": 35,
         "status_key": "campaign.import.status.cancel"
       }
+    },
+    "POST /api/v1/reward/web/campaign-consumer-point-ledger/list-totalrow": {
+      "operationId": "campaignConsumerPointLedgerListTotalrow",
+      "badges": [
+        "new",
+        "filter-broken"
+      ],
+      "request_example": {
+        "tenant_id": 91265,
+        "campaign_id": 1,
+        "searchtext": "",
+        "list_status_key": null,
+        "filter_definition": null,
+        "columns": null,
+        "from_date": null,
+        "to_date": null
+      },
+      "result_example": {
+        "total": 3,
+        "status_summary": {
+          "campaign.consumer.point.ledger.status.earn": 0,
+          "campaign.consumer.point.ledger.status.redeem": 0,
+          "campaign.consumer.point.ledger.status.refund": 0,
+          "campaign.consumer.point.ledger.status.adjust": 1,
+          "campaign.consumer.point.ledger.status.revoke": 0,
+          "campaign.consumer.point.ledger.status.expire": 2,
+          "campaign.consumer.point.ledger.metric.total": 3
+        }
+      },
+      "ui": "| Tab | `status_summary` key |\n|---|---|\n| All | `...metric.total` |\n| Earn / Redeem / Refund / Adjust / Revoke / Expire | `campaign.consumer.point.ledger.status.<tên>` |"
+    },
+    "POST /api/v1/reward/web/campaign-consumer-point-ledger/list-pageindex": {
+      "operationId": "campaignConsumerPointLedgerListPageindex",
+      "badges": [
+        "new",
+        "filter-broken"
+      ],
+      "request_example": {
+        "tenant_id": 91265,
+        "pageindex": 1,
+        "pagesize": 20,
+        "campaign_id": 1,
+        "searchtext": "",
+        "list_status_key": null,
+        "sortby": "created_date",
+        "sortdir": "DESC",
+        "columns": null,
+        "filter_definition": null,
+        "from_date": null,
+        "to_date": null
+      },
+      "result_example": [
+        {
+          "id": 18,
+          "tenant_id": 91265,
+          "campaign_id": 1,
+          "campaign_consumer_id": 65,
+          "source_code": "ADJ-2",
+          "created_date": "2026-11-07T11:06:58",
+          "consumer": {
+            "name": "Phương Anh",
+            "phone": "0858467429",
+            "control": "name_phone"
+          },
+          "consumer_name": "Phương Anh",
+          "consumer_phone": "0858467429",
+          "status": {
+            "name": "Expire",
+            "color": "#6A7282",
+            "control": "tag"
+          },
+          "source": {
+            "source_name": "System expiry",
+            "source_key": "campaign.consumer.point.ledger.reference.type.adjust",
+            "source_type_name": "Ghi chú quản trị",
+            "source_id": 2,
+            "source_code": "ADJ-2",
+            "control": "source"
+          },
+          "name": "Other",
+          "delta": -200.0,
+          "before_balance": 500.0,
+          "after_balance": 300.0,
+          "created_by_name": "Adjust",
+          "expire_date": "2026-11-07T11:06:58",
+          "active": true
+        }
+      ],
+      "ui": "| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `source_code` | `source_code` | Mở drawer bằng `id` |\n| Time | `created_date` | `created_date` | |\n| Participant | `consumer` (`{name, phone}`) | `consumer_name` | |\n| Type / Status | `status` (`{name, color}`) | `status_name` | Earn / Redeem / Refund / Adjust / Revoke / Expire |\n| Source | `source` (`source_type_name`, `source_name`, `source_code`) | `source_type_name` | Hết hạn → `source_name = \"System expiry\"` |\n| Description | `name` | `name` | |\n| Points (±) | `delta` | `delta` | Có dấu: âm = trừ |\n| Balance after | `after_balance` | `after_balance` | |\n| By | `created_by_name` | — | |\n\n> Cột thêm khi gửi `columns`: `consumer_email`, `consumer_zalo_avatar`, `source_type_key`, `source_type_color`, `source_id`, `description`, `notes`, `metadata_json`, `create_by_key`, `status_key`, `status_name`, `status_color`, `write_date`…"
+    },
+    "GET /api/v1/reward/web/campaign-consumer-point-ledger/get-by-id": {
+      "operationId": "campaignConsumerPointLedgerGetById",
+      "badges": [
+        "new"
+      ],
+      "result_example": {
+        "id": 18,
+        "tenant_id": 91265,
+        "campaign_id": 1,
+        "campaign_consumer_id": 65,
+        "source_type_key": "campaign.consumer.point.ledger.reference.type.adjust",
+        "source_type_name": "Ghi chú quản trị",
+        "source_type_color": "#D08700",
+        "source_id": 2,
+        "source_code": "ADJ-2",
+        "source_name": "System expiry",
+        "delta": -200.0,
+        "before_balance": 500.0,
+        "after_balance": 300.0,
+        "expire_date": "2026-11-07T11:06:58",
+        "metadata_json": {
+          "reason": "Test trừ điểm",
+          "source": "manual",
+          "reference": "TEST-ADJ-002"
+        },
+        "name": "Other",
+        "description": "Other",
+        "notes": "Test điều chỉnh trừ 200 điểm",
+        "create_by_key": "campaign.consumer.point.ledger.create.by.adjust",
+        "create_by_name": "Adjust",
+        "status_key": "campaign.consumer.point.ledger.status.expire",
+        "status_name": "Expire",
+        "status_color": "#6A7282",
+        "create_date": "2026-11-07T11:06:58",
+        "campaign_consumer": {
+          "id": 65,
+          "consumer_id": 57,
+          "name": "Phương Anh",
+          "phone": "0858467429",
+          "email": "anh@gmail.com",
+          "total_balance": 300.0
+        }
+      },
+      "ui": "| Mục trên drawer | Field |\n|---|---|\n| Badge trạng thái | `status_name`, `status_color` |\n| Participant | `campaign_consumer.name`, `.phone` |\n| Source | `source_type_name`, `source_type_color` |\n| Reference + nút \"Open …\" | `source_code`, `source_id` (dựa `source_type_key` để biết mở mission / redemption) |\n| Event | `source_name` / `name` (+ `description`, `notes`) |\n| Points, Balance after | `delta`, `after_balance` (+ `before_balance`) |\n| Time, Created by | `create_date`, `create_by_name` |\n| Raw event (JSON) | `metadata_json` |"
+    },
+    "GET /api/v1/reward/web/campaign-consumer/list": {
+      "operationId": "campaignConsumerList",
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "id": 132,
+          "tenant_id": 71268,
+          "campaign_id": 26,
+          "consumer_id": null,
+          "name": "Nguyễn Văn A",
+          "phone": "0901234567",
+          "email": "a@gmail.com",
+          "province_name": null,
+          "ward_name": null,
+          "status_key": "campaign.consumer.status.active",
+          "status_name": "Active",
+          "status_color": "",
+          "approved_key": "campaign.consumer.approved.approved",
+          "approved_name": "Approved",
+          "active": true,
+          "create_date": "2026-11-06T12:02:57"
+        }
+      ],
+      "ui": "| Ghi chú | |\n|---|---|\n| Dùng cho | dropdown chọn người tham gia (không phân trang) |\n| Chỉ trả | người `active = true` và `approved_key = campaign.consumer.approved.approved` |\n| Search | theo `name`, `phone` |"
     }
   }
 }
