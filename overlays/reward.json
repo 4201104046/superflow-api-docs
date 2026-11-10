@@ -14,7 +14,9 @@
       "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$",
       "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
-      "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status)$"
+      "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
+      "^/api/v1/reward/web/reward-item/(list|create|update-active|duplicate|delete|get-by-id)$",
+      "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$"
     ]
   },
   "info": {
@@ -56,7 +58,17 @@
     {
       "name": "Import participants",
       "match": "/campaign-import/",
-      "description": "Import người tham gia campaign từ file Excel.\n\n**Luồng gọi:**\n1. `template` → tải file mẫu (dòng 1 = code field của campaign).\n2. FE upload file lên file server → `create` với `id = 0` → nhận `id` phiên import (status `pending`). Server đọc dòng tiêu đề file vào `data_json.header_list` và chụp field campaign vào `schema_json`.\n3. `get-by-id` → dựng màn mapping: mỗi field trong `schema_json.field_list` chọn 1 cột trong `data_json.header_list` (hoặc `system.not_import`).\n4. `create` với `id > 0`, `status_key = campaign.import.status.preview`, `data_json` = **nguyên data_json từ get-by-id** + `mapping_list` + `identifier_field_code` → server kiểm tra ngầm.\n5. Poll `get-by-id` tới khi `status_key = ...ready_to_run` → `preview` lấy số hợp lệ/lỗi/trùng; `export-error` tải dòng lỗi.\n6. `create` với `id > 0`, `status_key = campaign.import.status.running` → chạy import ngầm; poll `get-by-id` tới `completed` / `failed`.\n7. Hủy: `update-status` với `campaign.import.status.cancel`.\n\n⚠️ Các fn `fn_campaign_import_web_*` không có `p_tenant_id` (chưa lọc tenant theo id phiên import)."
+      "description": "Import từ file Excel theo `import_type_key`:\n- `campaign.import.type.consumer`: người tham gia campaign.\n- `campaign.import.type.reward.code`: mã code của reward item (gửi `data_entity_id = reward_item_id`).\n\nCột đích để map lấy từ `field/get-by-key`.\n\n**Luồng gọi:**\n1. `template` → tải file mẫu (dòng 1 = code field của campaign).\n2. FE upload file lên file server → `create` với `id = 0` → nhận `id` phiên import (status `pending`). Server đọc dòng tiêu đề file vào `data_json.header_list` và chụp field campaign vào `schema_json`.\n3. `get-by-id` → dựng màn mapping: mỗi field trong `schema_json.field_list` chọn 1 cột trong `data_json.header_list` (hoặc `system.not_import`).\n4. `create` với `id > 0`, `status_key = campaign.import.status.preview`, `data_json` = **nguyên data_json từ get-by-id** + `mapping_list` + `identifier_field_code` → server kiểm tra ngầm.\n5. Poll `get-by-id` tới khi `status_key = ...ready_to_run` → `preview` lấy số hợp lệ/lỗi/trùng; `export-error` tải dòng lỗi.\n6. `create` với `id > 0`, `status_key = campaign.import.status.running` → chạy import ngầm; poll `get-by-id` tới `completed` / `failed`.\n7. Hủy: `update-status` với `campaign.import.status.cancel`.\n\n⚠️ Các fn `fn_campaign_import_web_*` không có `p_tenant_id` (chưa lọc tenant theo id phiên import)."
+    },
+    {
+      "name": "Reward item",
+      "match": "/reward-item/",
+      "description": "Quản lý quà (reward item): danh sách, tạo/sửa, bật/tắt, nhân bản, xóa, chi tiết.\n\n⚠️ `get-by-id`, `update-active`, `duplicate`, `delete` gọi fn không có `p_tenant_id` (chưa lọc tenant theo id)."
+    },
+    {
+      "name": "Reward item codes",
+      "match": "/reward-item-code/",
+      "description": "Danh sách mã code của reward item (phân trang + số theo tab trạng thái + xuất Excel).\n\nImport mã code hàng loạt đi qua luồng **Import** (`campaign-import`, `import_type_key = campaign.import.type.reward.code`), không gọi `import-create` trực tiếp từng dòng."
     },
     {
       "name": "Integrated app",
@@ -198,6 +210,36 @@
         "default": "created_date",
         "example": "request_date",
         "description": "Cột sắp xếp. Nhận cả tên cũ `reference_no` / `reference_type_key` / `fulfillment_type_name`. Giá trị lạ → `created_date`."
+      }
+    },
+    "FnRewardItemCodeWebListPageindexRequestDTO": {
+      "sortby": {
+        "enum": [
+          "id",
+          "code",
+          "status_key",
+          "issued_to_name",
+          "issued_at",
+          "consumer_redemption_id",
+          "created_date"
+        ],
+        "default": "created_date",
+        "description": "Cột sắp xếp (whitelist trong SQL). Giá trị khác → `created_date`."
+      }
+    },
+    "FnRewardItemCodeExportListRequestDTO": {
+      "sortby": {
+        "enum": [
+          "id",
+          "code",
+          "status_key",
+          "issued_name",
+          "issued_at",
+          "consumer_redemption_id",
+          "created_date"
+        ],
+        "default": "created_date",
+        "description": "Cột sắp xếp (whitelist trong SQL). Lưu ý tên người nhận ở export là `issued_name`, ở list-pageindex là `issued_to_name`."
       }
     }
   },
@@ -844,7 +886,8 @@
         "id": 0,
         "campaign_id": 12,
         "import_type_key": "campaign.import.type.consumer"
-      }
+      },
+      "ui": "> ⚠️ Hiện `template` vẫn bắt buộc `campaign_id > 0` kể cả khi `import_type_key = campaign.import.type.reward.code` → tạm gửi 1 `campaign_id` bất kỳ hợp lệ."
     },
     "POST /api/v1/reward/web/campaign-import/create": {
       "badges": [
@@ -871,7 +914,7 @@
         "status_key": null,
         "active": true
       },
-      "ui": "**Bước 1 – tạo phiên** (`id = 0`): như ví dụ. `data_json` bắt buộc (gửi `{}`), `status_key` để `null` → `pending`.\n\n**Bước 2 – lưu mapping + kiểm tra** (`id > 0`):\n```json\n{\n  \"tenant_id\": 1, \"id\": 35, \"campaign_id\": 12,\n  \"import_type_key\": \"campaign.import.type.consumer\",\n  \"status_key\": \"campaign.import.status.preview\",\n  \"field_identifier\": \"phone\",\n  \"data_json\": {\n    \"header_list\": [{\"code\": \"ho_ten\", \"name\": \"Họ tên\"}, {\"code\": \"sdt\", \"name\": \"SĐT\"}, {\"code\": \"system.not_import\", \"name\": \"Do not import\"}],\n    \"mapping_list\": [{\"source_code\": \"name\", \"target_code\": \"ho_ten\"}, {\"source_code\": \"phone\", \"target_code\": \"sdt\"}, {\"source_code\": \"email\", \"target_code\": \"system.not_import\"}],\n    \"identifier_field_code\": \"phone\"\n  }\n}\n```\n**Bước 3 – chạy**: gửi lại như bước 2 với `status_key = campaign.import.status.running` (chỉ chạy khi phiên đang `ready_to_run`).\n\n> ⚠️ Khi `id > 0` và **không** gửi `server_files`, server lưu đúng `data_json` FE gửi → phải gửi lại `header_list` (lấy từ get-by-id), thiếu là mất danh sách cột.\n> `source_code` = code field campaign, `target_code` = code cột trong file (tên hơi ngược, giữ nguyên vì đang chạy)."
+      "ui": "**Bước 1 – tạo phiên** (`id = 0`): như ví dụ. `data_json` không bắt buộc (có thể bỏ trống), `status_key` để `null` → `pending`.\n\n**Bước 2 – lưu mapping + kiểm tra** (`id > 0`):\n```json\n{\n  \"tenant_id\": 1, \"id\": 35, \"campaign_id\": 12,\n  \"import_type_key\": \"campaign.import.type.consumer\",\n  \"status_key\": \"campaign.import.status.preview\",\n  \"field_identifier\": \"phone\",\n  \"data_json\": {\n    \"header_list\": [{\"code\": \"ho_ten\", \"name\": \"Họ tên\"}, {\"code\": \"sdt\", \"name\": \"SĐT\"}, {\"code\": \"system.not_import\", \"name\": \"Do not import\"}],\n    \"mapping_list\": [{\"source_code\": \"name\", \"target_code\": \"ho_ten\"}, {\"source_code\": \"phone\", \"target_code\": \"sdt\"}, {\"source_code\": \"email\", \"target_code\": \"system.not_import\"}],\n    \"identifier_field_code\": \"phone\"\n  }\n}\n```\n**Bước 3 – chạy**: gửi lại như bước 2 với `status_key = campaign.import.status.running` (chỉ chạy khi phiên đang `ready_to_run`).\n\n> ⚠️ Khi `id > 0` và **không** gửi `server_files`, server lưu đúng `data_json` FE gửi → phải gửi lại `header_list` (lấy từ get-by-id), thiếu là mất danh sách cột.\n> `source_code` = code field campaign, `target_code` = code cột trong file (tên hơi ngược, giữ nguyên vì đang chạy).\n\n**Import mã code của reward item**: `import_type_key = campaign.import.type.reward.code`, `data_entity_id = <reward_item_id>` (bắt buộc, thiếu thì dòng nào cũng lỗi khi chạy). Cột đích lấy từ `field/get-by-key`."
     },
     "GET /api/v1/reward/web/campaign-import/get-by-id": {
       "badges": [
@@ -1180,6 +1223,141 @@
         "note": "Đã kiểm tra"
       },
       "ui": "| Ghi chú | |\n|---|---|\n| `status_key` | gửi `campaign.consumer.redemption.status.approved`; bỏ trống = giữ trạng thái cũ |\n| `note` | tùy chọn; bỏ trống = giữ ghi chú cũ |\n| Ghi nhận | ngày duyệt + người duyệt |\n\n> ⚠️ DB ghi `approval_status_key = 'approved'` (không khớp key module_config) → `approval_status_name` sau khi duyệt đang trống."
+    },
+    "GET /api/v1/reward/web/reward-item/list": {
+      "badges": [
+        "new"
+      ]
+    },
+    "GET /api/v1/reward/web/reward-item/get-by-id": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ]
+    },
+    "POST /api/v1/reward/web/reward-item/update-active": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 5,
+        "active": false
+      }
+    },
+    "POST /api/v1/reward/web/reward-item/duplicate": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 5
+      }
+    },
+    "POST /api/v1/reward/web/reward-item/delete": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 5
+      }
+    },
+    "POST /api/v1/reward/web/reward-item/create": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "id": 0,
+        "campaign_id": 12,
+        "reward_type_id": 1,
+        "code": "VOUCHER-100K",
+        "name": "Voucher 100.000đ",
+        "description": "Voucher mua sắm 100.000đ",
+        "server_files": "https://files.superflow.vn",
+        "filepath": "/upload/2026/11/",
+        "filename": "voucher.png",
+        "point_cost": 500,
+        "stock_total": 1000,
+        "stock_alert_amount": 50,
+        "max_redeem_per_day": 1,
+        "requires_approval": false,
+        "redemption_window_key": "reward.item.redemption.window.always",
+        "redemption_open_date": null,
+        "redemption_closed_date": null,
+        "config_jsonb": {},
+        "active": true
+      },
+      "ui": "`id = 0` tạo mới, `id > 0` cập nhật (field `null` giữ giá trị cũ)."
+    },
+    "POST /api/v1/reward/web/reward-item-code/list-pageindex": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "pageindex": 1,
+        "pagesize": 20,
+        "sortby": "created_date",
+        "sortdir": "DESC",
+        "from_date": null,
+        "to_date": null,
+        "list_status_key": [],
+        "searchtext": "",
+        "reward_item_id": 5
+      },
+      "ui": "> ⚠️ Field `redemption_id` trong kết quả hiện **luôn = 0**: SQL trả cột `consumer_redemption_id`, DTO đặt tên `redemption_id` nên không map được (đã báo BE).\n> Sort theo mã đổi quà gửi `sortby = consumer_redemption_id` (không phải `redemption_id`)."
+    },
+    "POST /api/v1/reward/web/reward-item-code/list-totalrow": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "reward_item_id": 5,
+        "searchtext": "",
+        "list_status_key": [],
+        "from_date": null,
+        "to_date": null
+      },
+      "ui": "Gọi với cùng bộ lọc như `list-pageindex`; để `list_status_key = []` khi lấy số cho các tab."
+    },
+    "POST /api/v1/reward/web/reward-item-code/export-excel-list": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "reward_item_id": 5,
+        "searchtext": "",
+        "list_status_key": [],
+        "sortby": "created_date",
+        "sortdir": "DESC",
+        "from_date": null,
+        "to_date": null
+      }
+    },
+    "POST /api/v1/reward/web/reward-item-code/import-create": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "code": "VT10-8H2K-Q9PX",
+        "expired_date": "2026-12-31T23:59:59",
+        "reward_item_id": 5
+      },
+      "ui": "Thêm/cập nhật **1** mã. Import file dùng luồng `campaign-import` (`import_type_key = campaign.import.type.reward.code`)."
+    },
+    "GET /api/v1/reward/web/campaign-import/field/get-by-key": {
+      "badges": [
+        "new"
+      ],
+      "ui": "Ví dụ query: `?tenant_id=1&import_type_key=campaign.import.type.reward.code` → trả 2 field `code`, `expires_at`.\nImport người tham gia: `?tenant_id=1&import_type_key=campaign.import.type.consumer&campaign_id=12`."
     }
   }
 }

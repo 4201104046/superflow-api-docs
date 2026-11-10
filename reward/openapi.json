@@ -47,7 +47,15 @@
     },
     {
       "name": "Import participants",
-      "description": "Import người tham gia campaign từ file Excel.\n\n**Luồng gọi:**\n1. `template` → tải file mẫu (dòng 1 = code field của campaign).\n2. FE upload file lên file server → `create` với `id = 0` → nhận `id` phiên import (status `pending`). Server đọc dòng tiêu đề file vào `data_json.header_list` và chụp field campaign vào `schema_json`.\n3. `get-by-id` → dựng màn mapping: mỗi field trong `schema_json.field_list` chọn 1 cột trong `data_json.header_list` (hoặc `system.not_import`).\n4. `create` với `id > 0`, `status_key = campaign.import.status.preview`, `data_json` = **nguyên data_json từ get-by-id** + `mapping_list` + `identifier_field_code` → server kiểm tra ngầm.\n5. Poll `get-by-id` tới khi `status_key = ...ready_to_run` → `preview` lấy số hợp lệ/lỗi/trùng; `export-error` tải dòng lỗi.\n6. `create` với `id > 0`, `status_key = campaign.import.status.running` → chạy import ngầm; poll `get-by-id` tới `completed` / `failed`.\n7. Hủy: `update-status` với `campaign.import.status.cancel`.\n\n⚠️ Các fn `fn_campaign_import_web_*` không có `p_tenant_id` (chưa lọc tenant theo id phiên import)."
+      "description": "Import từ file Excel theo `import_type_key`:\n- `campaign.import.type.consumer`: người tham gia campaign.\n- `campaign.import.type.reward.code`: mã code của reward item (gửi `data_entity_id = reward_item_id`).\n\nCột đích để map lấy từ `field/get-by-key`.\n\n**Luồng gọi:**\n1. `template` → tải file mẫu (dòng 1 = code field của campaign).\n2. FE upload file lên file server → `create` với `id = 0` → nhận `id` phiên import (status `pending`). Server đọc dòng tiêu đề file vào `data_json.header_list` và chụp field campaign vào `schema_json`.\n3. `get-by-id` → dựng màn mapping: mỗi field trong `schema_json.field_list` chọn 1 cột trong `data_json.header_list` (hoặc `system.not_import`).\n4. `create` với `id > 0`, `status_key = campaign.import.status.preview`, `data_json` = **nguyên data_json từ get-by-id** + `mapping_list` + `identifier_field_code` → server kiểm tra ngầm.\n5. Poll `get-by-id` tới khi `status_key = ...ready_to_run` → `preview` lấy số hợp lệ/lỗi/trùng; `export-error` tải dòng lỗi.\n6. `create` với `id > 0`, `status_key = campaign.import.status.running` → chạy import ngầm; poll `get-by-id` tới `completed` / `failed`.\n7. Hủy: `update-status` với `campaign.import.status.cancel`.\n\n⚠️ Các fn `fn_campaign_import_web_*` không có `p_tenant_id` (chưa lọc tenant theo id phiên import)."
+    },
+    {
+      "name": "Reward item",
+      "description": "Quản lý quà (reward item): danh sách, tạo/sửa, bật/tắt, nhân bản, xóa, chi tiết.\n\n⚠️ `get-by-id`, `update-active`, `duplicate`, `delete` gọi fn không có `p_tenant_id` (chưa lọc tenant theo id)."
+    },
+    {
+      "name": "Reward item codes",
+      "description": "Danh sách mã code của reward item (phân trang + số theo tab trạng thái + xuất Excel).\n\nImport mã code hàng loạt đi qua luồng **Import** (`campaign-import`, `import_type_key = campaign.import.type.reward.code`), không gọi `import-create` trực tiếp từng dòng."
     },
     {
       "name": "Integrated app",
@@ -1237,7 +1245,7 @@
           "Import participants"
         ],
         "summary": "Tạo / cập nhật phiên import người tham gia",
-        "description": "id = 0: tạo phiên mới (status pending), server đọc dòng tiêu đề file (server_files + filepath + filename) vào data_json.header_list và sinh schema_json từ field của campaign.\r\nid > 0: lưu mapping (data_json.mapping_list). Đổi status pending → preview: chạy kiểm tra dữ liệu ngầm, xong chuyển ready_to_run. Đổi ready_to_run → running: chạy import ngầm.\r\nTrả result > 0 khi thành công, id = id phiên import.\n\n### Map lên màn hình\n\n**Bước 1 – tạo phiên** (`id = 0`): như ví dụ. `data_json` bắt buộc (gửi `{}`), `status_key` để `null` → `pending`.\n\n**Bước 2 – lưu mapping + kiểm tra** (`id > 0`):\n```json\n{\n  \"tenant_id\": 1, \"id\": 35, \"campaign_id\": 12,\n  \"import_type_key\": \"campaign.import.type.consumer\",\n  \"status_key\": \"campaign.import.status.preview\",\n  \"field_identifier\": \"phone\",\n  \"data_json\": {\n    \"header_list\": [{\"code\": \"ho_ten\", \"name\": \"Họ tên\"}, {\"code\": \"sdt\", \"name\": \"SĐT\"}, {\"code\": \"system.not_import\", \"name\": \"Do not import\"}],\n    \"mapping_list\": [{\"source_code\": \"name\", \"target_code\": \"ho_ten\"}, {\"source_code\": \"phone\", \"target_code\": \"sdt\"}, {\"source_code\": \"email\", \"target_code\": \"system.not_import\"}],\n    \"identifier_field_code\": \"phone\"\n  }\n}\n```\n**Bước 3 – chạy**: gửi lại như bước 2 với `status_key = campaign.import.status.running` (chỉ chạy khi phiên đang `ready_to_run`).\n\n> ⚠️ Khi `id > 0` và **không** gửi `server_files`, server lưu đúng `data_json` FE gửi → phải gửi lại `header_list` (lấy từ get-by-id), thiếu là mất danh sách cột.\n> `source_code` = code field campaign, `target_code` = code cột trong file (tên hơi ngược, giữ nguyên vì đang chạy).",
+        "description": "id = 0: tạo phiên mới (status pending), server đọc dòng tiêu đề file (server_files + filepath + filename) vào data_json.header_list và sinh schema_json từ field của campaign.\r\nid > 0: lưu mapping (data_json.mapping_list). Đổi status pending → preview: chạy kiểm tra dữ liệu ngầm, xong chuyển ready_to_run. Đổi ready_to_run → running: chạy import ngầm.\r\nTrả result > 0 khi thành công, id = id phiên import.\n\n### Map lên màn hình\n\n**Bước 1 – tạo phiên** (`id = 0`): như ví dụ. `data_json` không bắt buộc (có thể bỏ trống), `status_key` để `null` → `pending`.\n\n**Bước 2 – lưu mapping + kiểm tra** (`id > 0`):\n```json\n{\n  \"tenant_id\": 1, \"id\": 35, \"campaign_id\": 12,\n  \"import_type_key\": \"campaign.import.type.consumer\",\n  \"status_key\": \"campaign.import.status.preview\",\n  \"field_identifier\": \"phone\",\n  \"data_json\": {\n    \"header_list\": [{\"code\": \"ho_ten\", \"name\": \"Họ tên\"}, {\"code\": \"sdt\", \"name\": \"SĐT\"}, {\"code\": \"system.not_import\", \"name\": \"Do not import\"}],\n    \"mapping_list\": [{\"source_code\": \"name\", \"target_code\": \"ho_ten\"}, {\"source_code\": \"phone\", \"target_code\": \"sdt\"}, {\"source_code\": \"email\", \"target_code\": \"system.not_import\"}],\n    \"identifier_field_code\": \"phone\"\n  }\n}\n```\n**Bước 3 – chạy**: gửi lại như bước 2 với `status_key = campaign.import.status.running` (chỉ chạy khi phiên đang `ready_to_run`).\n\n> ⚠️ Khi `id > 0` và **không** gửi `server_files`, server lưu đúng `data_json` FE gửi → phải gửi lại `header_list` (lấy từ get-by-id), thiếu là mất danh sách cột.\n> `source_code` = code field campaign, `target_code` = code cột trong file (tên hơi ngược, giữ nguyên vì đang chạy).\n\n**Import mã code của reward item**: `import_type_key = campaign.import.type.reward.code`, `data_entity_id = <reward_item_id>` (bắt buộc, thiếu thì dòng nào cũng lỗi khi chạy). Cột đích lấy từ `field/get-by-key`.",
         "operationId": "post_api_v1_reward_web_campaign_import_create",
         "x-badges": [
           {
@@ -1388,7 +1396,7 @@
           "Import participants"
         ],
         "summary": "Tải file Excel mẫu để import",
-        "description": "Dòng 1 = code các field của campaign (campaign_id + import_type_key bắt buộc). Trả file .xlsx; lỗi trả 400 kèm ResponseDTO.",
+        "description": "Dòng 1 = code các field của campaign (campaign_id + import_type_key bắt buộc). Trả file .xlsx; lỗi trả 400 kèm ResponseDTO.\n\n### Map lên màn hình\n\n> ⚠️ Hiện `template` vẫn bắt buộc `campaign_id > 0` kể cả khi `import_type_key = campaign.import.type.reward.code` → tạm gửi 1 `campaign_id` bất kỳ hợp lệ.",
         "operationId": "post_api_v1_reward_web_campaign_import_template",
         "x-badges": [
           {
@@ -1522,6 +1530,71 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-import/field/get-by-key": {
+      "get": {
+        "tags": [
+          "Import participants"
+        ],
+        "summary": "Danh sách cột import theo loại import",
+        "description": "Dùng ở bước map cột khi import: trả các field đích để FE ghép với header file.\r\n`import_type_key = campaign.import.type.consumer` → field form đăng ký của campaign (bắt buộc `campaign_id > 0`).\r\n`import_type_key = campaign.import.type.reward.code` → field cố định từ module config `reward.item.code.import.fields` (`code`, `expires_at`).\n\n### Map lên màn hình\n\nVí dụ query: `?tenant_id=1&import_type_key=campaign.import.type.reward.code` → trả 2 field `code`, `expires_at`.\nImport người tham gia: `?tenant_id=1&import_type_key=campaign.import.type.consumer&campaign_id=12`.",
+        "operationId": "get_api_v1_reward_web_campaign_import_field_get_by_key",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "import_type_key",
+            "in": "query",
+            "description": "Loại import: `campaign.import.type.consumer` | `campaign.import.type.reward.code`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerFieldWebItemDTOListResponseDTO"
                 }
               }
             }
@@ -3001,6 +3074,497 @@
           }
         }
       }
+    },
+    "/api/v1/reward/web/reward-item-code/list-pageindex": {
+      "post": {
+        "tags": [
+          "Reward item codes"
+        ],
+        "summary": "Danh sách mã code của reward item (phân trang)",
+        "description": "Màn Reward Item Codes: phân trang, tìm theo `code` / tên người nhận / `redemption_id`,\r\nlọc theo `reward_item_id`, trạng thái và khoảng ngày tạo.\r\nTrạng thái `available` đã quá `expired_date` được tính động thành `expired`.\n\n### Map lên màn hình\n\n> ⚠️ Field `redemption_id` trong kết quả hiện **luôn = 0**: SQL trả cột `consumer_redemption_id`, DTO đặt tên `redemption_id` nên không map được (đã báo BE).\n> Sort theo mã đổi quà gửi `sortby = consumer_redemption_id` (không phải `redemption_id`).",
+        "operationId": "post_api_v1_reward_web_reward_item_code_list_pageindex",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemCodeWebListPageindexRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "pageindex": 1,
+                "pagesize": 20,
+                "sortby": "created_date",
+                "sortdir": "DESC",
+                "from_date": null,
+                "to_date": null,
+                "list_status_key": [],
+                "searchtext": "",
+                "reward_item_id": 5
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnRewardItemCodeWebListPageindexItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item-code/list-totalrow": {
+      "post": {
+        "tags": [
+          "Reward item codes"
+        ],
+        "summary": "Tổng số mã code + số lượng theo trạng thái",
+        "description": "Gọi cùng bộ lọc với `list-pageindex` để phân trang và hiển thị số trên tab trạng thái.\r\n`status_summary` trả về theo dot notation (`reward.item.code.status.*`, `reward.item.code.metric.total`).\n\n### Map lên màn hình\n\nGọi với cùng bộ lọc như `list-pageindex`; để `list_status_key = []` khi lấy số cho các tab.",
+        "operationId": "post_api_v1_reward_web_reward_item_code_list_totalrow",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemCodeWebListTotalrowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "reward_item_id": 5,
+                "searchtext": "",
+                "list_status_key": [],
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnRewardItemCodeWebListTotalrowDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item-code/export-excel-list": {
+      "post": {
+        "tags": [
+          "Reward item codes"
+        ],
+        "summary": "Xuất Excel danh sách mã code",
+        "description": "Trả file `.xlsx` (không bọc `ResponseDTO`). Lỗi thì trả `ResponseDTO` có `error`.",
+        "operationId": "post_api_v1_reward_web_reward_item_code_export_excel_list",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemCodeExportListRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "reward_item_id": 5,
+                "searchtext": "",
+                "list_status_key": [],
+                "sortby": "created_date",
+                "sortdir": "DESC",
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File tải về",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item-code/import-create": {
+      "post": {
+        "tags": [
+          "Reward item codes"
+        ],
+        "summary": "Import một mã code",
+        "description": "Tạo mới mã code nếu `(reward_item_id, code)` chưa tồn tại (trả `result = 1`),\r\nngược lại cập nhật `expired_date` của mã đã có (trả `result = 2`).\n\n### Map lên màn hình\n\nThêm/cập nhật **1** mã. Import file dùng luồng `campaign-import` (`import_type_key = campaign.import.type.reward.code`).",
+        "operationId": "post_api_v1_reward_web_reward_item_code_import_create",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemCodeImportCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "code": "VT10-8H2K-Q9PX",
+                "expired_date": "2026-12-31T23:59:59",
+                "reward_item_id": 5
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item/list": {
+      "get": {
+        "tags": [
+          "Reward item"
+        ],
+        "summary": "Danh sách reward item",
+        "description": "Lấy toàn bộ reward item chưa bị xóa của tenant (`tenant_id` bắt buộc).\r\nTên loại quà / nhà cung cấp / loại tồn kho / khung đổi quà được resolve từ `module_config`.",
+        "operationId": "get_api_v1_reward_web_reward_item_list",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardItemWebItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item/create": {
+      "post": {
+        "tags": [
+          "Reward item"
+        ],
+        "summary": "Tạo hoặc cập nhật reward item",
+        "description": "`id = 0`/null → tạo mới; `id > 0` → cập nhật reward item đó (field null giữ giá trị cũ).\r\nThành công trả `id` của reward item.\n\n### Map lên màn hình\n\n`id = 0` tạo mới, `id > 0` cập nhật (field `null` giữ giá trị cũ).",
+        "operationId": "post_api_v1_reward_web_reward_item_create",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemWebCreateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 0,
+                "campaign_id": 12,
+                "reward_type_id": 1,
+                "code": "VOUCHER-100K",
+                "name": "Voucher 100.000đ",
+                "description": "Voucher mua sắm 100.000đ",
+                "server_files": "https://files.superflow.vn",
+                "filepath": "/upload/2026/11/",
+                "filename": "voucher.png",
+                "point_cost": 500,
+                "stock_total": 1000,
+                "stock_alert_amount": 50,
+                "max_redeem_per_day": 1,
+                "requires_approval": false,
+                "redemption_window_key": "reward.item.redemption.window.always",
+                "redemption_open_date": null,
+                "redemption_closed_date": null,
+                "config_jsonb": {},
+                "active": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item/update-active": {
+      "post": {
+        "tags": [
+          "Reward item"
+        ],
+        "summary": "Bật/tắt reward item",
+        "description": "Đổi cờ `active` của reward item theo `id`.",
+        "operationId": "post_api_v1_reward_web_reward_item_update_active",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemWebUpdateActiveRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 5,
+                "active": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item/duplicate": {
+      "post": {
+        "tags": [
+          "Reward item"
+        ],
+        "summary": "Nhân bản reward item",
+        "description": "Tạo bản sao từ reward item gốc theo `id`; `code` và `name` được sinh mới để tránh trùng lặp.\r\nThành công trả `id` của bản ghi mới.",
+        "operationId": "post_api_v1_reward_web_reward_item_duplicate",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemWebDuplicateRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 5
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item/delete": {
+      "post": {
+        "tags": [
+          "Reward item"
+        ],
+        "summary": "Xóa reward item",
+        "description": "Xóa mềm reward item theo `id`.",
+        "operationId": "post_api_v1_reward_web_reward_item_delete",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnRewardItemWebDeleteRequestDTO"
+              },
+              "example": {
+                "tenant_id": 1,
+                "id": 5
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/reward-item/get-by-id": {
+      "get": {
+        "tags": [
+          "Reward item"
+        ],
+        "summary": "Chi tiết reward item",
+        "description": "Lấy chi tiết reward item theo `id` (kèm `status_name`, `status_color`, `redemption_window_name`).",
+        "operationId": "get_api_v1_reward_web_reward_item_get_by_id",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnRewardItemWebGetByIdDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4370,6 +4934,26 @@
             "type": "integer",
             "description": "Thứ tự hiển thị",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerFieldWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerFieldWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false
@@ -5984,6 +6568,12 @@
           "active": {
             "type": "boolean",
             "description": "Bật/tắt"
+          },
+          "data_entity_id": {
+            "type": "integer",
+            "description": "Id đối tượng đích của phiên import. Import mã code (`campaign.import.type.reward.code`) → bắt buộc, là `reward_item_id`. Cập nhật mà để null → giữ giá trị cũ.",
+            "format": "int64",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -6068,6 +6658,7 @@
           },
           "data_entity_id": {
             "type": "integer",
+            "description": "Id đối tượng đích của phiên import (import mã code → `reward_item_id`).",
             "format": "int64",
             "nullable": true
           },
@@ -8013,6 +8604,820 @@
         },
         "additionalProperties": false
       },
+      "FnRewardItemCodeExportListRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "description": "Lọc theo reward item (id); null = tất cả",
+            "format": "int64",
+            "nullable": true
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm theo code, tên người nhận, redemption_id",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái (reward.item.code.status.*); null/rỗng = tất cả",
+            "nullable": true
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp (whitelist trong SQL). Lưu ý tên người nhận ở export là `issued_name`, ở list-pageindex là `issued_to_name`.",
+            "nullable": true,
+            "enum": [
+              "id",
+              "code",
+              "status_key",
+              "issued_name",
+              "issued_at",
+              "consumer_redemption_id",
+              "created_date"
+            ],
+            "default": "created_date"
+          },
+          "sortdir": {
+            "type": "string",
+            "description": "Chiều sắp xếp: ASC | DESC",
+            "nullable": true,
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc từ ngày tạo",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc đến ngày tạo (tự lấy tới 23:59:59)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemCodeImportCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã code cần import (bắt buộc)",
+            "nullable": true
+          },
+          "expired_date": {
+            "type": "string",
+            "description": "Ngày hết hạn của mã code (null = không đổi/không có)",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "description": "Id reward item mà mã code thuộc về",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemCodeWebListPageindexItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id mã code",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "description": "Id tenant sở hữu",
+            "format": "int64",
+            "nullable": true,
+            "example": 1,
+            "minimum": 1
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "description": "Id reward item mà mã code thuộc về",
+            "format": "int64",
+            "nullable": true
+          },
+          "redemption_id": {
+            "type": "integer",
+            "description": "Id lượt đổi quà đã dùng mã code (nếu có)",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã code",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái (reward.item.code.status.*); hết hạn được tính động thành expired",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái (resolve từ module_config)",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái (resolve từ module_config)",
+            "nullable": true
+          },
+          "issued_uid": {
+            "type": "integer",
+            "description": "Id người nhận (campaign_consumer)",
+            "format": "int64",
+            "nullable": true
+          },
+          "issued_name": {
+            "type": "string",
+            "description": "Tên người nhận (campaign_consumer)",
+            "nullable": true
+          },
+          "issued_at": {
+            "type": "string",
+            "description": "Thời điểm phát hành",
+            "format": "date-time",
+            "nullable": true
+          },
+          "face_value": {
+            "type": "number",
+            "description": "Giá trị mệnh giá",
+            "format": "double",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Trạng thái bật/tắt",
+            "nullable": true
+          },
+          "created_date": {
+            "type": "string",
+            "description": "Ngày tạo",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemCodeWebListPageindexItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnRewardItemCodeWebListPageindexItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemCodeWebListPageindexRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "pageindex": {
+            "type": "integer",
+            "description": "Trang hiện tại (>= 1)",
+            "format": "int32",
+            "default": 1,
+            "minimum": 1,
+            "example": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "description": "Số dòng mỗi trang (>= 1)",
+            "format": "int32",
+            "default": 20,
+            "minimum": 1,
+            "example": 20
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp (whitelist trong SQL). Giá trị khác → `created_date`.",
+            "nullable": true,
+            "enum": [
+              "id",
+              "code",
+              "status_key",
+              "issued_to_name",
+              "issued_at",
+              "consumer_redemption_id",
+              "created_date"
+            ],
+            "default": "created_date"
+          },
+          "sortdir": {
+            "type": "string",
+            "description": "Chiều sắp xếp: ASC | DESC",
+            "nullable": true,
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc từ ngày tạo",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc đến ngày tạo (tự lấy tới 23:59:59)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái (reward.item.code.status.*); null/rỗng = tất cả",
+            "nullable": true
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tìm theo code, tên người nhận, redemption_id",
+            "nullable": true,
+            "example": ""
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "description": "Lọc theo reward item (id); null = tất cả",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemCodeWebListTotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số mã code khớp bộ lọc",
+            "format": "int64"
+          },
+          "status_summary": {
+            "description": "Số mã code theo từng key trạng thái (dot notation)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemCodeWebListTotalrowDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnRewardItemCodeWebListTotalrowDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemCodeWebListTotalrowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "description": "Lọc theo reward item (id); null = tất cả",
+            "format": "int64",
+            "nullable": true
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: giống list-pageindex",
+            "nullable": true,
+            "example": ""
+          },
+          "list_status_key": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lọc theo trạng thái (reward.item.code.status.*); null/rỗng = tất cả",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc từ ngày tạo",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc đến ngày tạo (tự lấy tới 23:59:59)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemWebCreateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "0 hoặc null → tạo mới; > 0 → cập nhật reward item có id này",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Id campaign gắn với reward item",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "reward_type_id": {
+            "type": "integer",
+            "description": "Id loại quà trong bảng reward_type",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã reward item",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên reward item",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả reward item",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "description": "Domain file server của ảnh",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "description": "Đường dẫn ảnh",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "description": "Tên file ảnh",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "integer",
+            "description": "Điểm cần để đổi quà",
+            "format": "int32",
+            "nullable": true
+          },
+          "stock_total": {
+            "type": "integer",
+            "description": "Tổng số lượng phát hành",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_alert_amount": {
+            "type": "integer",
+            "description": "Ngưỡng cảnh báo tồn kho",
+            "format": "int32",
+            "nullable": true
+          },
+          "max_redeem_per_day": {
+            "type": "integer",
+            "description": "Số lần đổi tối đa mỗi ngày",
+            "format": "int32",
+            "nullable": true
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "description": "Có yêu cầu duyệt khi đổi quà hay không",
+            "nullable": true
+          },
+          "redemption_window_key": {
+            "type": "string",
+            "description": "Key khung thời gian đổi quà (reward.item.redemption.window.*)",
+            "nullable": true
+          },
+          "redemption_open_date": {
+            "type": "string",
+            "description": "Thời điểm mở đổi quà",
+            "format": "date-time",
+            "nullable": true
+          },
+          "redemption_closed_date": {
+            "type": "string",
+            "description": "Thời điểm đóng đổi quà",
+            "format": "date-time",
+            "nullable": true
+          },
+          "config_jsonb": {
+            "description": "Cấu hình JSON tự do của reward item",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Trạng thái bật/tắt",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemWebDeleteRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Id reward item cần xóa (xóa mềm)",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemWebDuplicateRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Id reward item gốc cần nhân bản",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemWebGetByIdDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id reward item",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "description": "Id tenant sở hữu",
+            "format": "int64",
+            "nullable": true,
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Id campaign gắn với reward item",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "category_id": {
+            "type": "integer",
+            "description": "Id danh mục",
+            "format": "int64",
+            "nullable": true
+          },
+          "supplier_id": {
+            "type": "integer",
+            "description": "Id nhà cung cấp",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_type_id": {
+            "type": "integer",
+            "description": "Id loại quà",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_type_key": {
+            "type": "string",
+            "description": "Key loại quà (reward.item.reward.type.*)",
+            "nullable": true
+          },
+          "provider_type_key": {
+            "type": "string",
+            "description": "Key nhà cung cấp (reward.item.provider.type.*)",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã reward item",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên reward item",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả reward item",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "description": "Domain file server của ảnh",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "description": "Đường dẫn ảnh",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "description": "Tên file ảnh",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "integer",
+            "description": "Điểm cần để đổi quà",
+            "format": "int32",
+            "nullable": true
+          },
+          "cash_value": {
+            "type": "number",
+            "description": "Giá trị tiền mặt",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "description": "Đơn vị tiền tệ",
+            "nullable": true
+          },
+          "inventory_type_key": {
+            "type": "string",
+            "description": "Key loại tồn kho (reward.item.inventory.type.*)",
+            "nullable": true
+          },
+          "max_redeem_per_day": {
+            "type": "integer",
+            "description": "Số lần đổi tối đa mỗi ngày",
+            "format": "int32",
+            "nullable": true
+          },
+          "per_consumer_limit": {
+            "type": "integer",
+            "description": "Giới hạn số lần đổi trên mỗi consumer",
+            "format": "int32",
+            "nullable": true
+          },
+          "valid_from_date": {
+            "type": "string",
+            "description": "Ngày bắt đầu hiệu lực",
+            "format": "date-time",
+            "nullable": true
+          },
+          "valid_to_date": {
+            "type": "string",
+            "description": "Ngày kết thúc hiệu lực",
+            "format": "date-time",
+            "nullable": true
+          },
+          "valid_day": {
+            "type": "integer",
+            "description": "Số ngày hiệu lực",
+            "format": "int32",
+            "nullable": true
+          },
+          "metadata_json": {
+            "description": "Metadata JSON",
+            "nullable": true
+          },
+          "rule_json": {
+            "description": "Rule JSON",
+            "nullable": true
+          },
+          "ui_json": {
+            "description": "UI JSON",
+            "nullable": true
+          },
+          "config_scheme": {
+            "description": "Cấu hình scheme JSON",
+            "nullable": true
+          },
+          "eligibility_limit": {
+            "description": "Điều kiện áp dụng JSON",
+            "nullable": true
+          },
+          "config_jsonb": {
+            "description": "Cấu hình JSON tự do",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái (reward.item.status.*)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái (resolve từ module_config)",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái (resolve từ module_config)",
+            "nullable": true
+          },
+          "stock_total": {
+            "type": "integer",
+            "description": "Tổng số lượng phát hành",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_reserved": {
+            "type": "integer",
+            "description": "Số lượng đang giữ chỗ",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_issued": {
+            "type": "integer",
+            "description": "Số lượng đã phát",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_alert_amount": {
+            "type": "integer",
+            "description": "Ngưỡng cảnh báo tồn kho",
+            "format": "int32",
+            "nullable": true
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "description": "Có yêu cầu duyệt khi đổi quà hay không",
+            "nullable": true
+          },
+          "redemption_window_key": {
+            "type": "string",
+            "description": "Key khung thời gian đổi quà (reward.item.redemption.window.*)",
+            "nullable": true
+          },
+          "redemption_window_name": {
+            "type": "string",
+            "description": "Tên khung thời gian đổi quà (resolve từ module_config)",
+            "nullable": true
+          },
+          "redemption_open_date": {
+            "type": "string",
+            "description": "Thời điểm mở đổi quà",
+            "format": "date-time",
+            "nullable": true
+          },
+          "redemption_closed_date": {
+            "type": "string",
+            "description": "Thời điểm đóng đổi quà",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemWebGetByIdDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnRewardItemWebGetByIdDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnRewardItemWebUpdateActiveRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Id reward item",
+            "format": "int64"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "true = bật, false = tắt"
+          }
+        },
+        "additionalProperties": false
+      },
       "ModuleConfigWebItemDTO": {
         "type": "object",
         "properties": {
@@ -8144,6 +9549,165 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ModuleTagsWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RewardItemWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id reward item",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "description": "Id tenant sở hữu",
+            "format": "int64",
+            "nullable": true,
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Id campaign gắn với reward item (nếu có)",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã reward item",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên reward item",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả reward item",
+            "nullable": true
+          },
+          "image": {
+            "type": "string",
+            "description": "URL ảnh (ghép server_files + filepath + filename)",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "integer",
+            "description": "Điểm cần để đổi quà",
+            "format": "int32",
+            "nullable": true
+          },
+          "cash_value": {
+            "type": "number",
+            "description": "Giá trị tiền mặt",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "description": "Đơn vị tiền tệ",
+            "nullable": true
+          },
+          "reward_type_key": {
+            "type": "string",
+            "description": "Key loại quà (reward.item.reward.type.*)",
+            "nullable": true
+          },
+          "reward_type_name": {
+            "type": "string",
+            "description": "Tên loại quà (resolve từ module_config)",
+            "nullable": true
+          },
+          "provider_type_key": {
+            "type": "string",
+            "description": "Key nhà cung cấp (reward.item.provider.type.*)",
+            "nullable": true
+          },
+          "provider_type_name": {
+            "type": "string",
+            "description": "Tên nhà cung cấp (resolve từ module_config)",
+            "nullable": true
+          },
+          "inventory_type_key": {
+            "type": "string",
+            "description": "Key loại tồn kho (reward.item.inventory.type.*)",
+            "nullable": true
+          },
+          "inventory_type_name": {
+            "type": "string",
+            "description": "Tên loại tồn kho (resolve từ module_config)",
+            "nullable": true
+          },
+          "redemption_window_key": {
+            "type": "string",
+            "description": "Key khung thời gian đổi quà (reward.item.redemption.window.*)",
+            "nullable": true
+          },
+          "redemption_window_name": {
+            "type": "string",
+            "description": "Tên khung thời gian đổi quà (resolve từ module_config)",
+            "nullable": true
+          },
+          "stock_total": {
+            "type": "integer",
+            "description": "Tổng số lượng phát hành",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_reserved": {
+            "type": "integer",
+            "description": "Số lượng đang giữ chỗ",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_issued": {
+            "type": "integer",
+            "description": "Số lượng đã phát",
+            "format": "int64",
+            "nullable": true
+          },
+          "valid_from_date": {
+            "type": "string",
+            "description": "Ngày bắt đầu hiệu lực",
+            "format": "date-time",
+            "nullable": true
+          },
+          "valid_to_date": {
+            "type": "string",
+            "description": "Ngày kết thúc hiệu lực",
+            "format": "date-time",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Trạng thái bật/tắt",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RewardItemWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RewardItemWebItemDTO"
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true
