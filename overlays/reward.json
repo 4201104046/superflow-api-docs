@@ -16,7 +16,8 @@
       "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
       "^/api/v1/reward/web/reward-item/(list|create|update-active|duplicate|delete|get-by-id)$",
-      "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$"
+      "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
+      "^/api/v1/reward/web/reward-type/(list)$"
     ]
   },
   "info": {
@@ -59,6 +60,11 @@
       "name": "Import participants",
       "match": "/campaign-import/",
       "description": "Import từ file Excel theo `import_type_key`:\n- `campaign.import.type.consumer`: người tham gia campaign.\n- `campaign.import.type.reward.code`: mã code của reward item (gửi `data_entity_id = reward_item_id`).\n\nCột đích để map lấy từ `field/get-by-key`.\n\n**Luồng gọi:**\n1. `template` → tải file mẫu (dòng 1 = code field của campaign).\n2. FE upload file lên file server → `create` với `id = 0` → nhận `id` phiên import (status `pending`). Server đọc dòng tiêu đề file vào `data_json.header_list` và chụp field campaign vào `schema_json`.\n3. `get-by-id` → dựng màn mapping: mỗi field trong `schema_json.field_list` chọn 1 cột trong `data_json.header_list` (hoặc `system.not_import`).\n4. `create` với `id > 0`, `status_key = campaign.import.status.preview`, `data_json` = **nguyên data_json từ get-by-id** + `mapping_list` + `identifier_field_code` → server kiểm tra ngầm.\n5. Poll `get-by-id` tới khi `status_key = ...ready_to_run` → `preview` lấy số hợp lệ/lỗi/trùng; `export-error` tải dòng lỗi.\n6. `create` với `id > 0`, `status_key = campaign.import.status.running` → chạy import ngầm; poll `get-by-id` tới `completed` / `failed`.\n7. Hủy: `update-status` với `campaign.import.status.cancel`.\n\n⚠️ Các fn `fn_campaign_import_web_*` không có `p_tenant_id` (chưa lọc tenant theo id phiên import)."
+    },
+    {
+      "name": "Reward types",
+      "match": "/reward-type/",
+      "description": "Loại quà (master data bảng `reward_type`, dùng chung mọi tenant): dropdown loại quà khi tạo reward item và bộ lọc `list_reward_type_id` ở danh sách reward item."
     },
     {
       "name": "Reward item",
@@ -1224,16 +1230,35 @@
       },
       "ui": "| Ghi chú | |\n|---|---|\n| `status_key` | gửi `campaign.consumer.redemption.status.approved`; bỏ trống = giữ trạng thái cũ |\n| `note` | tùy chọn; bỏ trống = giữ ghi chú cũ |\n| Ghi nhận | ngày duyệt + người duyệt |\n\n> ⚠️ DB ghi `approval_status_key = 'approved'` (không khớp key module_config) → `approval_status_name` sau khi duyệt đang trống."
     },
-    "GET /api/v1/reward/web/reward-item/list": {
+    "POST /api/v1/reward/web/reward-item/list": {
       "badges": [
         "new"
-      ]
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": null,
+        "searchtext": "",
+        "list_reward_type_id": [],
+        "list_status_key": [
+          "reward.item.status.active"
+        ],
+        "sortby": "created_date",
+        "sortdir": "DESC"
+      },
+      "ui": "Đổi từ `GET` (query) sang **`POST` (body)**.\n\n| Bộ lọc | Ghi chú |\n|---|---|\n| `campaign_id` | gửi `null` để lấy tất cả — ⚠️ gửi `0` sẽ ra **rỗng** (fn so `campaign_id = 0`) |\n| `searchtext` | tìm `name` / `code` |\n| `list_reward_type_id` | id từ `reward-type/list`; rỗng = tất cả |\n| `list_status_key` | `reward.item.status.active` / `inactive` / `low_stock`; rỗng = tất cả |\n\n> ⚠️ `sortby` / `sortdir` hiện **chưa có tác dụng**: fn luôn sắp xếp `id ASC`.\n\nResponse bỏ các field cũ `reward_type_key`, `provider_type_*`, `inventory_type_*`, `redemption_window_*`, `stock_*`, `valid_*_date`; thay bằng `reward_type_id/code/name`, `fulfillment_*`, `status_*`, `total` / `issued` / `left`, `is_low` / `low_name` / `low_color`."
+    },
+    "GET /api/v1/reward/web/reward-type/list": {
+      "badges": [
+        "new"
+      ],
+      "ui": "Master data dùng chung, fn **không lọc tenant** (cố ý). `tenant_id` vẫn bắt buộc > 0 (C# kiểm tra) dù không truyền xuống fn.\n\n| Bộ lọc | Ghi chú |\n|---|---|\n| `searchtext` | tìm `name` / `code` |\n| `active` | `true` / `false`; bỏ trống = tất cả |\n\nCờ `requires_inventory`, `requires_code_pool`, `requires_shipping`, `requires_approval` dùng để ẩn/hiện phần cấu hình tương ứng ở form reward item."
     },
     "GET /api/v1/reward/web/reward-item/get-by-id": {
       "badges": [
         "new",
         "no-tenant"
-      ]
+      ],
+      "ui": "Response đổi `stock_total` / `stock_reserved` / `stock_issued` → `total` / `reserved` / `issued`, thêm `left`, `is_low`, `low_name`, `low_color`, `active`."
     },
     "POST /api/v1/reward/web/reward-item/update-active": {
       "badges": [
