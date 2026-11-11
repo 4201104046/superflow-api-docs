@@ -15,10 +15,12 @@
       "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
-      "^/api/v1/reward/web/reward-item/(list|create|update-active|duplicate|delete|get-by-id)$",
+      "^/api/v1/reward/web/reward-item/(list|list-mission|create|update-active|duplicate|delete|get-by-id)$",
       "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
       "^/api/v1/reward/web/reward-type/(list)$",
-      "^/api/v1/reward/web/ui-list-field/(list)$"
+      "^/api/v1/reward/web/ui-list-field/(list)$",
+      "^/api/v1/reward/web/campaign-mission/(list|create|delete|update-active|duplicate|get-by-id)$",
+      "^/api/v1/reward/web/mission-type/(list)$"
     ]
   },
   "info": {
@@ -56,6 +58,16 @@
       "name": "Campaign redemption",
       "match": "/campaign-consumer-redemption/",
       "description": "Phiếu đổi quà của campaign (bảng `campaign_consumer_redemption`).\n\n- Màn **Redemption**: `list-totalrow` (số trên tab) + `list-pageindex` (bảng).\n- Nút **Approve**: `approve`; **Reject / Mark delivered**: `update-status`.\n- Tab **Redemptions** trong drawer người tham gia: `list-by-consumer` (không phân trang).\n\nTenant của phiếu lấy theo người tham gia (`campaign_consumer.tenant_id`)."
+    },
+    {
+      "name": "Mission",
+      "match": "/campaign-mission/",
+      "description": "Màn **Missions** của campaign: danh sách, tạo/sửa (kèm phần thưởng), bật/tắt, nhân bản, xóa."
+    },
+    {
+      "name": "Mission types",
+      "match": "/mission-type/",
+      "description": "Master data **loại nhiệm vụ** (dropdown + cấu hình trigger/điều kiện ở form Create mission)."
     },
     {
       "name": "Registration form",
@@ -252,6 +264,24 @@
         ],
         "default": "created_date",
         "description": "Cột sắp xếp (whitelist trong SQL). Lưu ý tên người nhận ở export là `issued_name`, ở list-pageindex là `issued_to_name`."
+      }
+    },
+    "FnCampaignMissionWebListRequestDTO": {
+      "sortby": {
+        "enum": [
+          "sequence",
+          "name",
+          "code",
+          "trigger_event",
+          "status_name",
+          "points",
+          "total_gifts",
+          "total_completions",
+          "created_date"
+        ],
+        "default": "sequence",
+        "example": "sequence",
+        "description": "Cột sắp xếp; bỏ trống → `sequence`. `total_gifts` sắp theo cùng giá trị với `points`."
       }
     }
   },
@@ -531,14 +561,11 @@
       "ui": "> Trả file `.xlsx`. ⚠️ `list_tag_id` hiện **không có tác dụng** khi xuất (SQL không dùng)."
     },
     "POST /api/v1/reward/web/campaign-consumer/list-pageindex": {
-      "badges": [
-        "broken",
-        "filter-broken"
-      ],
-      "ui": "> ⚠️ **Đang lỗi trên dev**: function dùng cột `approve_key` nhưng bảng `campaign_consumer` là `approved_key` → API trả `[]`.\n>\n> ⚠️ Khi `columns = null`, bộ cột mặc định của API (`balance`, `earned`, `missions`, `rewards`, `create_date`) **lệch tên** với SQL (`total_balance`, `total_earned`, `total_mission`, `total_reward`, `created_date`) → vẫn trả `[]` kể cả khi DB đã sửa. Tạm thời FE nên gửi `columns` với tên theo SQL.",
+      "badges": [],
+      "ui": "Bộ cột mặc định (`columns = null`): `id`, `tenant_id`, `campaign_id`, `consumer_id`, `zalo_avatar`, `name`, `full_name` (`{id, name, image}`), `phone`, `email`, `province_name`, `ward_name`, `total_balance`, `total_earned`, `total_mission`, `total_reward`, `mission` (`{total, completed}`), `status_key`, `status_name`, `status_color`, `status`, `approved_key`, `approved_name`, `approved_color`, `approved`, `active`, `created_date`.\n\nCột và bộ lọc nâng cao lấy từ `ui-list-field/list` (`list_key = ui.list.participant`).",
       "request_example": {
-        "tenant_id": 1,
-        "campaign_id": 2,
+        "tenant_id": 71268,
+        "campaign_id": 32,
         "pageindex": 1,
         "pagesize": 20,
         "searchtext": "",
@@ -569,9 +596,7 @@
       }
     },
     "POST /api/v1/reward/web/campaign-consumer/list-totalrow": {
-      "badges": [
-        "filter-broken"
-      ],
+      "badges": [],
       "request_example": {
         "tenant_id": 1,
         "campaign_id": 2,
@@ -612,7 +637,8 @@
     "GET /api/v1/reward/web/campaign-consumer/get-by-id": {
       "badges": [
         "no-tenant"
-      ]
+      ],
+      "ui": "Drawer chi tiết người tham gia. Số liệu: `balance`, `lifetime_earned`, `lifetime_redeemed`, `total_completed_mision` (đúng tên fn, thiếu chữ s); duyệt: `approved_name`, `approved_color`; địa chỉ: `province_*`, `ward_*`; field động của form đăng ký: `dynamic_campaign_consumer`; `campaign_consumer_consent` luôn là mảng.\n\n> ⚠️ `lifetime_redeemed` hiện fn lấy nhầm `total_balance` → luôn bằng `balance` (cần team DB sửa).\n>\n> Đã bỏ các field cũ `earned`, `missions`, `rewards`, `create_date` → dùng `lifetime_earned`, `total_completed_mision`."
     },
     "POST /api/v1/reward/campaign-integrated-app/create": {
       "badges": [
@@ -967,8 +993,7 @@
     "POST /api/v1/reward/web/campaign-consumer-point-ledger/list-totalrow": {
       "operationId": "campaignConsumerPointLedgerListTotalrow",
       "badges": [
-        "new",
-        "filter-broken"
+        "new"
       ],
       "request_example": {
         "tenant_id": 91265,
@@ -997,8 +1022,7 @@
     "POST /api/v1/reward/web/campaign-consumer-point-ledger/list-pageindex": {
       "operationId": "campaignConsumerPointLedgerListPageindex",
       "badges": [
-        "new",
-        "filter-broken"
+        "new"
       ],
       "request_example": {
         "tenant_id": 71268,
@@ -1135,8 +1159,7 @@
     "POST /api/v1/reward/web/campaign-consumer-redemption/list-totalrow": {
       "operationId": "campaignConsumerRedemptionListTotalrow",
       "badges": [
-        "new",
-        "filter-broken"
+        "new"
       ],
       "request_example": {
         "tenant_id": 1,
@@ -1163,8 +1186,7 @@
     "POST /api/v1/reward/web/campaign-consumer-redemption/list-pageindex": {
       "operationId": "campaignConsumerRedemptionListPageindex",
       "badges": [
-        "new",
-        "filter-broken"
+        "new"
       ],
       "request_example": {
         "tenant_id": 1,
@@ -1410,6 +1432,130 @@
         "list_definition_id": 0
       },
       "ui": "Dùng ở màn **Participants**: lấy danh sách cột (chọn ẩn/hiện) và field lọc của bảng người tham gia.\n\n| `view_mode_key` | Trả về |\n|---|---|\n| `ui.list.field.view.mode.all` / rỗng | mọi field |\n| `ui.list.field.view.mode.column` | field `is_column = true` (dựng cột bảng) |\n| `ui.list.field.view.mode.filter` | field `is_filterable = true`, mỗi field kèm `operators` (toán tử lọc theo `semantic_type_key`, `input_schema` mô tả ô nhập) |\n\n- `list_key` hiện chỉ có `ui.list.participant`; key khác trả mảng rỗng.\n- `reference_id` = campaign id → thêm các field động của form đăng ký campaign. Để 0 chỉ còn field cố định (ID, Balance, Earned, Joined...).\n- `is_required_column = true` → cột không cho ẩn.\n- Dùng `field_key` / `value_field_key` làm key cột và key điều kiện lọc gửi lên `campaign-consumer/list-pageindex`.\n\n**Lưu ý:** fn không kiểm tra tenant của `reference_id`."
+    },
+    "POST /api/v1/reward/web/campaign-mission/list": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "searchtext": "",
+        "list_mission_type_id": null,
+        "list_status_key": null,
+        "sortby": "sequence",
+        "sortdir": "ASC"
+      },
+      "ui": "| Cột UI | Field | `sortby` |\n|---|---|---|\n| Mission | `name`, `code`, `image` | `name` / `code` |\n| Trigger | `trigger_event`, `matching_event_text` | `trigger_event` |\n| Goal | `goal_type_name`, `goal_target` | — |\n| Active period | `active_period_text` (`active_from` / `active_to`) | — |\n| Reward | `reward_text` (`points`, `total_gifts`) | `points` |\n| Limit | `limit_text` | — |\n| Completions | `total_completions` | `total_completions` |\n| Status | `status_name`, `status_color` | `status_name` |\n\nKhông phân trang (trả toàn bộ mission của campaign). `searchtext` tìm `name` / `code` / `id`. Mặc định sắp theo `sequence` ASC."
+    },
+    "POST /api/v1/reward/web/campaign-mission/create": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 0,
+        "campaign_id": 32,
+        "code": "MS_REFERRAL_FRIENDS_01",
+        "name": "Mời 3 bạn bè tham gia ứng dụng",
+        "description": "Giới thiệu thành công 3 người bạn đăng ký để nhận điểm và quà",
+        "mission_type_id": 6,
+        "status_key": "campaign.mission.status.active",
+        "sequence": 1,
+        "server_files": "https://cdn.example.com/",
+        "filepath": "missions/banners/",
+        "filename": "referral_banner.png",
+        "deeplink_template": "myapp://campaign/referral",
+        "active_period_key": "campaign",
+        "trigger_event": "USER_INVITE_REFERRAL_SUCCESS",
+        "conditions": {
+          "op": "AND",
+          "rules": []
+        },
+        "goal_type_key": "single",
+        "goal_target": 3,
+        "recurrence_key": "campaign",
+        "limit_per_period": 1,
+        "limit_total": 1000,
+        "recipient": "performer",
+        "approved_key": "auto",
+        "mission_type_config": {},
+        "audience": {},
+        "is_new_version": false,
+        "campaign_mission_outcome_list": [
+          {
+            "id": 0,
+            "recipient_role_key": "campaign.mission.outcome.recipient.role.performer",
+            "kind_key": "campaign.mission.outcome.kind.points",
+            "points": 500,
+            "quantity": 0,
+            "sequence": 0
+          },
+          {
+            "id": 0,
+            "recipient_role_key": "campaign.mission.outcome.recipient.role.performer",
+            "kind_key": "campaign.mission.outcome.kind.item",
+            "reward_item_id": 8881,
+            "quantity": 1,
+            "sequence": 1
+          }
+        ],
+        "campaign_mission_outcome_delete_list": []
+      },
+      "ui": "Dùng cho **Thiết lập / Create mission** và màn sửa mission. `id = 0` tạo mới, `id > 0` cập nhật (`campaign_id` vẫn bắt buộc).\n\n- Phần thưởng gửi trong `campaign_mission_outcome_list`: `id = 0` thêm mới, `id > 0` sửa. Phần thưởng bị bỏ trên form → đưa `id` vào `campaign_mission_outcome_delete_list`.\n- `kind_key`: `campaign.mission.outcome.kind.points` (dùng `points`) · `campaign.mission.outcome.kind.item` (dùng `reward_item_id` + `quantity`, chọn từ `reward-item/list-mission`).\n- `recipient_role_key`: `...recipient.role.performer` / `...recipient.role.inviter`.\n- `mission_type_id` + `trigger_event` + `conditions` lấy theo cấu hình của `mission-type/list`.\n- `is_new_version = true` → tạo version mới (giữ lịch sử), `false` → ghi đè version hiện tại.\n- Lưu cả mission và phần thưởng trong 1 transaction; 1 bước lỗi → không lưu gì.\n\n> Khi cập nhật, fn chỉ tìm theo `id`, không kiểm tra mission thuộc tenant của request. Xóa phần thưởng (`campaign_mission_outcome_delete_list`) cũng chỉ theo `id`."
+    },
+    "POST /api/v1/reward/web/campaign-mission/delete": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 9
+      },
+      "ui": "Xóa mềm theo `id`.\n\n> fn chỉ nhận `id`, không kiểm tra mission thuộc tenant của request."
+    },
+    "POST /api/v1/reward/web/campaign-mission/update-active": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 9,
+        "active": false
+      },
+      "ui": "`active = true` → `campaign.mission.status.active`, `false` → `...inactive`.\n\n> fn chỉ nhận `id`, không kiểm tra mission thuộc tenant của request."
+    },
+    "POST /api/v1/reward/web/campaign-mission/duplicate": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 9
+      },
+      "ui": "Bản sao ở trạng thái inactive, `code` thêm `_COPY`, `name` thêm ` (copy)`; trả `id` mission mới.\n\n> fn chỉ nhận `id`, không kiểm tra mission thuộc tenant của request."
+    },
+    "GET /api/v1/reward/web/campaign-mission/get-by-id": {
+      "badges": [
+        "new"
+      ],
+      "ui": "Mở form sửa mission. Gồm 3 phần:\n\n| Phần | Dùng cho |\n|---|---|\n| `campaign_mission` | thông tin chung (tên, code, ảnh, `mission_type_id`, `status_*`, `current_version_id`) |\n| `campaign_mission_version` | cấu hình version hiện tại: `trigger_event`, `conditions`, `goal_*`, `recurrence_key`, `limit_*`, `recipient_key`, `active_from/to`, `audience` |\n| `campaign_mission_outcome` | phần thưởng của version hiện tại (gửi lại trong `campaign_mission_outcome_list` khi lưu) |\n\nMission không tồn tại hoặc thuộc tenant khác → lỗi."
+    },
+    "GET /api/v1/reward/web/mission-type/list": {
+      "badges": [
+        "new"
+      ],
+      "ui": "Master data dùng chung, fn **không lọc tenant** (cố ý); `tenant_id` vẫn bắt buộc > 0.\n\n`config_json.triggers[]` mô tả các trigger của loại nhiệm vụ (`code`, `label`, `supported_conditions[]` gồm `key`, `data_type`, `operators`) → dựng phần chọn trigger + điều kiện ở form Create mission."
+    },
+    "GET /api/v1/reward/web/reward-item/list-mission": {
+      "badges": [
+        "new"
+      ],
+      "ui": "Dropdown chọn quà cho phần thưởng nhiệm vụ (`kind_key = ...kind.item`). Lọc theo `campaign_id` của reward item; không truyền `campaign_id` → mọi quà của tenant. `left` = số còn lại có thể phát."
     }
   }
 }
