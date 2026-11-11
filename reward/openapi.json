@@ -215,7 +215,7 @@
           "Point"
         ],
         "summary": "Danh sách giao dịch điểm",
-        "description": "Sổ điểm (ledger) của tenant hiện tại: phân trang, search, sort, chọn cột. Mỗi dòng là object động, key theo `columns`\r\n(null = bộ cột mặc định: id, source_code, created_date, consumer, status, source, name, delta, before/after_balance,\r\ncreated_by_name, expire_date, active...). Giao dịch quá `expire_date` tự có trạng thái `...status.expire`.\r\n`from_date`/`to_date` lọc theo ngày tạo giao dịch (to_date tính hết ngày).\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `source_code` | `source_code` | Mở drawer bằng `id` |\n| Time | `created_date` | `created_date` | |\n| Participant | `consumer` (`{name, phone}`) | `consumer_name` | |\n| Type / Status | `status` (`{name, color}`) | `status_name` | Earn / Redeem / Refund / Adjust / Revoke / Expire |\n| Source | `source` (`source_type_name`, `source_name`, `source_code`) | `source_type_name` | Hết hạn → `source_name = \"System expiry\"` |\n| Description | `name` | `name` | |\n| Points (±) | `delta` | `delta` | Có dấu: âm = trừ |\n| Balance after | `after_balance` | `after_balance` | |\n| By | `created_by_name` | — | |\n\n> Cột thêm khi gửi `columns`: `consumer_email`, `consumer_zalo_avatar`, `source_type_key`, `source_type_color`, `source_id`, `description`, `notes`, `metadata_json`, `create_by_key`, `status_key`, `status_name`, `status_color`, `write_date`…",
+        "description": "Sổ điểm (ledger) của tenant hiện tại: phân trang, search, sort, chọn cột. Mỗi dòng là object động, key theo `columns`\r\n(null = bộ cột mặc định: id, source_code, create_date, consumer, status, source, name, delta, before/after_balance,\r\ncreate_by_name, expire_date, active, create). Giao dịch quá `expire_date` tự có trạng thái `...status.expire`.\r\nDòng có cột `create` (hoặc `create_uid` + `create_by_key`) được thêm `create_name` = tên user tạo giao dịch\r\n(lấy từ core theo `create_uid`); `create_by_key = ...create.by.system` → `create_name = null`. Cũng ghi vào `create.create_name`.\r\n`from_date`/`to_date` lọc theo ngày tạo giao dịch (to_date tính hết ngày).\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `source_code` | `source_code` | Mở drawer bằng `id` |\n| Time | `create_date` | `create_date` | |\n| Participant | `consumer` (`{name, phone}`) | `consumer_name` | |\n| Type / Status | `status` (`{name, color}`) | `status_name` | Earn / Redeem / Refund / Adjust / Revoke / Expire |\n| Source | `source` (`source_type_name`, `source_name`, `source_code`) | `source_type_name` | Hết hạn → `source_name = \"System expiry\"` |\n| Description | `name` | `name` | |\n| Points (±) | `delta` | `delta` | Có dấu: âm = trừ |\n| Balance after | `after_balance` | `after_balance` | |\n| By | `create_name` (rỗng → `create_by_name`) | — | Tên user tạo giao dịch, lấy từ core theo `create_uid` |\n\n> Cột thêm khi gửi `columns`: `consumer_email`, `consumer_zalo_avatar`, `source_type_key`, `source_type_color`, `source_id`, `description`, `notes`, `metadata_json`, `create_by_key`, `status_key`, `status_name`, `status_color`, `write_date`…\n\n**Người tạo (`create_name`)**: API tự điền cho dòng có cột `create` (hoặc `create_uid` + `create_by_key`); có ở cả key phẳng `create_name` và `create.create_name`.\n`create_by_key = ...create.by.system` → `create_name = null` (giao dịch do hệ thống tạo); `admin` / `adjust` → tên user core. Không lấy được tên từ core → `null`.\n\n`columns = null` dùng bộ mặc định (đã có `create`).",
         "operationId": "campaignConsumerPointLedgerListPageindex",
         "x-badges": [
           {
@@ -234,13 +234,13 @@
                 "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebListPageindexRequestDTO"
               },
               "example": {
-                "tenant_id": 91265,
+                "tenant_id": 71268,
                 "pageindex": 1,
                 "pagesize": 20,
-                "campaign_id": 1,
+                "campaign_id": 32,
                 "searchtext": "",
                 "list_status_key": null,
-                "sortby": "created_date",
+                "sortby": "create_date",
                 "sortdir": "DESC",
                 "columns": null,
                 "filter_definition": null,
@@ -263,12 +263,12 @@
                   "success": true,
                   "result": [
                     {
-                      "id": 18,
-                      "tenant_id": 91265,
-                      "campaign_id": 1,
+                      "id": 19,
+                      "tenant_id": 71268,
+                      "campaign_id": 32,
                       "campaign_consumer_id": 65,
-                      "source_code": "ADJ-2",
-                      "created_date": "2026-11-07T11:06:58",
+                      "source_code": "ADJ-19",
+                      "create_date": "2026-11-09T09:29:38",
                       "consumer": {
                         "name": "Phương Anh",
                         "phone": "0858467429",
@@ -277,25 +277,32 @@
                       "consumer_name": "Phương Anh",
                       "consumer_phone": "0858467429",
                       "status": {
-                        "name": "Expire",
-                        "color": "#6A7282",
+                        "name": "Adjust",
+                        "color": "#7F56D9",
                         "control": "tag"
                       },
                       "source": {
-                        "source_name": "System expiry",
-                        "source_key": "campaign.consumer.point.ledger.reference.type.adjust",
-                        "source_type_name": "Ghi chú quản trị",
-                        "source_id": 2,
-                        "source_code": "ADJ-2",
-                        "control": "source"
+                        "control": "source",
+                        "source_id": 19,
+                        "source_key": "campaign.consumer.point.ledger.source.type.adjust",
+                        "source_code": "ADJ-19",
+                        "source_name": "TEST - Điều chỉnh cộng 100 điểm",
+                        "source_type_name": ""
                       },
-                      "name": "Other",
-                      "delta": -200.0,
-                      "before_balance": 500.0,
-                      "after_balance": 300.0,
-                      "created_by_name": "Adjust",
-                      "expire_date": "2026-11-07T11:06:58",
-                      "active": true
+                      "name": "TEST - Điều chỉnh cộng 100 điểm",
+                      "delta": 100.0,
+                      "before_balance": 300.0,
+                      "after_balance": 400.0,
+                      "create_by_name": "Adjust",
+                      "expire_date": null,
+                      "active": true,
+                      "create": {
+                        "control": "create",
+                        "create_uid": 1,
+                        "create_name": "Nguyễn Văn A",
+                        "create_by_key": "campaign.consumer.point.ledger.create.by.adjust"
+                      },
+                      "create_name": "Nguyễn Văn A"
                     }
                   ],
                   "error": null
@@ -5564,7 +5571,7 @@
           },
           "sortby": {
             "type": "string",
-            "description": "Cột sắp xếp. Nhận cả tên cũ `reference_no` / `reference_type_key` / `reference_type_name`. Giá trị lạ → `created_date`.",
+            "description": "Cột sắp xếp. Giá trị lạ → `create_date`.",
             "nullable": true,
             "enum": [
               "id",
@@ -5584,10 +5591,10 @@
               "source_type_name",
               "active",
               "write_date",
-              "created_date"
+              "create_date"
             ],
-            "default": "created_date",
-            "example": "created_date"
+            "default": "create_date",
+            "example": "create_date"
           },
           "sortdir": {
             "type": "string",
