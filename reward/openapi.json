@@ -34,6 +34,10 @@
       "description": "Màn **Participants + detail drawer**: người tham gia campaign."
     },
     {
+      "name": "List fields",
+      "description": "Cấu hình **cột hiển thị + bộ lọc** cho màn danh sách (hiện có màn Participants)."
+    },
+    {
       "name": "Point",
       "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
     },
@@ -2737,39 +2741,93 @@
       }
     },
     "/api/v1/reward/web/module-config/list-pageindex": {
-      "post": {
+      "get": {
         "tags": [
           "Module config"
         ],
         "summary": "Danh sách cấu hình module (phân trang)",
-        "description": "Màn quản trị cấu hình: tìm theo `key` / `parent_key` / nội dung `config_json`, lọc `parent_key`, `active`.\r\nTổng số bản ghi lấy từ `list-totalrow` với cùng bộ lọc.\n\n### Map lên màn hình\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `key`, `parent_key`, `config_json` |\n| Tenant | chỉ trả cấu hình của đúng `tenant_id` (không gộp cấu hình hệ thống `-1`) |",
-        "operationId": "post_api_v1_reward_web_module_config_list_pageindex",
-        "x-badges": [
+        "description": "Màn quản trị cấu hình: tìm theo `key` / `parent_key` / nội dung `config_json`, lọc `parent_key`, `active`.\r\nTổng số bản ghi lấy từ `list-totalrow` với cùng bộ lọc.",
+        "operationId": "get_api_v1_reward_web_module_config_list_pageindex",
+        "parameters": [
           {
-            "name": "Mới",
-            "color": "#0B7A45"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FnModuleConfigWebListPageindexRequestDTO"
-              },
-              "example": {
-                "tenant_id": 1,
-                "pageindex": 1,
-                "pagesize": 20,
-                "searchtext": "",
-                "parent_key": "campaign.leaderboard.status",
-                "active": null,
-                "sortby": "sequence",
-                "sortdir": "ASC"
-              }
+            "name": "pageindex",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "Trang hiện tại, bắt đầu từ 1.",
+              "default": 1,
+              "minimum": 1,
+              "example": 1
+            },
+            "description": "Trang hiện tại, bắt đầu từ 1."
+          },
+          {
+            "name": "pagesize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "Số dòng mỗi trang.",
+              "default": 20,
+              "minimum": 1,
+              "example": 20
+            },
+            "description": "Số dòng mỗi trang."
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
             }
           },
-          "required": true
-        },
+          {
+            "name": "parent_key",
+            "in": "query",
+            "description": "Lọc theo key nhóm cha; null/rỗng = tất cả",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Lọc theo trạng thái bật/tắt; null = tất cả",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sortby",
+            "in": "query",
+            "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo.",
+            "schema": {
+              "type": "string",
+              "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo."
+            }
+          },
+          {
+            "name": "sortdir",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Chiều sắp xếp.",
+              "enum": [
+                "ASC",
+                "DESC"
+              ],
+              "default": "DESC"
+            },
+            "description": "Chiều sắp xếp."
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2777,29 +2835,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FnModuleConfigWebListPageindexItemDTOListResponseDTO"
-                },
-                "example": {
-                  "success": true,
-                  "result": [
-                    {
-                      "id": 216,
-                      "tenant_id": 1,
-                      "key": "campaign.leaderboard.status.draft",
-                      "parent_key": "campaign.leaderboard.status",
-                      "config_json": {},
-                      "sequence": 1,
-                      "name": "Draft",
-                      "description": "Leaderboard is in draft status.",
-                      "active": true,
-                      "active_date": "2026-07-21T21:16:04",
-                      "active_uid": 1,
-                      "write_uid": null,
-                      "write_date": null,
-                      "create_uid": 1,
-                      "create_date": "2026-07-21T21:16:04"
-                    }
-                  ],
-                  "error": null
                 }
               }
             }
@@ -2811,35 +2846,44 @@
       }
     },
     "/api/v1/reward/web/module-config/list-totalrow": {
-      "post": {
+      "get": {
         "tags": [
           "Module config"
         ],
         "summary": "Tổng số cấu hình module",
         "description": "Tổng số bản ghi cho phân trang của `list-pageindex`, cùng bộ lọc.",
-        "operationId": "post_api_v1_reward_web_module_config_list_totalrow",
-        "x-badges": [
+        "operationId": "get_api_v1_reward_web_module_config_list_totalrow",
+        "parameters": [
           {
-            "name": "Mới",
-            "color": "#0B7A45"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FnModuleConfigWebListTotalrowRequestDTO"
-              },
-              "example": {
-                "tenant_id": 1,
-                "searchtext": "",
-                "parent_key": "campaign.leaderboard.status",
-                "active": null
-              }
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
             }
           },
-          "required": true
-        },
+          {
+            "name": "parent_key",
+            "in": "query",
+            "description": "Lọc theo key nhóm cha; null/rỗng = tất cả",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Lọc theo trạng thái bật/tắt; null = tất cả",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2847,14 +2891,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FnModuleConfigWebListTotalrowDTOResponseDTO"
-                },
-                "example": {
-                  "success": true,
-                  "result": {
-                    "total": 12,
-                    "status_summary": {}
-                  },
-                  "error": null
                 }
               }
             }
@@ -3630,6 +3666,88 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RewardTypeWebItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/ui-list-field/list": {
+      "get": {
+        "tags": [
+          "List fields"
+        ],
+        "summary": "Danh sách field (cột / điều kiện lọc) của 1 màn danh sách",
+        "description": "Lấy theo `list_definition_id` hoặc `list_key` (kèm `reference_id` nếu list phụ thuộc đối tượng, ví dụ campaign).\r\nKhi `view_mode_key = ui.list.field.view.mode.filter`, mỗi field có thêm `operators`\r\n(toán tử lọc lấy từ core theo `semantic_type_key`).\n\n### Map lên màn hình\n\nDùng ở màn **Participants**: lấy danh sách cột (chọn ẩn/hiện) và field lọc của bảng người tham gia.\n\n| `view_mode_key` | Trả về |\n|---|---|\n| `ui.list.field.view.mode.all` / rỗng | mọi field |\n| `ui.list.field.view.mode.column` | field `is_column = true` (dựng cột bảng) |\n| `ui.list.field.view.mode.filter` | field `is_filterable = true`, mỗi field kèm `operators` (toán tử lọc theo `semantic_type_key`, `input_schema` mô tả ô nhập) |\n\n- `list_key` hiện chỉ có `ui.list.participant`; key khác trả mảng rỗng.\n- `reference_id` = campaign id → thêm các field động của form đăng ký campaign. Để 0 chỉ còn field cố định (ID, Balance, Earned, Joined...).\n- `is_required_column = true` → cột không cho ẩn.\n- Dùng `field_key` / `value_field_key` làm key cột và key điều kiện lọc gửi lên `campaign-consumer/list-pageindex`.\n\n**Lưu ý:** fn không kiểm tra tenant của `reference_id`.",
+        "operationId": "get_api_v1_reward_web_ui_list_field_list",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_definition_id",
+            "in": "query",
+            "description": "Id list definition; hiện để 0 (field trả về mang lại đúng giá trị này)",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "view_mode_key",
+            "in": "query",
+            "description": "`ui.list.field.view.mode.all` (mọi field) · `ui.list.field.view.mode.column` (field hiện thành cột) · `ui.list.field.view.mode.filter` (field lọc được, kèm `operators`). Rỗng = all",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reference_id",
+            "in": "query",
+            "description": "Id campaign (với `ui.list.participant`); 0 → chỉ trả field cố định, không có field động của campaign",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "list_key",
+            "in": "query",
+            "description": "Key màn danh sách. Hiện chỉ hỗ trợ `ui.list.participant` (người tham gia campaign); key khác trả rỗng",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          },
+          {
+            "name": "lang_id",
+            "in": "header",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UiListFieldWebItemDTOListResponseDTO"
                 }
               }
             }
@@ -8484,85 +8602,6 @@
         },
         "additionalProperties": false
       },
-      "FnModuleConfigWebListPageindexRequestDTO": {
-        "required": [
-          "tenant_id"
-        ],
-        "type": "object",
-        "properties": {
-          "tenant_id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
-            "example": 1,
-            "minimum": 1
-          },
-          "pageindex": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Trang hiện tại, bắt đầu từ 1.",
-            "default": 1,
-            "minimum": 1,
-            "example": 1
-          },
-          "pagesize": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Số dòng mỗi trang.",
-            "default": 20,
-            "minimum": 1,
-            "example": 20
-          },
-          "searchtext": {
-            "type": "string",
-            "description": "Từ khóa: tìm trong key, parent_key, config_json",
-            "nullable": true,
-            "example": ""
-          },
-          "parent_key": {
-            "type": "string",
-            "description": "Lọc theo key nhóm cha; null/rỗng = tất cả",
-            "nullable": true
-          },
-          "active": {
-            "type": "boolean",
-            "description": "Lọc theo trạng thái bật/tắt; null = tất cả",
-            "nullable": true
-          },
-          "sortby": {
-            "type": "string",
-            "description": "Cột sắp xếp; giá trị khác danh sách → `create_date`.",
-            "nullable": true,
-            "enum": [
-              "id",
-              "tenant_id",
-              "key",
-              "parent_key",
-              "sequence",
-              "active",
-              "active_date",
-              "create_date",
-              "write_date",
-              "create_uid",
-              "write_uid",
-              "active_uid"
-            ],
-            "default": "create_date",
-            "example": "sequence"
-          },
-          "sortdir": {
-            "type": "string",
-            "nullable": true,
-            "description": "Chiều sắp xếp.",
-            "enum": [
-              "ASC",
-              "DESC"
-            ],
-            "default": "DESC"
-          }
-        },
-        "additionalProperties": false
-      },
       "FnModuleConfigWebListTotalrowDTO": {
         "type": "object",
         "properties": {
@@ -8589,38 +8628,6 @@
           },
           "error": {
             "$ref": "#/components/schemas/ErrorDTO"
-          }
-        },
-        "additionalProperties": false
-      },
-      "FnModuleConfigWebListTotalrowRequestDTO": {
-        "required": [
-          "tenant_id"
-        ],
-        "type": "object",
-        "properties": {
-          "tenant_id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
-            "example": 1,
-            "minimum": 1
-          },
-          "searchtext": {
-            "type": "string",
-            "description": "Từ khóa: giống list-pageindex",
-            "nullable": true,
-            "example": ""
-          },
-          "parent_key": {
-            "type": "string",
-            "description": "Lọc theo key nhóm cha; null/rỗng = tất cả",
-            "nullable": true
-          },
-          "active": {
-            "type": "boolean",
-            "description": "Lọc theo trạng thái bật/tắt; null = tất cả",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -10010,6 +10017,44 @@
         },
         "additionalProperties": false
       },
+      "RuleDefinitionSourceWebOperatorItemDTO": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Nhãn hiển thị của toán tử",
+            "nullable": true
+          },
+          "value": {
+            "description": "Giá trị toán tử (= operator_key)",
+            "nullable": true
+          },
+          "operator_key": {
+            "type": "string",
+            "description": "Key toán tử",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên toán tử",
+            "nullable": true
+          },
+          "input_schema": {
+            "description": "Schema JSON mô tả ô nhập giá trị cho toán tử",
+            "nullable": true
+          },
+          "semantic_type_key": {
+            "type": "string",
+            "description": "Kiểu ngữ nghĩa áp dụng toán tử",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Trạng thái hoạt động"
+          }
+        },
+        "additionalProperties": false
+      },
       "StringObjectDictionaryListResponseDTO": {
         "type": "object",
         "properties": {
@@ -10018,6 +10063,117 @@
             "items": {
               "type": "object",
               "additionalProperties": {}
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListFieldWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id của field",
+            "format": "int64"
+          },
+          "list_definition_id": {
+            "type": "integer",
+            "description": "Id của list definition chứa field",
+            "format": "int64"
+          },
+          "field_key": {
+            "type": "string",
+            "description": "Key của field (dùng làm key cột / key điều kiện lọc)",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên hiển thị của field",
+            "nullable": true
+          },
+          "data_type_key": {
+            "type": "string",
+            "description": "Kiểu dữ liệu của field",
+            "nullable": true
+          },
+          "semantic_type_key": {
+            "type": "string",
+            "description": "Kiểu ngữ nghĩa, quyết định danh sách toán tử lọc (`operators`)",
+            "nullable": true
+          },
+          "group_key": {
+            "type": "string",
+            "description": "Key nhóm field",
+            "nullable": true
+          },
+          "query_field_key": {
+            "type": "string",
+            "description": "Key field dùng khi gửi điều kiện query",
+            "nullable": true
+          },
+          "value_field_key": {
+            "type": "string",
+            "description": "Key field chứa giá trị (với field dạng lookup)",
+            "nullable": true
+          },
+          "value_data_type_key": {
+            "type": "string",
+            "description": "Kiểu dữ liệu của giá trị (với field dạng lookup)",
+            "nullable": true
+          },
+          "lookup_provider_key": {
+            "type": "string",
+            "description": "Key nguồn dữ liệu lookup (nếu có)",
+            "nullable": true
+          },
+          "is_column": {
+            "type": "boolean",
+            "description": "Có hiển thị thành cột trên danh sách"
+          },
+          "is_required_column": {
+            "type": "boolean",
+            "description": "Cột bắt buộc hiển thị (không cho ẩn)"
+          },
+          "is_filterable": {
+            "type": "boolean",
+            "description": "Có dùng được làm điều kiện lọc"
+          },
+          "default_width": {
+            "type": "integer",
+            "description": "Độ rộng mặc định của cột",
+            "format": "int32"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị",
+            "format": "int32"
+          },
+          "operators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleDefinitionSourceWebOperatorItemDTO"
+            },
+            "description": "Danh sách toán tử lọc theo `semantic_type_key`; chỉ có khi `view_mode_key = ui.list.field.view.mode.filter`",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiListFieldWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UiListFieldWebItemDTO"
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true

@@ -17,7 +17,8 @@
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
       "^/api/v1/reward/web/reward-item/(list|create|update-active|duplicate|delete|get-by-id)$",
       "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
-      "^/api/v1/reward/web/reward-type/(list)$"
+      "^/api/v1/reward/web/reward-type/(list)$",
+      "^/api/v1/reward/web/ui-list-field/(list)$"
     ]
   },
   "info": {
@@ -40,6 +41,11 @@
       "name": "Participants",
       "match": "/campaign-consumer/",
       "description": "Màn **Participants + detail drawer**: người tham gia campaign."
+    },
+    {
+      "name": "List fields",
+      "match": "/ui-list-field/",
+      "description": "Cấu hình **cột hiển thị + bộ lọc** cho màn danh sách (hiện có màn Participants)."
     },
     {
       "name": "Point",
@@ -1383,6 +1389,20 @@
         "new"
       ],
       "ui": "Ví dụ query: `?tenant_id=1&import_type_key=campaign.import.type.reward.code` → trả 2 field `code`, `expires_at`.\nImport người tham gia: `?tenant_id=1&import_type_key=campaign.import.type.consumer&campaign_id=12`."
+    },
+    "GET /api/v1/reward/web/ui-list-field/list": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "list_key": "ui.list.participant",
+        "view_mode_key": "ui.list.field.view.mode.filter",
+        "reference_id": 123,
+        "list_definition_id": 0
+      },
+      "ui": "Dùng ở màn **Participants**: lấy danh sách cột (chọn ẩn/hiện) và field lọc của bảng người tham gia.\n\n| `view_mode_key` | Trả về |\n|---|---|\n| `ui.list.field.view.mode.all` / rỗng | mọi field |\n| `ui.list.field.view.mode.column` | field `is_column = true` (dựng cột bảng) |\n| `ui.list.field.view.mode.filter` | field `is_filterable = true`, mỗi field kèm `operators` (toán tử lọc theo `semantic_type_key`, `input_schema` mô tả ô nhập) |\n\n- `list_key` hiện chỉ có `ui.list.participant`; key khác trả mảng rỗng.\n- `reference_id` = campaign id → thêm các field động của form đăng ký campaign. Để 0 chỉ còn field cố định (ID, Balance, Earned, Joined...).\n- `is_required_column = true` → cột không cho ẩn.\n- Dùng `field_key` / `value_field_key` làm key cột và key điều kiện lọc gửi lên `campaign-consumer/list-pageindex`.\n\n**Lưu ý:** fn không kiểm tra tenant của `reference_id`."
     }
   }
 }
