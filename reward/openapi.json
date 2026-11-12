@@ -470,6 +470,75 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign-consumer-point-ledger/adjust": {
+      "post": {
+        "tags": [
+          "Point"
+        ],
+        "summary": "Điều chỉnh điểm người tham gia",
+        "description": "Cộng (`delta` dương) hoặc trừ (`delta` âm) điểm cho 1 người tham gia: cập nhật số dư ví điểm và ghi 1 giao dịch\r\ntrạng thái `...status.adjust`, người tạo `...create.by.adjust`. Trả `id` giao dịch mới, `before_balance` / `after_balance`.\r\nKhông tìm thấy ví điểm của người tham gia trong tenant / campaign → lỗi.\n\n### Map lên màn hình\n\nForm **Adjust points** (drawer chi tiết người tham gia / màn Point).\n\n| Ô trên form | Field |\n|---|---|\n| Cộng / trừ + số điểm | `delta` (dương = cộng, âm = trừ, khác 0) |\n| Tên giao dịch | `name` (bỏ trống → \"Điều chỉnh điểm tích lũy\") |\n| Lý do / ghi chú | `notes`, `reason_key` |\n| Hạn dùng điểm | `expire_date` (bỏ trống → không hết hạn) |\n\nThành công: `id` = giao dịch mới (mở bằng `get-by-id`), `after_balance` = số dư mới để cập nhật UI ngay. Giao dịch có trạng thái `...status.adjust`, người tạo `...create.by.adjust` (tên user ở `create_name`).\n\n> fn **không chặn số dư âm**: trừ quá số dư vẫn ghi nhận (`after_balance` < 0). FE nên chặn `-delta > balance` trước khi gửi.",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_point_ledger_adjust",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebAdjustRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "campaign_id": 32,
+                "campaign_consumer_id": 132,
+                "delta": 100,
+                "expire_date": "2026-12-31T23:59:59",
+                "metadata_json": {
+                  "reference": "ADJ-MANUAL-001"
+                },
+                "name": "Cộng điểm bù sự kiện",
+                "description": "Bù điểm do lỗi ghi nhận nhiệm vụ",
+                "notes": "Khách phản ánh qua hotline",
+                "reason_key": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebAdjustDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "type": "create",
+                    "id": 20,
+                    "result": 1,
+                    "message": "Ghi nhận số dư sổ cái thành công",
+                    "consumer_point_id": 7,
+                    "before_balance": 300.0,
+                    "after_balance": 400.0,
+                    "expire_date": "2026-12-31T23:59:59"
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer": {
       "get": {
         "tags": [
@@ -6177,6 +6246,132 @@
           "write_date": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebAdjustDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "consumer_point_id": {
+            "type": "integer",
+            "description": "id ví điểm (campaign_consumer_point) đã cập nhật",
+            "format": "int64",
+            "nullable": true
+          },
+          "before_balance": {
+            "type": "number",
+            "description": "Số dư trước khi điều chỉnh",
+            "format": "double",
+            "nullable": true
+          },
+          "after_balance": {
+            "type": "number",
+            "description": "Số dư sau khi điều chỉnh",
+            "format": "double",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "description": "Ngày hết hạn đã lưu cho giao dịch",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebAdjustDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerWebAdjustDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerWebAdjustRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Campaign của người tham gia",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "description": "id người tham gia (campaign_consumer.id) cần điều chỉnh điểm",
+            "format": "int64",
+            "nullable": true
+          },
+          "delta": {
+            "type": "number",
+            "description": "Số điểm điều chỉnh, có dấu: dương = cộng, âm = trừ. Khác 0",
+            "format": "double",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "description": "Ngày hết hạn của điểm cộng; bỏ trống = không hết hạn",
+            "format": "date-time",
+            "nullable": true
+          },
+          "metadata_json": {
+            "description": "Dữ liệu thêm dạng JSON tự do (lưu vào metadata_json của giao dịch)",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên giao dịch; bỏ trống = \"Điều chỉnh điểm tích lũy\"",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả giao dịch",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "description": "Ghi chú của quản trị (lý do điều chỉnh)",
+            "nullable": true
+          },
+          "reason_key": {
+            "type": "string",
+            "description": "Key lý do điều chỉnh",
             "nullable": true
           }
         },

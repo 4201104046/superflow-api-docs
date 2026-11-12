@@ -12,7 +12,7 @@
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
       "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$",
       "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$",
-      "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer)$",
+      "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer|adjust)$",
       "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
       "^/api/v1/reward/web/reward-item/(list|list-mission|create|update-active|duplicate|delete|get-by-id)$",
@@ -1585,6 +1585,36 @@
         "record_id": 32
       },
       "ui": "Nút **Close redemption window** (sau khi campaign kết thúc). Đặt `redemption_window_open = false` → người tham gia không đổi quà được nữa; xem lại trạng thái qua `campaign/get-by-id` (`redemption_window_open`).\n\nAPI kiểm tra campaign thuộc `tenant_id` của request trước khi cập nhật. fn không chặn theo trạng thái campaign (đóng lúc đang ongoing vẫn được) → FE chỉ nên hiện nút khi `redemption_window_open = true`."
+    },
+    "POST /api/v1/reward/web/campaign-consumer-point-ledger/adjust": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "campaign_consumer_id": 132,
+        "delta": 100,
+        "expire_date": "2026-12-31T23:59:59",
+        "metadata_json": {
+          "reference": "ADJ-MANUAL-001"
+        },
+        "name": "Cộng điểm bù sự kiện",
+        "description": "Bù điểm do lỗi ghi nhận nhiệm vụ",
+        "notes": "Khách phản ánh qua hotline",
+        "reason_key": null
+      },
+      "result_example": {
+        "type": "create",
+        "id": 20,
+        "result": 1,
+        "message": "Ghi nhận số dư sổ cái thành công",
+        "consumer_point_id": 7,
+        "before_balance": 300.0,
+        "after_balance": 400.0,
+        "expire_date": "2026-12-31T23:59:59"
+      },
+      "ui": "Form **Adjust points** (drawer chi tiết người tham gia / màn Point).\n\n| Ô trên form | Field |\n|---|---|\n| Cộng / trừ + số điểm | `delta` (dương = cộng, âm = trừ, khác 0) |\n| Tên giao dịch | `name` (bỏ trống → \"Điều chỉnh điểm tích lũy\") |\n| Lý do / ghi chú | `notes`, `reason_key` |\n| Hạn dùng điểm | `expire_date` (bỏ trống → không hết hạn) |\n\nThành công: `id` = giao dịch mới (mở bằng `get-by-id`), `after_balance` = số dư mới để cập nhật UI ngay. Giao dịch có trạng thái `...status.adjust`, người tạo `...create.by.adjust` (tên user ở `create_name`).\n\n> fn **không chặn số dư âm**: trừ quá số dư vẫn ghi nhận (`after_balance` < 0). FE nên chặn `-delta > balance` trước khi gửi."
     }
   }
 }
