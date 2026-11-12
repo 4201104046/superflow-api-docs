@@ -1114,6 +1114,8 @@
         "notes": "Test điều chỉnh trừ 200 điểm",
         "create_by_key": "campaign.consumer.point.ledger.create.by.adjust",
         "create_by_name": "Adjust",
+        "create_uid": 1,
+        "create_name": "Nguyễn Văn A",
         "status_key": "campaign.consumer.point.ledger.status.expire",
         "status_name": "Expire",
         "status_color": "#6A7282",
@@ -1127,7 +1129,7 @@
           "total_balance": 300.0
         }
       },
-      "ui": "| Mục trên drawer | Field |\n|---|---|\n| Badge trạng thái | `status_name`, `status_color` |\n| Participant | `campaign_consumer.name`, `.phone` |\n| Source | `source_type_name`, `source_type_color` |\n| Reference + nút \"Open …\" | `source_code`, `source_id` (dựa `source_type_key` để biết mở mission / redemption) |\n| Event | `source_name` / `name` (+ `description`, `notes`) |\n| Points, Balance after | `delta`, `after_balance` (+ `before_balance`) |\n| Time, Created by | `create_date`, `create_by_name` |\n| Raw event (JSON) | `metadata_json` |"
+      "ui": "| Mục trên drawer | Field |\n|---|---|\n| Badge trạng thái | `status_name`, `status_color` |\n| Participant | `campaign_consumer.name`, `.phone` |\n| Source | `source_type_name`, `source_type_color` |\n| Reference + nút \"Open …\" | `source_code`, `source_id` (dựa `source_type_key` để biết mở mission / redemption) |\n| Event | `source_name` / `name` (+ `description`, `notes`) |\n| Points, Balance after | `delta`, `after_balance` (+ `before_balance`) |\n| Time, Created by | `create_date`, `create_name` (rỗng → `create_by_name`) |\n| Raw event (JSON) | `metadata_json` |\n\n**Người tạo (`create_name`)**: giống `list-pageindex` — tên user core theo `create_uid`; `create_by_key = ...create.by.system` → `null`; không lấy được tên từ core → `null`."
     },
     "GET /api/v1/reward/web/campaign-consumer/list": {
       "operationId": "campaignConsumerList",
