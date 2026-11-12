@@ -6,7 +6,7 @@
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
       "^/api/v1/reward/web/campaign-leaderboard/list-score-nopaging$",
-      "^/api/v1/reward/web/campaign/(create|update-active|update-status|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
+      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
       "^/api/v1/reward/web/campaign-consumer/(list|list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
@@ -515,10 +515,9 @@
     },
     "GET /api/v1/reward/web/campaign/get-by-id": {
       "badges": [
-        "partial-broken",
         "no-tenant"
       ],
-      "ui": "> ⚠️ **`campaign.participation_methods` đang luôn trả `[]` trên dev** dù đã lưu: function join `module_config` với `parent_key = 'campaign.participation.method.key'` (thừa `.key`; dữ liệu thật là `campaign.participation.method`). Đã báo team DB; sửa xong dữ liệu cũ hiện lại, FE không cần đổi gì.\n\n| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, color, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled / ended giữ nguyên; còn lại upcoming · ongoing · ended theo ngày |\n| `campaign_config` | cấu hình kèm theo (có thể null) |"
+      "ui": "| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled giữ nguyên; còn lại upcoming · ongoing · ended theo `start_date` và `coalesce(end_early_date, end_date)` |\n| `campaign.campaign_type_key`, `color`, `published_date` | thông tin chung |\n| `campaign.max_reward`, `max_customer`, `repeat_allow`, `repeat_limit` | giới hạn tham gia / quà |\n| `campaign.total_consumer`, `total_point_issued`, `total_redeemed` | số liệu tổng (có thể null) |\n| `campaign.cancel_uid`, `cancel_date` | khi đã hủy |\n| `campaign.end_early_uid`, `end_early_date` | khi đã kết thúc sớm (`update-end-early`) |\n| `campaign_config` | cấu hình kèm theo (có thể null) |\n\n> `tenant_id = 0` thì API bỏ qua bước so tenant."
     },
     "POST /api/v1/reward/web/campaign/list-pageindex": {
       "request_example": {
@@ -1480,7 +1479,7 @@
         "recurrence_key": "campaign",
         "limit_per_period": 1,
         "limit_total": 1000,
-        "recipient": "performer",
+        "recipient_key": "campaign.mission.version.recipient.performer",
         "approved_key": "auto",
         "mission_type_config": {},
         "audience": {},
@@ -1505,7 +1504,7 @@
         ],
         "campaign_mission_outcome_delete_list": []
       },
-      "ui": "Dùng cho **Thiết lập / Create mission** và màn sửa mission. `id = 0` tạo mới, `id > 0` cập nhật (`campaign_id` vẫn bắt buộc).\n\n- Phần thưởng gửi trong `campaign_mission_outcome_list`: `id = 0` thêm mới, `id > 0` sửa. Phần thưởng bị bỏ trên form → đưa `id` vào `campaign_mission_outcome_delete_list`.\n- `kind_key`: `campaign.mission.outcome.kind.points` (dùng `points`) · `campaign.mission.outcome.kind.item` (dùng `reward_item_id` + `quantity`, chọn từ `reward-item/list-mission`).\n- `recipient_role_key`: `...recipient.role.performer` / `...recipient.role.inviter`.\n- `mission_type_id` + `trigger_event` + `conditions` lấy theo cấu hình của `mission-type/list`.\n- `is_new_version = true` → tạo version mới (giữ lịch sử), `false` → ghi đè version hiện tại.\n- Lưu cả mission và phần thưởng trong 1 transaction; 1 bước lỗi → không lưu gì.\n\n> Khi cập nhật, fn chỉ tìm theo `id`, không kiểm tra mission thuộc tenant của request. Xóa phần thưởng (`campaign_mission_outcome_delete_list`) cũng chỉ theo `id`."
+      "ui": "Dùng cho **Thiết lập / Create mission** và màn sửa mission. `id = 0` tạo mới, `id > 0` cập nhật (`campaign_id` vẫn bắt buộc).\n\n- Phần thưởng gửi trong `campaign_mission_outcome_list`: `id = 0` thêm mới, `id > 0` sửa. Phần thưởng bị bỏ trên form → đưa `id` vào `campaign_mission_outcome_delete_list`.\n- `kind_key`: `campaign.mission.outcome.kind.points` (dùng `points`) · `campaign.mission.outcome.kind.item` (dùng `reward_item_id` + `quantity`, chọn từ `reward-item/list-mission`).\n- `recipient_role_key`: `...recipient.role.performer` / `...recipient.role.inviter`.\n- `mission_type_id` + `trigger_event` + `conditions` lấy theo cấu hình của `mission-type/list`.\n- `recipient_key` (đổi tên từ `recipient`): `campaign.mission.version.recipient.performer` / `...inviter` / `...both`. Nên luôn gửi key đầy đủ — bỏ trống thì fn lưu `performer` (key ngắn, không khớp module_config).\n- `is_new_version = true` → tạo version mới (giữ lịch sử), `false` → ghi đè version hiện tại.\n- Lưu cả mission và phần thưởng trong 1 transaction; 1 bước lỗi → không lưu gì.\n\n> Khi cập nhật, fn chỉ tìm theo `id`, không kiểm tra mission thuộc tenant của request. Xóa phần thưởng (`campaign_mission_outcome_delete_list`) cũng chỉ theo `id`."
     },
     "POST /api/v1/reward/web/campaign-mission/delete": {
       "badges": [
@@ -1558,6 +1557,17 @@
         "new"
       ],
       "ui": "Dropdown chọn quà cho phần thưởng nhiệm vụ (`kind_key = ...kind.item`). Lọc theo `campaign_id` của reward item; không truyền `campaign_id` → mọi quà của tenant. `left` = số còn lại có thể phát."
+    },
+    "POST /api/v1/reward/web/campaign/update-end-early": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 32
+      },
+      "ui": "Nút **End early** của campaign. Ghi `end_early_date = now()` và `end_early_uid`; trạng thái campaign tính lại theo `coalesce(end_early_date, end_date)` → thành `ended`.\n\n> fn chỉ nhận `id`: không kiểm tra campaign thuộc tenant của request, cũng không chặn theo trạng thái (draft / cancelled / đã ended vẫn gọi được; gọi lại sẽ ghi đè `end_early_date`). FE nên chỉ hiện nút khi campaign đang `ongoing`."
     }
   }
 }

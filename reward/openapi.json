@@ -1873,7 +1873,7 @@
           "Mission"
         ],
         "summary": "Tạo hoặc cập nhật nhiệm vụ (kèm phần thưởng) trong 1 transaction",
-        "description": "`id` null hoặc <= 0 → tạo mới nhiệm vụ + version 1; `id > 0` → cập nhật nhiệm vụ.\r\n`is_new_version = true` → tạo version mới; `false` → ghi đè version hiện tại.\r\n            \r\nTrong cùng một transaction (rollback toàn bộ nếu 1 bước lỗi), API thực hiện:\r\n1. `fn_campaign_mission_web_create`\r\n2. `fn_campaign_mission_outcome_web_delete` cho từng id trong `campaign_mission_outcome_delete_list`\r\n3. `fn_campaign_mission_outcome_web_create` cho từng item trong `campaign_mission_outcome_list`\r\n(`mission_version_id` của outcome do server gán bằng `current_version_id` của nhiệm vụ sau khi lưu).\r\n            \r\nThành công trả `id` (record_id) của nhiệm vụ.\n\n### Map lên màn hình\n\nDùng cho **Thiết lập / Create mission** và màn sửa mission. `id = 0` tạo mới, `id > 0` cập nhật (`campaign_id` vẫn bắt buộc).\n\n- Phần thưởng gửi trong `campaign_mission_outcome_list`: `id = 0` thêm mới, `id > 0` sửa. Phần thưởng bị bỏ trên form → đưa `id` vào `campaign_mission_outcome_delete_list`.\n- `kind_key`: `campaign.mission.outcome.kind.points` (dùng `points`) · `campaign.mission.outcome.kind.item` (dùng `reward_item_id` + `quantity`, chọn từ `reward-item/list-mission`).\n- `recipient_role_key`: `...recipient.role.performer` / `...recipient.role.inviter`.\n- `mission_type_id` + `trigger_event` + `conditions` lấy theo cấu hình của `mission-type/list`.\n- `is_new_version = true` → tạo version mới (giữ lịch sử), `false` → ghi đè version hiện tại.\n- Lưu cả mission và phần thưởng trong 1 transaction; 1 bước lỗi → không lưu gì.\n\n> Khi cập nhật, fn chỉ tìm theo `id`, không kiểm tra mission thuộc tenant của request. Xóa phần thưởng (`campaign_mission_outcome_delete_list`) cũng chỉ theo `id`.",
+        "description": "`id` null hoặc <= 0 → tạo mới nhiệm vụ + version 1; `id > 0` → cập nhật nhiệm vụ.\r\n`is_new_version = true` → tạo version mới; `false` → ghi đè version hiện tại.\r\n            \r\nTrong cùng một transaction (rollback toàn bộ nếu 1 bước lỗi), API thực hiện:\r\n1. `fn_campaign_mission_web_create`\r\n2. `fn_campaign_mission_outcome_web_delete` cho từng id trong `campaign_mission_outcome_delete_list`\r\n3. `fn_campaign_mission_outcome_web_create` cho từng item trong `campaign_mission_outcome_list`\r\n(`mission_version_id` của outcome do server gán bằng `current_version_id` của nhiệm vụ sau khi lưu).\r\n            \r\nThành công trả `id` (record_id) của nhiệm vụ.\n\n### Map lên màn hình\n\nDùng cho **Thiết lập / Create mission** và màn sửa mission. `id = 0` tạo mới, `id > 0` cập nhật (`campaign_id` vẫn bắt buộc).\n\n- Phần thưởng gửi trong `campaign_mission_outcome_list`: `id = 0` thêm mới, `id > 0` sửa. Phần thưởng bị bỏ trên form → đưa `id` vào `campaign_mission_outcome_delete_list`.\n- `kind_key`: `campaign.mission.outcome.kind.points` (dùng `points`) · `campaign.mission.outcome.kind.item` (dùng `reward_item_id` + `quantity`, chọn từ `reward-item/list-mission`).\n- `recipient_role_key`: `...recipient.role.performer` / `...recipient.role.inviter`.\n- `mission_type_id` + `trigger_event` + `conditions` lấy theo cấu hình của `mission-type/list`.\n- `recipient_key` (đổi tên từ `recipient`): `campaign.mission.version.recipient.performer` / `...inviter` / `...both`. Nên luôn gửi key đầy đủ — bỏ trống thì fn lưu `performer` (key ngắn, không khớp module_config).\n- `is_new_version = true` → tạo version mới (giữ lịch sử), `false` → ghi đè version hiện tại.\n- Lưu cả mission và phần thưởng trong 1 transaction; 1 bước lỗi → không lưu gì.\n\n> Khi cập nhật, fn chỉ tìm theo `id`, không kiểm tra mission thuộc tenant của request. Xóa phần thưởng (`campaign_mission_outcome_delete_list`) cũng chỉ theo `id`.",
         "operationId": "post_api_v1_reward_web_campaign_mission_create",
         "x-badges": [
           {
@@ -1916,7 +1916,7 @@
                 "recurrence_key": "campaign",
                 "limit_per_period": 1,
                 "limit_total": 1000,
-                "recipient": "performer",
+                "recipient_key": "campaign.mission.version.recipient.performer",
                 "approved_key": "auto",
                 "mission_type_config": {},
                 "audience": {},
@@ -2306,6 +2306,55 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign/update-end-early": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Kết thúc sớm campaign",
+        "description": "Ghi nhận thời điểm kết thúc sớm (`end_early_date`) và user thực hiện (`end_early_uid`).\r\nTrạng thái campaign được tính động theo `coalesce(end_early_date, end_date)`.\n\n### Map lên màn hình\n\nNút **End early** của campaign. Ghi `end_early_date = now()` và `end_early_uid`; trạng thái campaign tính lại theo `coalesce(end_early_date, end_date)` → thành `ended`.\n\n> fn chỉ nhận `id`: không kiểm tra campaign thuộc tenant của request, cũng không chặn theo trạng thái (draft / cancelled / đã ended vẫn gọi được; gọi lại sẽ ghi đè `end_early_date`). FE nên chỉ hiện nút khi campaign đang `ongoing`.",
+        "operationId": "post_api_v1_reward_web_campaign_update_end_early",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebUpdateEndEarlyRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "id": 32
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign/delete": {
       "post": {
         "tags": [
@@ -2357,13 +2406,9 @@
           "Campaign"
         ],
         "summary": "Chi tiết campaign",
-        "description": "Thông tin campaign theo `id` cho màn chỉnh sửa / overview.\n\n### Map lên màn hình\n\n> ⚠️ **`campaign.participation_methods` đang luôn trả `[]` trên dev** dù đã lưu: function join `module_config` với `parent_key = 'campaign.participation.method.key'` (thừa `.key`; dữ liệu thật là `campaign.participation.method`). Đã báo team DB; sửa xong dữ liệu cũ hiện lại, FE không cần đổi gì.\n\n| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, color, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled / ended giữ nguyên; còn lại upcoming · ongoing · ended theo ngày |\n| `campaign_config` | cấu hình kèm theo (có thể null) |",
+        "description": "Thông tin campaign theo `id` cho màn chỉnh sửa / overview.\n\n### Map lên màn hình\n\n| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled giữ nguyên; còn lại upcoming · ongoing · ended theo `start_date` và `coalesce(end_early_date, end_date)` |\n| `campaign.campaign_type_key`, `color`, `published_date` | thông tin chung |\n| `campaign.max_reward`, `max_customer`, `repeat_allow`, `repeat_limit` | giới hạn tham gia / quà |\n| `campaign.total_consumer`, `total_point_issued`, `total_redeemed` | số liệu tổng (có thể null) |\n| `campaign.cancel_uid`, `cancel_date` | khi đã hủy |\n| `campaign.end_early_uid`, `end_early_date` | khi đã kết thúc sớm (`update-end-early`) |\n| `campaign_config` | cấu hình kèm theo (có thể null) |\n\n> `tenant_id = 0` thì API bỏ qua bước so tenant.",
         "operationId": "get_api_v1_reward_web_campaign_get_by_id",
         "x-badges": [
-          {
-            "name": "Có nhánh đang lỗi",
-            "color": "#B54708"
-          },
           {
             "name": "Chưa lọc tenant",
             "color": "#B42318"
@@ -8349,9 +8394,9 @@
             "format": "int32",
             "nullable": true
           },
-          "recipient": {
+          "recipient_key": {
             "type": "string",
-            "description": "Key đối tượng nhận thưởng (campaign.mission.version.recipient.*), mặc định `performer`",
+            "description": "Key đối tượng nhận thưởng (campaign.mission.version.recipient.*), bỏ trống thì function tự áp dụng giá trị mặc định (`performer`)",
             "nullable": true
           },
           "approved_key": {
@@ -8793,6 +8838,11 @@
             "description": "Mô tả campaign",
             "nullable": true
           },
+          "campaign_type_key": {
+            "type": "string",
+            "description": "Loại campaign (key trong module_config campaign.type.*)",
+            "nullable": true
+          },
           "server_files": {
             "type": "string",
             "description": "Domain file server của ảnh",
@@ -8818,6 +8868,11 @@
             "description": "Tên file logo",
             "nullable": true
           },
+          "color": {
+            "type": "string",
+            "description": "Màu sắc hiển thị của campaign",
+            "nullable": true
+          },
           "start_date": {
             "type": "string",
             "description": "Thời điểm bắt đầu",
@@ -8835,18 +8890,59 @@
             "description": "Trạng thái tính theo thời điểm hiện tại: draft/cancelled/ended giữ nguyên, còn lại = upcoming | ongoing | ended theo start_date/end_date",
             "nullable": true
           },
-          "status_name": {
+          "published_date": {
             "type": "string",
-            "description": "Tên trạng thái",
+            "description": "Thời điểm publish",
+            "format": "date-time",
             "nullable": true
           },
-          "status_color": {
-            "type": "string",
-            "description": "Màu trạng thái",
+          "max_reward": {
+            "type": "integer",
+            "description": "Số phần quà tối đa",
+            "format": "int32",
+            "nullable": true
+          },
+          "max_customer": {
+            "type": "integer",
+            "description": "Số khách hàng tối đa",
+            "format": "int32",
+            "nullable": true
+          },
+          "repeat_allow": {
+            "type": "boolean",
+            "description": "Cho phép tham gia lặp lại",
+            "nullable": true
+          },
+          "repeat_limit": {
+            "type": "integer",
+            "description": "Số lần tham gia tối đa",
+            "format": "int32",
             "nullable": true
           },
           "config_json": {
             "description": "Cấu hình tự do của campaign (JSON)",
+            "nullable": true
+          },
+          "total_consumer": {
+            "type": "integer",
+            "description": "Tổng số người tham gia",
+            "format": "int64",
+            "nullable": true
+          },
+          "total_point_issued": {
+            "type": "integer",
+            "description": "Tổng điểm đã phát",
+            "format": "int64",
+            "nullable": true
+          },
+          "total_redeemed": {
+            "type": "integer",
+            "description": "Tổng số quà đã đổi",
+            "format": "int64",
+            "nullable": true
+          },
+          "tags": {
+            "description": "Tag đã gắn: [{ id, name }]",
             "nullable": true
           },
           "redemption_window": {
@@ -8870,12 +8966,42 @@
             "description": "Hiển thị trên Zalo Mini App",
             "nullable": true
           },
-          "tags": {
-            "description": "Tag đã gắn: [{ id, name }]",
+          "participation_methods": {
+            "description": "Hình thức tham gia: [{ key, name, sequence }] (đã ghép tên từ module_config)",
             "nullable": true
           },
-          "participation_methods": {
-            "description": "Hình thức tham gia: [{ key, name, color, sequence }] (đã ghép tên từ module_config)",
+          "cancel_uid": {
+            "type": "integer",
+            "description": "User hủy campaign",
+            "format": "int64",
+            "nullable": true
+          },
+          "cancel_date": {
+            "type": "string",
+            "description": "Thời điểm hủy campaign",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_early_uid": {
+            "type": "integer",
+            "description": "User kết thúc sớm campaign",
+            "format": "int64",
+            "nullable": true
+          },
+          "end_early_date": {
+            "type": "string",
+            "description": "Thời điểm kết thúc sớm campaign",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái",
             "nullable": true
           }
         },
@@ -9094,6 +9220,27 @@
           "active": {
             "type": "boolean",
             "description": "true = bật, false = tắt"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebUpdateEndEarlyRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id campaign cần kết thúc sớm",
+            "format": "int64"
           }
         },
         "additionalProperties": false
