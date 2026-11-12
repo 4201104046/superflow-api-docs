@@ -2130,6 +2130,80 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign-mission/update-sequence": {
+      "post": {
+        "tags": [
+          "Mission"
+        ],
+        "summary": "Sắp xếp thứ tự nhiệm vụ (kéo thả)",
+        "description": "Màn Thiết lập / Danh sách mission: sau khi kéo thả, gửi danh sách nhiệm vụ theo thứ tự mới.\r\n`sequence` bỏ trống → lấy theo vị trí trong `items` (phần tử đầu = 1). Có thể gửi cả danh sách hoặc chỉ các dòng đổi chỗ.\r\nMọi id phải thuộc `campaign_id` của tenant hiện tại (sai → lỗi, không cập nhật dòng nào).\r\nCập nhật trong 1 transaction: 1 dòng lỗi → rollback toàn bộ. Thành công trả `id` = campaign_id.\r\nDanh sách `list` mặc định sắp theo `sequence ASC`.\n\n### Map lên màn hình\n\nMàn **Thiết lập / Danh sách mission**: kéo thả để đổi thứ tự.\n\nSau khi thả, gửi **toàn bộ** danh sách nhiệm vụ theo thứ tự mới trong `items` (không cần `sequence`, API tự gán 1, 2, 3… theo vị trí). Muốn tự đặt số thì gửi kèm `sequence` cho từng phần tử.\n\n- Mọi `id` phải thuộc `campaign_id` của tenant hiện tại, sai 1 id → lỗi, không dòng nào bị đổi.\n- Cập nhật trong 1 transaction: 1 dòng lỗi → rollback toàn bộ.\n- Thành công: `id` = campaign_id. Gọi lại `campaign-mission/list` (mặc định sắp `sequence ASC`) hoặc giữ thứ tự đang hiển thị.\n\n> Nên gửi cả danh sách thay vì chỉ 2 dòng đổi chỗ: dữ liệu cũ có thể đang trùng `sequence`.",
+        "operationId": "post_api_v1_reward_web_campaign_mission_update_sequence",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignMissionWebUpdateSequenceRequestDTO"
+              },
+              "example": {
+                "campaign_id": 32,
+                "items": [
+                  {
+                    "id": 10
+                  },
+                  {
+                    "id": 9
+                  },
+                  {
+                    "id": 32
+                  },
+                  {
+                    "id": 30
+                  },
+                  {
+                    "id": 14
+                  },
+                  {
+                    "id": 11
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "type": "update",
+                    "id": 32,
+                    "result": 1,
+                    "message": "Cập nhật thứ tự thành công"
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign-mission/duplicate": {
       "post": {
         "tags": [
@@ -8888,6 +8962,53 @@
           "active": {
             "type": "boolean",
             "description": "true → `campaign.mission.status.active`; false → `campaign.mission.status.inactive`"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionWebUpdateSequenceItemRequestDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id nhiệm vụ",
+            "format": "int64"
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Thứ tự mới (>= 0). Bỏ trống → lấy theo vị trí trong `items` (phần tử đầu = 1).",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionWebUpdateSequenceRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Id campaign chứa các nhiệm vụ (bắt buộc, > 0). Mọi id trong `items` phải thuộc campaign này.",
+            "format": "int64",
+            "example": null
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignMissionWebUpdateSequenceItemRequestDTO"
+            },
+            "description": "Danh sách nhiệm vụ theo thứ tự mới sau khi kéo thả (không rỗng, id không trùng)",
+            "nullable": true
           }
         },
         "additionalProperties": false
