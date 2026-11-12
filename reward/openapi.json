@@ -2355,6 +2355,62 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign/close-redemption-window": {
+      "post": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Đóng thời gian đổi thưởng của campaign",
+        "description": "Đặt `redemption_window_open = false` cho campaign theo `id`: người tham gia không đổi quà được nữa.\r\nCampaign không tồn tại, đã xóa hoặc thuộc tenant khác → lỗi.\n\n### Map lên màn hình\n\nNút **Close redemption window** (sau khi campaign kết thúc). Đặt `redemption_window_open = false` → người tham gia không đổi quà được nữa; xem lại trạng thái qua `campaign/get-by-id` (`redemption_window_open`).\n\nAPI kiểm tra campaign thuộc `tenant_id` của request trước khi cập nhật. fn không chặn theo trạng thái campaign (đóng lúc đang ongoing vẫn được) → FE chỉ nên hiện nút khi `redemption_window_open = true`.",
+        "operationId": "post_api_v1_reward_web_campaign_close_redemption_window",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignWebCloseRedemptionWindowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "id": 32
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateActionResultDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "result": 1,
+                    "status": "success",
+                    "message": "Đóng thời gian đổi thưởng thành công",
+                    "action": "close_redemption_window",
+                    "record_id": 32
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign/delete": {
       "post": {
         "tags": [
@@ -8637,6 +8693,27 @@
           "active": {
             "type": "boolean",
             "description": "true → `campaign.mission.status.active`; false → `campaign.mission.status.inactive`"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebCloseRedemptionWindowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "id campaign cần đóng thời gian đổi thưởng",
+            "format": "int64"
           }
         },
         "additionalProperties": false

@@ -6,7 +6,7 @@
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
       "^/api/v1/reward/web/campaign-leaderboard/list-score-nopaging$",
-      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
+      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
       "^/api/v1/reward/web/campaign-consumer/(list|list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
@@ -1568,6 +1568,23 @@
         "id": 32
       },
       "ui": "Nút **End early** của campaign. Ghi `end_early_date = now()` và `end_early_uid`; trạng thái campaign tính lại theo `coalesce(end_early_date, end_date)` → thành `ended`.\n\n> fn chỉ nhận `id`: không kiểm tra campaign thuộc tenant của request, cũng không chặn theo trạng thái (draft / cancelled / đã ended vẫn gọi được; gọi lại sẽ ghi đè `end_early_date`). FE nên chỉ hiện nút khi campaign đang `ongoing`."
+    },
+    "POST /api/v1/reward/web/campaign/close-redemption-window": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 32
+      },
+      "result_example": {
+        "result": 1,
+        "status": "success",
+        "message": "Đóng thời gian đổi thưởng thành công",
+        "action": "close_redemption_window",
+        "record_id": 32
+      },
+      "ui": "Nút **Close redemption window** (sau khi campaign kết thúc). Đặt `redemption_window_open = false` → người tham gia không đổi quà được nữa; xem lại trạng thái qua `campaign/get-by-id` (`redemption_window_open`).\n\nAPI kiểm tra campaign thuộc `tenant_id` của request trước khi cập nhật. fn không chặn theo trạng thái campaign (đóng lúc đang ongoing vẫn được) → FE chỉ nên hiện nút khi `redemption_window_open = true`."
     }
   }
 }
