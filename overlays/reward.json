@@ -525,7 +525,7 @@
         "pageindex": 1,
         "pagesize": 20,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "list_tag_id": null,
         "list_campaign_type_key": [],
         "from_date": null,
@@ -533,17 +533,35 @@
         "sortby": "create_date",
         "sortdir": "DESC"
       },
-      "ui": "| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |"
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
+      "badges": [
+        "changed"
+      ]
     },
     "POST /api/v1/reward/web/campaign/list-totalrow": {
       "request_example": {
         "tenant_id": 1,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "list_tag_id": null,
         "list_campaign_type_key": [],
         "from_date": null,
         "to_date": null
+      },
+      "badges": [
+        "changed"
+      ],
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n> 🔄 **Response đổi dạng**: trước là `result.totalrow.total`, giờ là **`result.total`** + `result.status_summary` (bỏ lớp `totalrow`). `total` đổi kiểu `int` → `long`.\n\n| Tab | Lấy số từ | Bấm tab → gửi `status_key` |\n|---|---|---|\n| All | `status_summary[\"campaign.metric.total\"]` | `null` |\n| Draft / Upcoming / Ongoing / Ended / Cancelled | `status_summary[\"campaign.status.<tên>\"]` | `\"campaign.status.<tên>\"` |",
+      "result_example": {
+        "total": 12,
+        "status_summary": {
+          "campaign.metric.total": 12,
+          "campaign.status.draft": 2,
+          "campaign.status.upcoming": 1,
+          "campaign.status.ongoing": 6,
+          "campaign.status.ended": 2,
+          "campaign.status.cancelled": 1
+        }
       }
     },
     "POST /api/v1/reward/web/campaign/export-excel-list": {
@@ -557,18 +575,20 @@
         "sortby": "create_date",
         "sortdir": "DESC"
       },
-      "ui": "> Trả file `.xlsx`. ⚠️ `list_tag_id` hiện **không có tác dụng** khi xuất (SQL không dùng)."
+      "ui": "> Trả file `.xlsx`. ⚠️ `list_tag_id` hiện **không có tác dụng** khi xuất (SQL không dùng).\n\n> ⚠️ Xuất Excel **vẫn dùng `list_status_key` (mảng)** vì fn export trên DB chưa đổi. Đang lọc tab nào ở danh sách (`status_key`) thì gửi `list_status_key = [status_key]`; tab All gửi `null`."
     },
     "POST /api/v1/reward/web/campaign-consumer/list-pageindex": {
-      "badges": [],
-      "ui": "Bộ cột mặc định (`columns = null`): `id`, `tenant_id`, `campaign_id`, `consumer_id`, `zalo_avatar`, `name`, `full_name` (`{id, name, image}`), `phone`, `email`, `province_name`, `ward_name`, `total_balance`, `total_earned`, `total_mission`, `total_reward`, `mission` (`{total, completed}`), `status_key`, `status_name`, `status_color`, `status`, `approved_key`, `approved_name`, `approved_color`, `approved`, `active`, `created_date`.\n\nCột và bộ lọc nâng cao lấy từ `ui-list-field/list` (`list_key = ui.list.participant`).",
+      "badges": [
+        "changed"
+      ],
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\nBộ cột mặc định (`columns = null`): `id`, `tenant_id`, `campaign_id`, `consumer_id`, `zalo_avatar`, `name`, `full_name` (`{id, name, image}`), `phone`, `email`, `province_name`, `ward_name`, `address`, `job_title`, `workplace`, `birthday`, `gender_key`, `total_balance`, `total_held`, `total_earned`, `total_redeemed`, `last_earned_date`, `total_mission`, `total_completed_mission`, `total_reward`, `status_key`, `status_name`, `status_color`, `status`, `approved_key`, `approved_name`, `approved_color`, `approved`, `mission` (`{total, completed}`), `active`, `created_date`.\n\nCột và bộ lọc nâng cao lấy từ `ui-list-field/list` (`list_key = ui.list.participant`).",
       "request_example": {
         "tenant_id": 71268,
         "campaign_id": 32,
         "pageindex": 1,
         "pagesize": 20,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "filter_definition": null,
         "columns": [
           {
@@ -595,17 +615,20 @@
       }
     },
     "POST /api/v1/reward/web/campaign-consumer/list-totalrow": {
-      "badges": [],
+      "badges": [
+        "changed"
+      ],
       "request_example": {
         "tenant_id": 1,
         "campaign_id": 2,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "filter_definition": null,
         "columns": null,
         "from_date": null,
         "to_date": null
-      }
+      },
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc)."
     },
     "POST /api/v1/reward/web/campaign-consumer/export-excel-list": {
       "badges": [
@@ -631,7 +654,8 @@
         ],
         "from_date": null,
         "to_date": null
-      }
+      },
+      "ui": "> ⚠️ Xuất Excel **vẫn dùng `list_status_key` (mảng)** vì fn export trên DB chưa đổi. Đang lọc tab nào ở danh sách (`status_key`) thì gửi `list_status_key = [status_key]`; tab All gửi `null`."
     },
     "GET /api/v1/reward/web/campaign-consumer/get-by-id": {
       "badges": [
@@ -992,13 +1016,14 @@
     "POST /api/v1/reward/web/campaign-consumer-point-ledger/list-totalrow": {
       "operationId": "campaignConsumerPointLedgerListTotalrow",
       "badges": [
-        "new"
+        "new",
+        "changed"
       ],
       "request_example": {
         "tenant_id": 91265,
         "campaign_id": 1,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "filter_definition": null,
         "columns": null,
         "from_date": null,
@@ -1016,12 +1041,13 @@
           "campaign.consumer.point.ledger.metric.total": 3
         }
       },
-      "ui": "| Tab | `status_summary` key |\n|---|---|\n| All | `...metric.total` |\n| Earn / Redeem / Refund / Adjust / Revoke / Expire | `campaign.consumer.point.ledger.status.<tên>` |"
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Tab | `status_summary` key |\n|---|---|\n| All | `...metric.total` |\n| Earn / Redeem / Refund / Adjust / Revoke / Expire | `campaign.consumer.point.ledger.status.<tên>` |"
     },
     "POST /api/v1/reward/web/campaign-consumer-point-ledger/list-pageindex": {
       "operationId": "campaignConsumerPointLedgerListPageindex",
       "badges": [
-        "new"
+        "new",
+        "changed"
       ],
       "request_example": {
         "tenant_id": 71268,
@@ -1029,7 +1055,7 @@
         "pagesize": 20,
         "campaign_id": 32,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "sortby": "create_date",
         "sortdir": "DESC",
         "columns": null,
@@ -1081,7 +1107,7 @@
           "create_name": "Nguyễn Văn A"
         }
       ],
-      "ui": "| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `source_code` | `source_code` | Mở drawer bằng `id` |\n| Time | `create_date` | `create_date` | |\n| Participant | `consumer` (`{name, phone}`) | `consumer_name` | |\n| Type / Status | `status` (`{name, color}`) | `status_name` | Earn / Redeem / Refund / Adjust / Revoke / Expire |\n| Source | `source` (`source_type_name`, `source_name`, `source_code`) | `source_type_name` | Hết hạn → `source_name = \"System expiry\"` |\n| Description | `name` | `name` | |\n| Points (±) | `delta` | `delta` | Có dấu: âm = trừ |\n| Balance after | `after_balance` | `after_balance` | |\n| By | `create_name` (rỗng → `create_by_name`) | — | Tên user tạo giao dịch, lấy từ core theo `create_uid` |\n\n> Cột thêm khi gửi `columns`: `consumer_email`, `consumer_zalo_avatar`, `source_type_key`, `source_type_color`, `source_id`, `description`, `notes`, `metadata_json`, `create_by_key`, `status_key`, `status_name`, `status_color`, `write_date`…\n\n**Người tạo (`create_name`)**: API tự điền cho dòng có cột `create` (hoặc `create_uid` + `create_by_key`); có ở cả key phẳng `create_name` và `create.create_name`.\n`create_by_key = ...create.by.system` → `create_name = null` (giao dịch do hệ thống tạo); `admin` / `adjust` → tên user core. Không lấy được tên từ core → `null`.\n\n`columns = null` dùng bộ mặc định (đã có `create`).\n\n**Cột `create_name` trong `columns`**: gửi `{ \"column_name\": \"create_name\", \"column_data_type\": \"character varying\" }` như cột thường. DB reward không có cột này (chỉ có `create_uid`), API tự lấy `create_uid` + `create_by_key` rồi tra tên user ở core; 2 cột phụ đó không xuất hiện trong kết quả nếu FE không xin. `create_name` không dùng được cho `sortby` hay `filter_definition`."
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Transaction | `source_code` | `source_code` | Mở drawer bằng `id` |\n| Time | `create_date` | `create_date` | |\n| Participant | `consumer` (`{name, phone}`) | `consumer_name` | |\n| Type / Status | `status` (`{name, color}`) | `status_name` | Earn / Redeem / Refund / Adjust / Revoke / Expire |\n| Source | `source` (`source_type_name`, `source_name`, `source_code`) | `source_type_name` | Hết hạn → `source_name = \"System expiry\"` |\n| Description | `name` | `name` | |\n| Points (±) | `delta` | `delta` | Có dấu: âm = trừ |\n| Balance after | `after_balance` | `after_balance` | |\n| By | `create_name` (rỗng → `create_by_name`) | — | Tên user tạo giao dịch, lấy từ core theo `create_uid` |\n\n> Cột thêm khi gửi `columns`: `consumer_email`, `consumer_zalo_avatar`, `source_type_key`, `source_type_color`, `source_id`, `description`, `notes`, `metadata_json`, `create_by_key`, `status_key`, `status_name`, `status_color`, `write_date`…\n\n**Người tạo (`create_name`)**: API tự điền cho dòng có cột `create` (hoặc `create_uid` + `create_by_key`); có ở cả key phẳng `create_name` và `create.create_name`.\n`create_by_key = ...create.by.system` → `create_name = null` (giao dịch do hệ thống tạo); `admin` / `adjust` → tên user core. Không lấy được tên từ core → `null`.\n\n`columns = null` dùng bộ mặc định (đã có `create`).\n\n**Cột `create_name` trong `columns`**: gửi `{ \"column_name\": \"create_name\", \"column_data_type\": \"character varying\" }` như cột thường. DB reward không có cột này (chỉ có `create_uid`), API tự lấy `create_uid` + `create_by_key` rồi tra tên user ở core; 2 cột phụ đó không xuất hiện trong kết quả nếu FE không xin. `create_name` không dùng được cho `sortby` hay `filter_definition`."
     },
     "GET /api/v1/reward/web/campaign-consumer-point-ledger/get-by-id": {
       "operationId": "campaignConsumerPointLedgerGetById",
@@ -1160,15 +1186,15 @@
     "POST /api/v1/reward/web/campaign-consumer-redemption/list-totalrow": {
       "operationId": "campaignConsumerRedemptionListTotalrow",
       "badges": [
-        "new"
+        "new",
+        "changed"
       ],
       "request_example": {
         "tenant_id": 1,
         "campaign_id": 1,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "filter_definition": null,
-        "columns": null,
         "from_date": null,
         "to_date": null
       },
@@ -1182,12 +1208,13 @@
           "campaign.consumer.redemption.status.delivered": 2
         }
       },
-      "ui": "| Tab | `status_summary` key |\n|---|---|\n| All | `...metric.total` |\n| Pending / Approved / Rejected / Delivered | `campaign.consumer.redemption.status.<tên>` |\n\n> `columns` gửi lên không có tác dụng."
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Tab | `status_summary` key | Bấm tab → gửi `status_key` |\n|---|---|---|\n| All | `...metric.total` | `null` |\n| Pending / Approved / Rejected / Delivered | `campaign.consumer.redemption.status.<tên>` | `\"campaign.consumer.redemption.status.<tên>\"` |\n\n> Đã bỏ field `columns` khỏi request (trước đây không có tác dụng)."
     },
     "POST /api/v1/reward/web/campaign-consumer-redemption/list-pageindex": {
       "operationId": "campaignConsumerRedemptionListPageindex",
       "badges": [
-        "new"
+        "new",
+        "changed"
       ],
       "request_example": {
         "tenant_id": 1,
@@ -1195,9 +1222,7 @@
         "pagesize": 20,
         "campaign_id": 1,
         "searchtext": "",
-        "list_status_key": [
-          "campaign.consumer.redemption.status.pending"
-        ],
+        "status_key": "campaign.consumer.redemption.status.pending",
         "sortby": "request_date",
         "sortdir": "DESC",
         "columns": null,
@@ -1219,11 +1244,6 @@
           "reward_name": null,
           "reward_type": null,
           "source": "Points",
-          "fulfillment": {
-            "name": null,
-            "color": null,
-            "control": "tag"
-          },
           "fulfillment_name": "",
           "total_point_used": 1000.0,
           "request_date": "2026-11-08T16:02:04",
@@ -1239,7 +1259,7 @@
           "created_date": "2026-11-08T16:02:04"
         }
       ],
-      "ui": "| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `consumer` (`{name, id}`) | `consumer_name` | |\n| Reward | `reward_name` | `reward_name` | |\n| Type | `reward_type` | `reward_type` | |\n| Source | `source` | `source_no` | `Points` hoặc `Mission: <tên>` |\n| Fulfilment | `fulfillment` (`{name, color}`), `fulfillment_name` | `fulfillment_name` | |\n| Points | `total_point_used` | `total_point_used` | |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | |\n\n> Cột thêm khi gửi `columns`: `tenant_id`, `campaign_id`, `campaign_consumer_id`, `province_name`, `reward_code`, `source_no`, `source_type_name`, `quantity`, `point_cost`, `approval_status`, `approval_status_name`, `fulfillment_status_name`, `shipping_*`, `note`, `cancel_reason`…"
+      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Cột UI | Field | `sortby` | Ghi chú |\n|---|---|---|---|\n| Redemption | `redemption_no` | `redemption_no` | Mở drawer bằng `id` |\n| Participant | `consumer` (`{name, id}`) | `consumer_name` | |\n| Reward | `reward_name` | `reward_name` | |\n| Type | `reward_type` | `reward_type` | |\n| Source | `source` | `source_no` | `Points` hoặc `Mission: <tên>` |\n| Fulfilment | `fulfillment` (`{name, color}`), `fulfillment_name` | `fulfillment_name` | |\n| Points | `total_point_used` | `total_point_used` | |\n| Requested | `request_date` | `request_date` | |\n| Status | `status` (`{name, color}`) | `status_name` | |\n\n> Cột thêm khi gửi `columns`: `tenant_id`, `campaign_id`, `campaign_consumer_id`, `province_name`, `reward_code`, `source_no`, `source_type_name`, `quantity`, `point_cost`, `approval_status`, `approval_status_name`, `fulfillment_status_name`, `shipping_*`, `note`, `cancel_reason`…\n\n> Bộ cột mặc định không còn `fulfillment` (object); dùng `fulfillment_name`. Muốn có object thì xin cột `fulfillment` trong `columns`."
     },
     "POST /api/v1/reward/web/campaign-consumer-redemption/update-status": {
       "operationId": "campaignConsumerRedemptionUpdateStatus",

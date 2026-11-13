@@ -179,6 +179,10 @@
     "partial-broken": {
       "name": "Có nhánh đang lỗi",
       "color": "#B54708"
+    },
+    "changed": {
+      "name": "Đổi tham số",
+      "color": "#6941C6"
     }
   },
   "schemas": {
