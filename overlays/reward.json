@@ -5,7 +5,7 @@
     "swagger_path": "/swagger/v1/swagger.json",
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
-      "^/api/v1/reward/web/campaign-leaderboard/list-score-nopaging$",
+      "^/api/v1/reward/web/campaign-leaderboard/(list-score-nopaging|get-by-campaign-id|list|freeze|unfreeze)$",
       "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
       "^/api/v1/reward/web/campaign-consumer/(list|list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
@@ -107,7 +107,7 @@
     {
       "name": "Leaderboard",
       "match": "/campaign-leaderboard/",
-      "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia."
+      "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia.\n\n**Luồng gọi:**\n1. `get-by-campaign-id?campaign_id=` → lấy `id` bảng xếp hạng + trạng thái (`published` / `frozen`).\n2. `list?id=` → danh sách theo hạng (`limit` = top N).\n3. Nút **Chốt** → `freeze`; nút **Nhả chốt** → `unfreeze`. Xong gọi lại bước 1–2.\n\n`list-score-nopaging` là API cũ đọc bảng điểm tổng hợp; màn mới dùng `list`."
     },
     {
       "name": "Module config",
@@ -1687,6 +1687,97 @@
         }
       ],
       "ui": "Dropdown / danh sách chọn **nhiệm vụ game** của campaign (vd gắn game cho mission, màn cấu hình game).\n\n- Chỉ trả nhiệm vụ có loại `GAME`, chưa xóa, mọi trạng thái (active / inactive / draft). FE tự lọc `status_key` nếu chỉ cần nhiệm vụ đang chạy.\n- Không phân trang, sắp `sequence`, `id` tăng dần.\n- `campaign_id` bỏ trống → nhiệm vụ game của mọi campaign trong tenant.\n\n> Trên dev, nhiệm vụ trạng thái `campaign.mission.status.draft` có `status_name` / `status_color` rỗng (thiếu cấu hình trong module_config). FE nên fallback hiển thị theo `status_key`."
+    },
+    "GET /api/v1/reward/web/campaign-leaderboard/get-by-campaign-id": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "campaign_id": 32
+      },
+      "result_example": {
+        "id": 7,
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "period_key": "C",
+        "rank_uid": "",
+        "status_key": "campaign.leaderboard.status.published",
+        "status_name": "published",
+        "status_color": null,
+        "frozen_date": null,
+        "published_uid": null,
+        "published_date": null
+      },
+      "ui": "Đầu màn Leaderboard: lấy `id` bảng để gọi `list` / `freeze` / `unfreeze`.\n\n| Hiển thị | Field |\n|---|---|\n| Badge trạng thái | `status_key` (`...published` = đang chạy, `...frozen` = đã chốt) |\n| Nút Chốt / Nhả chốt | `published` → hiện **Chốt**; `frozen` → hiện **Nhả chốt** |\n| Chốt lúc | `frozen_date` |\n\n> Campaign chưa có bảng xếp hạng → API trả lỗi \"Không tìm thấy bảng xếp hạng của chiến dịch.\"; FE hiện trạng thái trống.\n\n> Trên dev `status_name` đang là `\"published\"` và `status_color` null (cấu hình module_config chưa đủ) → FE nên tự map theo `status_key`."
+    },
+    "GET /api/v1/reward/web/campaign-leaderboard/list": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "id": 7,
+        "searchtext": "",
+        "limit": 10
+      },
+      "result_example": [
+        {
+          "rank": 1,
+          "campaign_consumer_id": 65,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "name": "Phương Anh",
+          "phone": "0858467429",
+          "zalo_avatar": null,
+          "job_title": null,
+          "workplace": null,
+          "province_id": null,
+          "province_name": "",
+          "score": 2334448398,
+          "score_reached_date": "2026-11-13T09:30:52.193039",
+          "status_key": "campaign.leaderboard.status.published",
+          "status_name": "published",
+          "status_color": "",
+          "source_key": "live",
+          "is_frozen": false
+        }
+      ],
+      "ui": "| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Hạng | `rank` | Bằng điểm thì ai đạt trước (`score_reached_date` sớm hơn) xếp trên |\n| Ảnh, tên, SĐT | `zalo_avatar`, `name`, `phone` | |\n| Chức danh / nơi làm việc | `job_title`, `workplace` | Có thể null |\n| Tỉnh/thành | `province_name` | `\"\"` khi chưa có |\n| Điểm | `score` | Tổng điểm đã nhận trong campaign |\n| Nhãn \"Đã chốt\" | `is_frozen` / `source_key = snapshot` | |\n\n- Không phân trang; `limit` lấy top N (bỏ trống = tất cả).\n- Search theo tên / SĐT lọc sau khi xếp hạng nên `rank` giữ nguyên.\n- Người bị loại khỏi bảng xếp hạng không có trong danh sách.\n- `id` sai hoặc thuộc tenant khác → `[]`."
+    },
+    "POST /api/v1/reward/web/campaign-leaderboard/freeze": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "id": 7
+      },
+      "result_example": {
+        "type": "update",
+        "id": 7,
+        "result": 1,
+        "message": "Chốt bảng xếp hạng thành công.",
+        "status_key": "campaign.leaderboard.status.frozen",
+        "period_key": "C",
+        "frozen_date": "2026-11-13T10:15:00+07:00"
+      },
+      "ui": "Nút **Chốt bảng xếp hạng** (nên hỏi xác nhận trước). Gửi `id` = id bảng từ `get-by-campaign-id`. Xong gọi lại `get-by-campaign-id` + `list`.\n\nLỗi trả về (`result` = 0, `message`):\n- \"Bảng xếp hạng này đã được chốt.\"\n- \"Chỉ chốt được bảng xếp hạng đã publish.\"\n- \"Hiện chỉ chốt được bảng xếp hạng cả campaign (period_key = C).\"\n- \"Chưa có dữ liệu điểm để chốt bảng xếp hạng.\"\n- \"Không tìm thấy bảng xếp hạng.\" (sai id / khác tenant)"
+    },
+    "POST /api/v1/reward/web/campaign-leaderboard/unfreeze": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "id": 7
+      },
+      "result_example": {
+        "type": "update",
+        "id": 7,
+        "result": 1,
+        "message": "Nhả chốt bảng xếp hạng thành công.",
+        "status_key": "campaign.leaderboard.status.published",
+        "period_key": null,
+        "frozen_date": null
+      },
+      "ui": "Nút **Nhả chốt**. Gửi `id` = id bảng từ `get-by-campaign-id`. Xong gọi lại `get-by-campaign-id` + `list`. Sau khi nhả, `list` quay lại xếp theo điểm trực tiếp.\n\nLỗi: \"Chỉ nhả chốt được bảng xếp hạng đang ở trạng thái đã chốt.\", \"Không tìm thấy bảng xếp hạng.\""
     }
   }
 }

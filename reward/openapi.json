@@ -83,7 +83,7 @@
     },
     {
       "name": "Leaderboard",
-      "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia."
+      "description": "Màn **Leaderboard** của campaign: bảng xếp hạng điểm người tham gia.\n\n**Luồng gọi:**\n1. `get-by-campaign-id?campaign_id=` → lấy `id` bảng xếp hạng + trạng thái (`published` / `frozen`).\n2. `list?id=` → danh sách theo hạng (`limit` = top N).\n3. Nút **Chốt** → `freeze`; nút **Nhả chốt** → `unfreeze`. Xong gọi lại bước 1–2.\n\n`list-score-nopaging` là API cũ đọc bảng điểm tổng hợp; màn mới dùng `list`."
     },
     {
       "name": "Module config",
@@ -1875,6 +1875,268 @@
                       "create_date": "2026-07-31T14:33:32"
                     }
                   ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-leaderboard/get-by-campaign-id": {
+      "get": {
+        "tags": [
+          "Leaderboard"
+        ],
+        "summary": "Thông tin bảng xếp hạng của campaign",
+        "description": "Lấy bảng xếp hạng kỳ cả campaign (`period_key = C`) của 1 campaign: `id` (dùng cho `list`, `freeze`, `unfreeze`),\r\ntrạng thái (`published` / `frozen`), `frozen_date`.\r\nCampaign chưa có bảng xếp hạng hoặc thuộc tenant khác → lỗi \"Không tìm thấy bảng xếp hạng của chiến dịch.\".\n\n### Map lên màn hình\n\nĐầu màn Leaderboard: lấy `id` bảng để gọi `list` / `freeze` / `unfreeze`.\n\n| Hiển thị | Field |\n|---|---|\n| Badge trạng thái | `status_key` (`...published` = đang chạy, `...frozen` = đã chốt) |\n| Nút Chốt / Nhả chốt | `published` → hiện **Chốt**; `frozen` → hiện **Nhả chốt** |\n| Chốt lúc | `frozen_date` |\n\n> Campaign chưa có bảng xếp hạng → API trả lỗi \"Không tìm thấy bảng xếp hạng của chiến dịch.\"; FE hiện trạng thái trống.\n\n> Trên dev `status_name` đang là `\"published\"` và `status_color` null (cấu hình module_config chưa đủ) → FE nên tự map theo `status_key`.",
+        "operationId": "get_api_v1_reward_web_campaign_leaderboard_get_by_campaign_id",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignLeaderboardWebDetailDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "id": 7,
+                    "tenant_id": 71268,
+                    "campaign_id": 32,
+                    "period_key": "C",
+                    "rank_uid": "",
+                    "status_key": "campaign.leaderboard.status.published",
+                    "status_name": "published",
+                    "status_color": null,
+                    "frozen_date": null,
+                    "published_uid": null,
+                    "published_date": null
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-leaderboard/list": {
+      "get": {
+        "tags": [
+          "Leaderboard"
+        ],
+        "summary": "Bảng xếp hạng (theo id bảng)",
+        "description": "Danh sách người tham gia theo hạng, không phân trang, sắp `rank` tăng dần. `id` lấy từ `get-by-campaign-id`.\r\nBảng chưa chốt → xếp trực tiếp theo tổng điểm đã nhận (`source_key = live`); đã chốt → đọc bản chốt (`snapshot`, `is_frozen = true`).\r\nNgười bị loại khỏi bảng xếp hạng không xuất hiện. `limit` lấy top N; search theo tên / SĐT không làm đổi hạng.\n\n### Map lên màn hình\n\n| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Hạng | `rank` | Bằng điểm thì ai đạt trước (`score_reached_date` sớm hơn) xếp trên |\n| Ảnh, tên, SĐT | `zalo_avatar`, `name`, `phone` | |\n| Chức danh / nơi làm việc | `job_title`, `workplace` | Có thể null |\n| Tỉnh/thành | `province_name` | `\"\"` khi chưa có |\n| Điểm | `score` | Tổng điểm đã nhận trong campaign |\n| Nhãn \"Đã chốt\" | `is_frozen` / `source_key = snapshot` | |\n\n- Không phân trang; `limit` lấy top N (bỏ trống = tất cả).\n- Search theo tên / SĐT lọc sau khi xếp hạng nên `rank` giữ nguyên.\n- Người bị loại khỏi bảng xếp hạng không có trong danh sách.\n- `id` sai hoặc thuộc tenant khác → `[]`.",
+        "operationId": "get_api_v1_reward_web_campaign_leaderboard_list",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Chỉ lấy top N; null hoặc <= 0 = lấy hết",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignLeaderboardWebListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "rank": 1,
+                      "campaign_consumer_id": 65,
+                      "tenant_id": 71268,
+                      "campaign_id": 32,
+                      "name": "Phương Anh",
+                      "phone": "0858467429",
+                      "zalo_avatar": null,
+                      "job_title": null,
+                      "workplace": null,
+                      "province_id": null,
+                      "province_name": "",
+                      "score": 2334448398,
+                      "score_reached_date": "2026-11-13T09:30:52.193039",
+                      "status_key": "campaign.leaderboard.status.published",
+                      "status_name": "published",
+                      "status_color": "",
+                      "source_key": "live",
+                      "is_frozen": false
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-leaderboard/freeze": {
+      "post": {
+        "tags": [
+          "Leaderboard"
+        ],
+        "summary": "Chốt bảng xếp hạng",
+        "description": "Chụp lại hạng và điểm hiện tại (snapshot), chuyển trạng thái sang `campaign.leaderboard.status.frozen`; sau đó `list` đọc bản chốt.\r\nChỉ chốt được bảng đang `published`, kỳ `C`, và campaign đã có người có điểm. Đã chốt rồi → lỗi.\n\n### Map lên màn hình\n\nNút **Chốt bảng xếp hạng** (nên hỏi xác nhận trước). Gửi `id` = id bảng từ `get-by-campaign-id`. Xong gọi lại `get-by-campaign-id` + `list`.\n\nLỗi trả về (`result` = 0, `message`):\n- \"Bảng xếp hạng này đã được chốt.\"\n- \"Chỉ chốt được bảng xếp hạng đã publish.\"\n- \"Hiện chỉ chốt được bảng xếp hạng cả campaign (period_key = C).\"\n- \"Chưa có dữ liệu điểm để chốt bảng xếp hạng.\"\n- \"Không tìm thấy bảng xếp hạng.\" (sai id / khác tenant)",
+        "operationId": "post_api_v1_reward_web_campaign_leaderboard_freeze",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignLeaderboardWebFreezeRequestDTO"
+              },
+              "example": {
+                "id": 7
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignLeaderboardWebFreezeDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "type": "update",
+                    "id": 7,
+                    "result": 1,
+                    "message": "Chốt bảng xếp hạng thành công.",
+                    "status_key": "campaign.leaderboard.status.frozen",
+                    "period_key": "C",
+                    "frozen_date": "2026-11-13T10:15:00+07:00"
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-leaderboard/unfreeze": {
+      "post": {
+        "tags": [
+          "Leaderboard"
+        ],
+        "summary": "Nhả chốt bảng xếp hạng",
+        "description": "Đưa bảng đang `frozen` về `campaign.leaderboard.status.published`, xóa `frozen_date`; `list` quay lại xếp theo điểm trực tiếp.\r\nBản chốt cũ chỉ bị thay khi chốt lại. Bảng chưa chốt → lỗi.\n\n### Map lên màn hình\n\nNút **Nhả chốt**. Gửi `id` = id bảng từ `get-by-campaign-id`. Xong gọi lại `get-by-campaign-id` + `list`. Sau khi nhả, `list` quay lại xếp theo điểm trực tiếp.\n\nLỗi: \"Chỉ nhả chốt được bảng xếp hạng đang ở trạng thái đã chốt.\", \"Không tìm thấy bảng xếp hạng.\"",
+        "operationId": "post_api_v1_reward_web_campaign_leaderboard_unfreeze",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignLeaderboardWebFreezeRequestDTO"
+              },
+              "example": {
+                "id": 7
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignLeaderboardWebFreezeDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "type": "update",
+                    "id": 7,
+                    "result": 1,
+                    "message": "Nhả chốt bảng xếp hạng thành công.",
+                    "status_key": "campaign.leaderboard.status.published",
+                    "period_key": null,
+                    "frozen_date": null
+                  },
                   "error": null
                 }
               }
@@ -5104,6 +5366,213 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CampaignLeaderboardScoreWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignLeaderboardWebDetailDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id bảng xếp hạng: truyền vào `list` (`id`), `freeze`, `unfreeze`",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "period_key": {
+            "type": "string",
+            "description": "Kỳ xếp hạng; hiện chỉ có `C` = cả campaign",
+            "nullable": true
+          },
+          "rank_uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái `campaign.leaderboard.status.*`: `published` (đang chạy, xếp theo điểm trực tiếp), `frozen` (đã chốt)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái (module_config)",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái (module_config)",
+            "nullable": true
+          },
+          "frozen_date": {
+            "type": "string",
+            "description": "Thời điểm chốt bảng; null = chưa chốt",
+            "format": "date-time",
+            "nullable": true
+          },
+          "published_uid": {
+            "type": "integer",
+            "description": "Id user publish bảng",
+            "format": "int64",
+            "nullable": true
+          },
+          "published_date": {
+            "type": "string",
+            "description": "Thời điểm publish bảng",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignLeaderboardWebDetailDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/CampaignLeaderboardWebDetailDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignLeaderboardWebListItemDTO": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "description": "Hạng (1 = cao nhất). Bằng điểm thì ai đạt điểm trước xếp trên.",
+            "format": "int32",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "description": "Id người tham gia campaign",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên người tham gia",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "description": "SĐT người tham gia",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "description": "Ảnh đại diện Zalo",
+            "nullable": true
+          },
+          "job_title": {
+            "type": "string",
+            "description": "Chức danh",
+            "nullable": true
+          },
+          "workplace": {
+            "type": "string",
+            "description": "Nơi làm việc",
+            "nullable": true
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "province_name": {
+            "type": "string",
+            "description": "Tên tỉnh/thành",
+            "nullable": true
+          },
+          "score": {
+            "type": "integer",
+            "description": "Điểm xếp hạng (tổng điểm đã nhận trong campaign)",
+            "format": "int64",
+            "nullable": true
+          },
+          "score_reached_date": {
+            "type": "string",
+            "description": "Thời điểm đạt điểm hiện tại, dùng để phân hạng khi bằng điểm",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái bảng xếp hạng (giống nhau ở mọi dòng)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_key": {
+            "type": "string",
+            "description": "Nguồn dữ liệu: `live` = điểm trực tiếp, `snapshot` = bảng đã chốt",
+            "nullable": true
+          },
+          "is_frozen": {
+            "type": "boolean",
+            "description": "true = bảng đã chốt, điểm/hạng không đổi nữa",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignLeaderboardWebListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignLeaderboardWebListItemDTO"
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true
@@ -8778,6 +9247,80 @@
         "properties": {
           "id": {
             "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignLeaderboardWebFreezeDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái mới: `campaign.leaderboard.status.frozen` (chốt) hoặc `...published` (nhả chốt)",
+            "nullable": true
+          },
+          "period_key": {
+            "type": "string",
+            "description": "Kỳ đã chốt (`C`); null khi nhả chốt",
+            "nullable": true
+          },
+          "frozen_date": {
+            "type": "string",
+            "description": "Thời điểm chốt; null khi nhả chốt",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignLeaderboardWebFreezeDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignLeaderboardWebFreezeDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignLeaderboardWebFreezeRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Id bảng xếp hạng (bắt buộc, > 0)",
             "format": "int64"
           }
         },
