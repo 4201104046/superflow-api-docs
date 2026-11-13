@@ -65,6 +65,8 @@
         url: cur.url + '?v=' + encodeURIComponent(cur.rev || cur.updated || Date.now()),
         metaData: { title: cur.title + ' · SuperFlow API Docs' },
         persistAuth: true,
+        // tắt nút "Open API Client" mở sang client.scalar.com; Test Request trong trang vẫn dùng được
+        hideClientButton: true,
         authentication: { preferredSecurityScheme: 'Bearer' },
         defaultHttpClient: { targetKey: 'js', clientKey: 'axios' },
         defaultOpenAllTags: true,

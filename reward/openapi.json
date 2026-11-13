@@ -13,6 +13,23 @@
     {
       "url": "http://localhost:112",
       "description": "Local (dotnet run host reward)"
+    },
+    {
+      "url": "{protocol}://{host}",
+      "description": "Tùy chỉnh (tự nhập host)",
+      "variables": {
+        "protocol": {
+          "default": "http",
+          "enum": [
+            "http",
+            "https"
+          ]
+        },
+        "host": {
+          "default": "localhost:112",
+          "description": "Host + port, vd localhost:5000 hoặc api-staging.superflow.vn"
+        }
+      }
     }
   ],
   "security": [
