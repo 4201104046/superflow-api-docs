@@ -186,6 +186,8 @@ def build(module_id, swagger, shared, overlay):
             if "operationId" in oc:
                 new["operationId"] = oc["operationId"]
             new.setdefault("operationId", oc.get("operationId") or re.sub(r"\W+", "_", f"{method}{path}").strip("_"))
+            if "security" in oc:
+                new["security"] = oc["security"]
             if oc.get("badges"):
                 new["x-badges"] = [dict(shared["badges"][b]) if isinstance(b, str) else b for b in oc["badges"]]
 

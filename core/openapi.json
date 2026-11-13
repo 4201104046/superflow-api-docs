@@ -39,6 +39,10 @@
   ],
   "tags": [
     {
+      "name": "Đăng nhập",
+      "description": "Lấy access token để gọi thử các API khác trên trang doc.\n\n**Gọi `login` thành công trên trang này → trang tự lưu `access_token` và tự gắn `Authorization: Bearer ...` cho mọi request sau (cả module khác).** Không cần copy token. Bấm **Xóa token** trên thanh đầu trang để bỏ."
+    },
+    {
       "name": "Màn danh sách",
       "description": "Định nghĩa màn danh sách."
     },
@@ -56,6 +60,133 @@
     }
   ],
   "paths": {
+    "/api/v1/core/web/auth/login": {
+      "post": {
+        "tags": [
+          "Đăng nhập"
+        ],
+        "summary": "Đăng nhập web (SĐT + mật khẩu)",
+        "description": "Đăng nhập bằng số điện thoại + mật khẩu, trả `access_token` (JWT) và `refresh_token`.\n\n- Không cần token khi gọi.\n- `browser_uid`: id trình duyệt bất kỳ (FE tự sinh, giữ cố định theo máy), dùng cho refresh token.\n- Header `lang_id` (tùy chọn).\n- `result = 1` → có token. `result = 2` → đăng nhập cần bước xác thực thêm, **không** có token.\n- Sai SĐT / mật khẩu → `success = false`, `error.message` là câu báo của DB.",
+        "operationId": "post_api_v1_core_web_auth_login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "browser_uid": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Id trình duyệt (FE tự sinh, giữ cố định)"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "Số điện thoại đăng nhập"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "description": "Mật khẩu"
+                  }
+                }
+              },
+              "example": {
+                "browser_uid": "doc-browser-001",
+                "phone": "0901234567",
+                "password": "matkhau"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "access_token": {
+                          "type": "string",
+                          "description": "JWT, gửi ở header `Authorization: Bearer <token>`"
+                        },
+                        "refresh_token": {
+                          "type": "string"
+                        },
+                        "expired": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "Hết hạn access token (UTC)"
+                        },
+                        "token_access_timeout": {
+                          "type": "integer",
+                          "description": "Thời gian sống token (phút)"
+                        },
+                        "user": {
+                          "type": "object",
+                          "description": "Thông tin user (id, name, phone, avatar...)"
+                        },
+                        "result": {
+                          "type": "integer",
+                          "description": "1 = thành công có token; 2 = cần xác thực thêm"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "error": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "code": {
+                          "type": "integer"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "refresh_token": "8f1c2d...",
+                    "expired": "2026-11-14T09:30:00Z",
+                    "token_access_timeout": 1440,
+                    "user": {
+                      "id": 1,
+                      "name": "Nguyễn Văn A",
+                      "phone": "0901234567",
+                      "avatar": null
+                    },
+                    "result": 1,
+                    "message": "Đăng nhập thành công."
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/core/web/ui-list-definition/get-by-key": {
       "get": {
         "tags": [
@@ -602,7 +733,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Dán access token (không cần chữ `Bearer`). Trang doc nhớ token cho lần sau."
+        "description": "Dán access token (không cần chữ `Bearer`), hoặc gọi `core/web/auth/login` để trang tự gắn. Token chỉ giữ trong tab đang mở."
       }
     },
     "schemas": {

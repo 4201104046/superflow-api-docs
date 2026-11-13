@@ -4,6 +4,7 @@
     "host_project": "src/core/6.core.api.host",
     "swagger_path": "/swagger/v1/swagger.json",
     "include": [
+      "^/api/v1/core/web/auth/(login)$",
       "^/api/v1/core/web/ui-list-definition/(get-by-key)$",
       "^/api/v1/core/web/ui-list-field/(list)$",
       "^/api/v1/core/web/ui-list-user-preference/(create|update-favorite)$",
@@ -16,6 +17,11 @@
     "description": "API dùng chung cho mọi màn **danh sách** (bảng có Columns · Filter · Save views).\n\n## Luồng mở 1 màn danh sách\n1. `ui-list-definition/get-by-key` (list_key + application_key + module_key) → `ui_list_definition.id` và field.\n2. `ui-list-view/get-by-user-id` (list_definition_id) → view đang áp dụng (`config_json`: cột, thứ tự, bộ lọc, sort).\n3. Popup **Columns** → `ui-list-field/list` với `view_mode_key = ui.list.field.view.mode.column`.\n4. Popup **Filter** → `ui-list-field/list` với `view_mode_key = ui.list.field.view.mode.filter` (có `operators`).\n5. Popup **Save views** → `ui-list-view/list-by-user-id`; lưu `ui-list-view/create`; xóa `ui-list-view/delete`;\n   đặt mặc định `ui-list-user-preference/create`; yêu thích `ui-list-user-preference/update-favorite`.\n\nHeader `lang_id` (tùy chọn) chọn ngôn ngữ hiển thị."
   },
   "tags": [
+    {
+      "name": "Đăng nhập",
+      "match": "/core/web/auth/",
+      "description": "Lấy access token để gọi thử các API khác trên trang doc.\n\n**Gọi `login` thành công trên trang này → trang tự lưu `access_token` và tự gắn `Authorization: Bearer ...` cho mọi request sau (cả module khác).** Không cần copy token. Bấm **Xóa token** trên thanh đầu trang để bỏ."
+    },
     {
       "name": "Màn danh sách",
       "match": "/ui-list-definition/",
@@ -117,6 +123,62 @@
         "id": 12
       },
       "ui": "> Không xóa được view mặc định hệ thống. ⚠️ Không kiểm tra view thuộc người đang gọi."
+    },
+    "POST /api/v1/core/web/auth/login": {
+      "summary": "Đăng nhập web (SĐT + mật khẩu)",
+      "description": "Đăng nhập bằng số điện thoại + mật khẩu, trả `access_token` (JWT) và `refresh_token`.\n\n- Không cần token khi gọi.\n- `browser_uid`: id trình duyệt bất kỳ (FE tự sinh, giữ cố định theo máy), dùng cho refresh token.\n- Header `lang_id` (tùy chọn).\n- `result = 1` → có token. `result = 2` → đăng nhập cần bước xác thực thêm, **không** có token.\n- Sai SĐT / mật khẩu → `success = false`, `error.message` là câu báo của DB.",
+      "security": [],
+      "request_example": {
+        "browser_uid": "doc-browser-001",
+        "phone": "0901234567",
+        "password": "matkhau"
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "JWT, gửi ở header `Authorization: Bearer <token>`"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "expired": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Hết hạn access token (UTC)"
+          },
+          "token_access_timeout": {
+            "type": "integer",
+            "description": "Thời gian sống token (phút)"
+          },
+          "user": {
+            "type": "object",
+            "description": "Thông tin user (id, name, phone, avatar...)"
+          },
+          "result": {
+            "type": "integer",
+            "description": "1 = thành công có token; 2 = cần xác thực thêm"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "result_example": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "refresh_token": "8f1c2d...",
+        "expired": "2026-11-14T09:30:00Z",
+        "token_access_timeout": 1440,
+        "user": {
+          "id": 1,
+          "name": "Nguyễn Văn A",
+          "phone": "0901234567",
+          "avatar": null
+        },
+        "result": 1,
+        "message": "Đăng nhập thành công."
+      }
     }
   },
   "param_patches": {

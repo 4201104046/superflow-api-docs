@@ -5179,7 +5179,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Dán access token (không cần chữ `Bearer`). Trang doc nhớ token cho lần sau."
+        "description": "Dán access token (không cần chữ `Bearer`), hoặc gọi `core/web/auth/login` để trang tự gắn. Token chỉ giữ trong tab đang mở."
       }
     },
     "schemas": {

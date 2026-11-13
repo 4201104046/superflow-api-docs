@@ -25,6 +25,10 @@
   .sf-pick select:focus-visible { outline: 2px solid var(--hdr-accent); outline-offset: 1px; }
   .sf-meta { margin-left: auto; color: var(--hdr-muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sf-meta a { color: var(--hdr-accent); }
+  .sf-token { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--hdr-accent); white-space: nowrap; }
+  .sf-token button { font: 500 12px "IBM Plex Sans", system-ui, sans-serif; color: var(--hdr-muted); background: none;
+    border: 1px solid var(--hdr-line); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+  .sf-token button:hover { color: var(--hdr-fg); }
   #boot { font: 14px system-ui, sans-serif; color: #5A665F; padding: 40px 24px; }
   @media (max-width: 640px) { .sf-meta { display: none; } .sf-pick span { display: none; } .sf-pick select { min-width: 0; } }
 </style>
@@ -33,6 +37,7 @@
 <header class="sf-header">
   <a class="sf-brand" href="./">superflow<b>/</b>api-docs</a>
   <label class="sf-pick" for="sf-module"><span>Module</span><select id="sf-module" aria-label="Chọn module"></select></label>
+  <div class="sf-token" id="sf-token" hidden><span id="sf-token-text"></span><button type="button" id="sf-token-clear">Xóa token</button></div>
   <div class="sf-meta" id="sf-meta"></div>
 </header>
 <div id="boot">Đang tải tài liệu…</div>
@@ -40,6 +45,29 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.74.0/dist/browser/standalone.js"></script>
 <script>
+  // ---- Token đăng nhập: gọi core/web/auth/login thành công → lưu token, tự gắn Bearer cho các request sau ----
+  var TOKEN_KEY = 'sf_doc_token';
+  function readToken() {
+    try {
+      var t = JSON.parse(sessionStorage.getItem(TOKEN_KEY) || 'null');
+      if (t && t.access_token && (!t.expired || new Date(t.expired) > new Date())) return t;
+    } catch (e) {}
+    return null;
+  }
+  function saveToken(t) {
+    try { t ? sessionStorage.setItem(TOKEN_KEY, JSON.stringify(t)) : sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    showToken();
+  }
+  function showToken() {
+    var t = readToken(), box = document.getElementById('sf-token');
+    box.hidden = !t;
+    if (t) document.getElementById('sf-token-text').textContent = '● Đã đăng nhập' + (t.name ? ' · ' + t.name : '') +
+      (t.expired ? ' · hết hạn ' + new Date(t.expired).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
+  }
+  document.getElementById('sf-token-clear').addEventListener('click', function () { saveToken(null); });
+  showToken();
+  var isLogin = function (url) { return /\/core\/web\/auth\/login(\?|$)/i.test(url || ''); };
+
   // Danh sách module do scripts/build.py ghi vào modules.json. Mỗi lần chỉ nạp 1 module, chọn qua ?module=<id>.
   fetch('modules.json', { cache: 'no-store' })
     .then(function (r) { return r.json(); })
@@ -64,9 +92,26 @@
       Scalar.createApiReference('#app', {
         url: cur.url + '?v=' + encodeURIComponent(cur.rev || cur.updated || Date.now()),
         metaData: { title: cur.title + ' · SuperFlow API Docs' },
-        persistAuth: true,
+        persistAuth: false, // token chỉ giữ trong phiên (tab) hiện tại
         // tắt nút "Open API Client" mở sang client.scalar.com; Test Request trong trang vẫn dùng được
         hideClientButton: true,
+        // login thành công → lưu access_token
+        onResponseReceived: function (ctx) {
+          if (!ctx || !ctx.response || !isLogin(ctx.request && ctx.request.url)) return;
+          ctx.response.clone().json().then(function (body) {
+            var r = body && body.result;
+            if (body && body.success && r && r.access_token) {
+              saveToken({ access_token: r.access_token, expired: r.expired, name: r.user && (r.user.name || r.user.phone) });
+            }
+          }).catch(function () {});
+        },
+        // mọi request (trừ login) tự gắn Bearer token đã lưu
+        onBeforeRequest: function (ctx) {
+          var t = readToken(), h = ctx && ctx.requestBuilder && ctx.requestBuilder.headers;
+          if (!t || !h || isLogin(ctx.request && ctx.request.url)) return;
+          if (typeof h.delete === 'function') h.delete('authorization');
+          h.set('Authorization', 'Bearer ' + t.access_token);
+        },
         authentication: { preferredSecurityScheme: 'Bearer' },
         defaultHttpClient: { targetKey: 'js', clientKey: 'axios' },
         defaultOpenAllTags: true,
