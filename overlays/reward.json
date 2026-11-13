@@ -19,7 +19,7 @@
       "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
       "^/api/v1/reward/web/reward-type/(list)$",
       "^/api/v1/reward/web/ui-list-field/(list)$",
-      "^/api/v1/reward/web/campaign-mission/(list|create|delete|update-active|duplicate|get-by-id|update-sequence)$",
+      "^/api/v1/reward/web/campaign-mission/(list|list-game|create|delete|update-active|duplicate|get-by-id|update-sequence)$",
       "^/api/v1/reward/web/mission-type/(list)$"
     ]
   },
@@ -1650,6 +1650,43 @@
         "message": "Cập nhật thứ tự thành công"
       },
       "ui": "Màn **Thiết lập / Danh sách mission**: kéo thả để đổi thứ tự.\n\nSau khi thả, gửi **toàn bộ** danh sách nhiệm vụ theo thứ tự mới trong `items` (không cần `sequence`, API tự gán 1, 2, 3… theo vị trí). Muốn tự đặt số thì gửi kèm `sequence` cho từng phần tử.\n\n- Mọi `id` phải thuộc `campaign_id` của tenant hiện tại, sai 1 id → lỗi, không dòng nào bị đổi.\n- Cập nhật trong 1 transaction: 1 dòng lỗi → rollback toàn bộ.\n- Thành công: `id` = campaign_id. Gọi lại `campaign-mission/list` (mặc định sắp `sequence ASC`) hoặc giữ thứ tự đang hiển thị.\n\n> Nên gửi cả danh sách thay vì chỉ 2 dòng đổi chỗ: dữ liệu cũ có thể đang trùng `sequence`."
+    },
+    "GET /api/v1/reward/web/campaign-mission/list-game": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "campaign_id": 32,
+        "searchtext": ""
+      },
+      "result_example": [
+        {
+          "id": 46,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "code": "TEST_FN_GAME",
+          "name": "Test - Chơi vòng quay",
+          "description": "Test function progress",
+          "mission_type_id": 10,
+          "mission_type_code": "GAME",
+          "mission_type_name": "Game",
+          "status_key": "campaign.mission.status.active",
+          "status_name": "Active",
+          "status_color": "#00A65E",
+          "current_version_id": 37,
+          "sequence": 91,
+          "server_files": null,
+          "filepath": null,
+          "filename": null,
+          "cta_label": null,
+          "deeplink_template": null,
+          "unlock_item_id": null,
+          "start_date": "2026-11-12T08:19:33.469206+07:00",
+          "end_date": "2026-12-13T08:19:33.469206+07:00",
+          "has_rewarded": false
+        }
+      ],
+      "ui": "Dropdown / danh sách chọn **nhiệm vụ game** của campaign (vd gắn game cho mission, màn cấu hình game).\n\n- Chỉ trả nhiệm vụ có loại `GAME`, chưa xóa, mọi trạng thái (active / inactive / draft). FE tự lọc `status_key` nếu chỉ cần nhiệm vụ đang chạy.\n- Không phân trang, sắp `sequence`, `id` tăng dần.\n- `campaign_id` bỏ trống → nhiệm vụ game của mọi campaign trong tenant.\n\n> Trên dev, nhiệm vụ trạng thái `campaign.mission.status.draft` có `status_name` / `status_color` rỗng (thiếu cấu hình trong module_config). FE nên fallback hiển thị theo `status_key`."
     }
   }
 }
