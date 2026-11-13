@@ -50,6 +50,10 @@
       "description": "Màn **Missions** của campaign: danh sách, tạo/sửa (kèm phần thưởng), bật/tắt, nhân bản, xóa."
     },
     {
+      "name": "Mission progress",
+      "description": "Màn **Mission progress** của campaign: tiến độ nhiệm vụ của từng người tham gia, duyệt bài nộp.\n\n**Luồng gọi:**\n1. Gọi song song `list-totalrow` (số trên tab + tổng phân trang) và `list-pageindex` với cùng bộ lọc.\n2. Bấm 1 dòng → `get-by-id?id=` mở drawer chi tiết.\n3. Dòng `pending` (nhiệm vụ duyệt tay) → nút **Duyệt** / **Từ chối** gọi `approve`. Xong gọi lại bước 1."
+    },
+    {
       "name": "Mission types",
       "description": "Master data **loại nhiệm vụ** (dropdown + cấu hình trigger/điều kiện ở form Create mission)."
     },
@@ -2156,6 +2160,358 @@
                     "status_key": "campaign.leaderboard.status.published",
                     "period_key": null,
                     "frozen_date": null
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-mission-progress/list-pageindex": {
+      "post": {
+        "tags": [
+          "Mission progress"
+        ],
+        "summary": "Danh sách tiến độ nhiệm vụ của người tham gia",
+        "description": "Màn **Mission Progress**: phân trang, tìm kiếm, lọc và sắp xếp theo bộ lọc của\r\n`fn_campaign_mission_progress_web_list_pageindex`.\r\n            \r\n- `pageindex` >= 1, `pagesize` >= 1, `tenant_id` bắt buộc.\r\n- `campaign_id` bỏ trống = toàn bộ campaign của tenant.\r\n- `status_key` chỉ nhận 1 giá trị: `campaign.mission.progress.status.progress` / `pending` /\r\n  `completed` / `rejected` / `limit` / `missed` (bỏ trống = không lọc).\r\n- `searchtext` tìm theo tên, số điện thoại hoặc `campaign_consumer_id`.\r\n- `from_date` / `to_date` lọc theo `created_date` (to_date tính hết ngày).\r\n- `sortby`: id | consumer_name | mission_name | progress_percent | status_key | status_name |\r\n  last_activity_date | created_date; `sortdir`: ASC / DESC.\r\n            \r\nTrạng thái `limit` của nhiệm vụ không phải GAME được chuẩn hóa thành `completed`.\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`.",
+        "operationId": "post_api_v1_reward_web_campaign_mission_progress_list_pageindex",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignMissionProgressWebListPageindexRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "campaign_id": 32,
+                "pageindex": 1,
+                "pagesize": 20,
+                "searchtext": "",
+                "status_key": null,
+                "from_date": null,
+                "to_date": null,
+                "sortby": "created_date",
+                "sortdir": "DESC"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignMissionProgressWebItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 16,
+                      "tenant_id": 71268,
+                      "campaign_id": 32,
+                      "campaign_consumer_id": 128,
+                      "consumer_name": "Lê Hoàng Nam",
+                      "consumer_phone": "0987654321",
+                      "campaign_mission_id": 49,
+                      "mission_code": "TEST_FN_FORM",
+                      "mission_name": "Test - Nộp khảo sát",
+                      "mission_type_id": 8,
+                      "mission_type_code": "SUBMIT_FORM",
+                      "mission_type_name": "Submit form",
+                      "mission_type_color": "#db2777",
+                      "is_manual_review": true,
+                      "is_unlocked_by_reward": false,
+                      "period_key": "C",
+                      "progress_value": 1,
+                      "target": 1,
+                      "progress_percent": 100,
+                      "completions": 0,
+                      "status_key": "campaign.mission.progress.status.pending",
+                      "status_name": "Pending review",
+                      "status_color": "#D08700",
+                      "status_note": "Submitted · waiting for review",
+                      "last_activity_date": "2026-11-13T08:19:33.469206",
+                      "reward_points": null,
+                      "reward_item_count": null,
+                      "created_date": "2026-11-13T08:19:33.469206"
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-mission-progress/list-totalrow": {
+      "post": {
+        "tags": [
+          "Mission progress"
+        ],
+        "summary": "Tổng số dòng tiến độ + thống kê theo trạng thái",
+        "description": "Gọi cùng bộ lọc với `list-pageindex` (trừ `pageindex` / `pagesize` / `sortby` / `sortdir`).\r\n            \r\nTrả về `total` (tổng số dòng, có áp dụng `status_key` nếu được truyền) và\r\n`status_summary` gồm số dòng theo từng trạng thái\r\n(`campaign.mission.progress.status.progress` / `pending` / `completed` / `rejected` / `limit` / `missed`)\r\ncùng `campaign.mission.progress.metric.total` (tổng không lọc theo `status_key`).\n\n### Map lên màn hình\n\n| Tab | `status_summary` key | Gửi `status_key` |\n|---|---|---|\n| All | `campaign.mission.progress.metric.total` | `null` |\n| In progress | `...status.progress` | `campaign.mission.progress.status.progress` |\n| Pending review | `...status.pending` | `campaign.mission.progress.status.pending` |\n| Completed | `...status.completed` | `campaign.mission.progress.status.completed` |\n| Rejected | `...status.rejected` | `campaign.mission.progress.status.rejected` |\n| Limit reached (game) | `...status.limit` | `campaign.mission.progress.status.limit` |\n| Missed | `...status.missed` | `campaign.mission.progress.status.missed` |\n\n`total` đã áp `status_key` (dùng phân trang); `metric.total` luôn là tổng không lọc trạng thái.",
+        "operationId": "post_api_v1_reward_web_campaign_mission_progress_list_totalrow",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignMissionProgressWebListTotalrowRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "campaign_id": 32,
+                "searchtext": "",
+                "status_key": null,
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignMissionProgressWebListTotalrowDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "total": 18,
+                    "status_summary": {
+                      "campaign.mission.progress.metric.total": 18,
+                      "campaign.mission.progress.status.progress": 7,
+                      "campaign.mission.progress.status.pending": 2,
+                      "campaign.mission.progress.status.completed": 5,
+                      "campaign.mission.progress.status.rejected": 1,
+                      "campaign.mission.progress.status.limit": 2,
+                      "campaign.mission.progress.status.missed": 1
+                    }
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-mission-progress/approve": {
+      "post": {
+        "tags": [
+          "Mission progress"
+        ],
+        "summary": "Duyệt / từ chối tiến độ nhiệm vụ đang chờ duyệt",
+        "description": "Chỉ xử lý được dòng tiến độ đang ở trạng thái `campaign.mission.progress.status.pending`.\r\n            \r\n- `status_key = campaign.mission.progress.status.completed` → duyệt: cập nhật bài nộp thành\r\n  `approved`, duyệt/tạo `campaign_mission_completion`, cộng điểm theo `campaign_mission_outcome`\r\n  (ghi ledger + lot + outbox), tăng `completions`, trả `points_awarded` / `reward_items_pending`.\r\n- `status_key = campaign.mission.progress.status.rejected` → từ chối: bắt buộc `reject_reason_public`,\r\n  cập nhật bài nộp thành `rejected` hoặc `resubmit_requested` khi `allow_resubmit = true`.\r\n            \r\n`review_note` là ghi chú nội bộ của người duyệt. `user_id` lấy từ token (không truyền từ client).\n\n### Map lên màn hình\n\nChỉ dùng cho dòng đang `campaign.mission.progress.status.pending`.\n\n| Nút | Gửi | Bắt buộc |\n|---|---|---|\n| **Duyệt** | `status_key = campaign.mission.progress.status.completed` | — |\n| **Từ chối** | `status_key = campaign.mission.progress.status.rejected` | `reject_reason_public` (người tham gia thấy) |\n| Cho nộp lại | `allow_resubmit = true` (khi từ chối) | — |\n| Ghi chú nội bộ | `review_note` | — |\n\nDuyệt → cộng điểm (`data.points_awarded`) và tạo quà chờ phát (`data.reward_items_pending`). Lỗi nghiệp vụ trả `success = false` kèm `message` của DB (vd dòng không còn ở trạng thái chờ duyệt).\n\n> `result_example` minh họa theo DTO; chưa gọi thử trên dev vì API ghi dữ liệu.",
+        "operationId": "post_api_v1_reward_web_campaign_mission_progress_approve",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignMissionProgressWebApproveRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "id": 16,
+                "status_key": "campaign.mission.progress.status.completed",
+                "reject_reason_public": null,
+                "review_note": "Bài khảo sát đầy đủ",
+                "allow_resubmit": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignMissionProgressWebApproveDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "result": 1,
+                    "status": "success",
+                    "message": "Duyệt nhiệm vụ thành công.",
+                    "action": "approve",
+                    "record_id": 16,
+                    "data": {
+                      "progress_status_key": "campaign.mission.progress.status.completed",
+                      "completion_id": 21,
+                      "submission_id": 9,
+                      "points_awarded": 50,
+                      "reward_items_pending": 1,
+                      "allow_resubmit": null
+                    }
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-mission-progress/get-by-id": {
+      "get": {
+        "tags": [
+          "Mission progress"
+        ],
+        "summary": "Chi tiết tiến độ nhiệm vụ của 1 người tham gia",
+        "description": "Lấy chi tiết theo `id` dòng `campaign_mission_progress`. Bản ghi phải thuộc `tenant_id` của request\r\n(không đúng tenant → trả lỗi `-100`, không lộ dữ liệu chéo tenant).\r\n            \r\nDữ liệu trả về bám đúng `fn_campaign_mission_progress_web_get_by_id(p_id bigint)`:\r\n`campaign_mission_progress`, `campaign_consumer` (đã loại trường nhạy cảm),\r\n`campaign_mission` (kèm `mission_type_*`), `campaign_mission_version`,\r\n`campaign_mission_outcome`, `campaign_mission_completion`, `campaign_event`,\r\n`campaign_mission_submission`, `campaign_referral`, `campaign_mission_game_play`,\r\n`campaign_consumer_redemption_entitlement`, `campaign_consumer_point_ledger`,\r\n`campaign_consumer_redemption`.\n\n### Map lên màn hình\n\nDrawer chi tiết tiến độ.\n\n| Khối UI | Field |\n|---|---|\n| Header (người + nhiệm vụ + trạng thái) | `campaign_consumer`, `campaign_mission`, `campaign_mission_progress` |\n| Điều kiện / mục tiêu | `campaign_mission_version` (`trigger_event`, `goal_*`, `active_from` / `active_to`) |\n| Phần thưởng | `campaign_mission_outcome` (`kind_key` points / item) |\n| Các lần đạt | `campaign_mission_completion` |\n| Timeline | `campaign_event` |\n| Bài nộp (form / content) | `campaign_mission_submission` |\n| Bạn được mời (referral) | `campaign_referral` |\n| Lượt chơi (game) | `campaign_mission_game_play` |\n| Mở khóa bằng quà | `campaign_consumer_redemption_entitlement` |\n| Điểm / quà đã nhận | `campaign_consumer_point_ledger`, `campaign_consumer_redemption` |\n\nMảng không có dữ liệu trả `[]`. `id` thuộc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\" (fn chỉ nhận `p_id`, API tự so tenant).",
+        "operationId": "get_api_v1_reward_web_campaign_mission_progress_get_by_id",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignMissionProgressWebGetByIdDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "campaign_mission_progress": {
+                      "id": 18,
+                      "tenant_id": 71268,
+                      "campaign_id": 32,
+                      "campaign_mission_id": 50,
+                      "mission_version_id": 41,
+                      "campaign_consumer_id": 127,
+                      "period_key": "C",
+                      "progress_value": 1,
+                      "target": 1,
+                      "seen_values": [],
+                      "completions": 1,
+                      "status_key": "campaign.mission.progress.status.completed",
+                      "last_event_id": null,
+                      "status_name": "Completed",
+                      "status_color": "#00A65E"
+                    },
+                    "campaign_consumer": {
+                      "id": 127,
+                      "name": "Trần Thị Bích",
+                      "phone": "0912345678",
+                      "email": "bich.tran@agency.com",
+                      "job_title": "Marketing Lead",
+                      "workplace": "Creative Media",
+                      "total_balance": 500000.0,
+                      "total_mission": 4
+                    },
+                    "campaign_mission": {
+                      "id": 50,
+                      "code": "TEST_FN_UNLOCK",
+                      "name": "Test - Check-in Hội thảo VIP",
+                      "mission_type_code": "REGISTRATION",
+                      "mission_type_name": "Registration",
+                      "unlock_item_id": 102,
+                      "status_key": "campaign.mission.status.active"
+                    },
+                    "campaign_mission_version": {
+                      "id": 41,
+                      "version_no": 1,
+                      "trigger_event": "EVENT_CHECKIN_VERIFIED",
+                      "goal_type_key": "single",
+                      "goal_target": 1,
+                      "game_code": null,
+                      "active_from": "2026-11-15T09:00:00+07:00",
+                      "active_to": "2026-12-13T08:19:33.469206+07:00"
+                    },
+                    "campaign_mission_outcome": [
+                      {
+                        "id": 74,
+                        "kind_key": "campaign.mission.outcome.kind.points",
+                        "points": 50,
+                        "quantity": 0,
+                        "reward_item_id": null,
+                        "reward_item_name": null
+                      },
+                      {
+                        "id": 75,
+                        "kind_key": "campaign.mission.outcome.kind.item",
+                        "points": null,
+                        "quantity": 1,
+                        "reward_item_id": 29,
+                        "reward_item_name": "test create"
+                      }
+                    ],
+                    "campaign_mission_completion": [],
+                    "campaign_event": [],
+                    "campaign_mission_submission": [],
+                    "campaign_referral": [],
+                    "campaign_mission_game_play": [],
+                    "campaign_consumer_redemption_entitlement": [
+                      {
+                        "id": 6,
+                        "kind_key": "campaign.consumer.redemption.entitlement.kind.mission_unlock",
+                        "granted": 1,
+                        "used": 0,
+                        "redemption_no": "R-TEST-0002",
+                        "reward_item_id": 102,
+                        "status_key": "campaign.consumer.redemption.entitlement.status.active",
+                        "status_name": "Khả dụng",
+                        "status_color": "#00A65E",
+                        "expires_date": "2026-12-13T08:19:33.469206"
+                      }
+                    ],
+                    "campaign_consumer_point_ledger": [],
+                    "campaign_consumer_redemption": []
                   },
                   "error": null
                 }
@@ -4415,7 +4771,7 @@
           "Reward item"
         ],
         "summary": "Tạo hoặc cập nhật reward item",
-        "description": "`id = 0`/null → tạo mới; `id > 0` → cập nhật reward item đó (field null giữ giá trị cũ).\r\nThành công trả `id` của reward item.\n\n### Map lên màn hình\n\n`id = 0` tạo mới, `id > 0` cập nhật (field `null` giữ giá trị cũ).",
+        "description": "`id = 0`/null → tạo mới; `id > 0` → cập nhật reward item đó (field null giữ giá trị cũ).\r\nThành công trả `id` của reward item.\n\n### Map lên màn hình\n\n`id = 0` tạo mới, `id > 0` cập nhật (field `null` giữ giá trị cũ).\n\n### `config_jsonb` theo loại reward\nLoại lấy từ `reward-type/list` (`code`). Loại khác gửi `{}`.\n\n**Game play** (`reward_type` code `GAME_PLAY`): tặng thêm lượt chơi cho 1 game.\n```json\n\"config_jsonb\": {\n  \"game_code\": \"CODE_GAME\",\n  \"plays_granted\": 1,\n  \"plays_valid\": \"\",\n  \"count_toward_game_limit\": false\n}\n```\n| Field | Ý nghĩa | Lấy giá trị từ |\n|---|---|---|\n| `game_code` | Game được cộng lượt | `game_code` của nhiệm vụ game (`campaign-mission/list-game`) |\n| `plays_granted` | Số lượt tặng | Ô nhập số |\n| `plays_valid` | Thời hạn dùng lượt (ô **Plays valid**) | Key option, danh sách từ module_config parent key `reward.item.plays.valid` |\n| `count_toward_game_limit` | Lượt tặng có tính vào giới hạn lượt chơi của game không | Checkbox |\n\n**Mission unlock** (`reward_type` code `MISSION_UNLOCK`): đổi quà để mở 1 nhiệm vụ đặc biệt.\n```json\n\"config_jsonb\": {\n  \"mission_id\": 1,\n  \"unlock_days\": \"\"\n}\n```\n| Field | Ý nghĩa | Lấy giá trị từ |\n|---|---|---|\n| `mission_id` | Nhiệm vụ được mở | `id` từ `campaign-mission/list` |\n| `unlock_days` | Mở trong bao lâu (ô **Unlocked for**) | Key option, danh sách từ module_config parent key `reward.item.unlock.days` |\n\n> `config_jsonb` lưu nguyên khối FE gửi (server không kiểm tra field). Khi cập nhật (`id > 0`) gửi `null` = giữ cấu hình cũ; gửi object = **thay cả khối**, nên phải gửi đủ field.\n> ⚠️ Trên dev chưa có option nào cho parent key `reward.item.plays.valid` và `reward.item.unlock.days` (`module-config` trả rỗng) → dropdown sẽ trống cho tới khi team DB thêm cấu hình.",
         "operationId": "post_api_v1_reward_web_reward_item_create",
         "x-badges": [
           {
@@ -5680,6 +6036,1592 @@
           "sequence": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebCompletionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "mission_version_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "period_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "seq_no": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "trigger_event_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "referral_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "completed_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rewarded_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rewarded_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "revoked_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revoked_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "revoke_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebConsumerDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "ward_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "object_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "ref_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "gender_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_balance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_earned": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_mission": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "total_reward": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "approved_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approved_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "job_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "workplace": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_ref_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_ref_value": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebEntitlementDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "consumer_redemption_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "granted": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "used": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "data_json": {
+            "nullable": true
+          },
+          "expires_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "kind_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "game_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "redemption_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "granted_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebEventDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "event_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "event_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "integration_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "occurred_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "received_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "processed_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "payload": {
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "result": {
+            "nullable": true
+          },
+          "mission_result": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebGamePlayDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "entitlement_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "play_no": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "result": {
+            "type": "string",
+            "nullable": true
+          },
+          "game_prize_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "prize_consumer_redemption_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "client_ref": {
+            "type": "string",
+            "nullable": true
+          },
+          "played_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "is_free_play": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "prize_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "prize_redemption_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_redemption_no": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id dòng campaign_mission_progress",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "description": "Id tenant sở hữu",
+            "format": "int64",
+            "nullable": true,
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Id campaign",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "description": "Id người tham gia campaign (campaign_consumer.id)",
+            "format": "int64",
+            "nullable": true
+          },
+          "consumer_name": {
+            "type": "string",
+            "description": "Tên người tham gia",
+            "nullable": true
+          },
+          "consumer_phone": {
+            "type": "string",
+            "description": "Số điện thoại người tham gia",
+            "nullable": true
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "description": "Id nhiệm vụ",
+            "format": "int64",
+            "nullable": true
+          },
+          "mission_code": {
+            "type": "string",
+            "description": "Mã nhiệm vụ",
+            "nullable": true
+          },
+          "mission_name": {
+            "type": "string",
+            "description": "Tên nhiệm vụ",
+            "nullable": true
+          },
+          "mission_type_id": {
+            "type": "integer",
+            "description": "Id loại nhiệm vụ",
+            "format": "int64",
+            "nullable": true
+          },
+          "mission_type_code": {
+            "type": "string",
+            "description": "Mã loại nhiệm vụ (GAME / REFERRAL / CONTENT / REGISTRATION / ...)",
+            "nullable": true
+          },
+          "mission_type_name": {
+            "type": "string",
+            "description": "Tên loại nhiệm vụ",
+            "nullable": true
+          },
+          "mission_type_color": {
+            "type": "string",
+            "description": "Màu badge loại nhiệm vụ (mission_type.config_json.badge_color)",
+            "nullable": true
+          },
+          "is_manual_review": {
+            "type": "boolean",
+            "description": "Nhiệm vụ có duyệt thủ công (approved_key = ...manual)",
+            "nullable": true
+          },
+          "is_unlocked_by_reward": {
+            "type": "boolean",
+            "description": "Nhiệm vụ được mở khóa bằng reward item (unlock_item_id khác null)",
+            "nullable": true
+          },
+          "period_key": {
+            "type": "string",
+            "description": "Khóa kỳ (campaign / yyyy-MM-dd / yyyy-Www / yyyy-MM)",
+            "nullable": true
+          },
+          "progress_value": {
+            "type": "integer",
+            "description": "Giá trị tiến độ hiện tại",
+            "format": "int64",
+            "nullable": true
+          },
+          "target": {
+            "type": "integer",
+            "description": "Mục tiêu cần đạt",
+            "format": "int32",
+            "nullable": true
+          },
+          "progress_percent": {
+            "type": "integer",
+            "description": "Phần trăm tiến độ (0..100; completed/limit = 100)",
+            "format": "int32",
+            "nullable": true
+          },
+          "completions": {
+            "type": "integer",
+            "description": "Số lần hoàn thành trong kỳ",
+            "format": "int32",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái tiến độ (đã chuẩn hóa: limit không phải GAME → completed)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "description": "Tên trạng thái (resolve từ module_config)",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "description": "Màu trạng thái (resolve từ module_config)",
+            "nullable": true
+          },
+          "status_note": {
+            "type": "string",
+            "description": "Mô tả ngắn dưới badge trạng thái (lý do từ chối, điểm bài nộp, số lượt chơi, ...)",
+            "nullable": true
+          },
+          "last_activity_date": {
+            "type": "string",
+            "description": "Thời điểm hoạt động gần nhất (write_date, fallback created_date)",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reward_points": {
+            "type": "integer",
+            "description": "Điểm thưởng của version (chỉ có khi completed/limit)",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_item_count": {
+            "type": "integer",
+            "description": "Số lượng phần quà của version (chỉ có khi completed/limit)",
+            "format": "int32",
+            "nullable": true
+          },
+          "created_date": {
+            "type": "string",
+            "description": "Ngày tạo tiến độ",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebMissionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "mission_type_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "current_version_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cta_label": {
+            "type": "string",
+            "nullable": true
+          },
+          "deeplink_template": {
+            "type": "string",
+            "nullable": true
+          },
+          "unlock_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "has_rewarded": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "mission_type_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "mission_type_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "mission_type_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebMissionVersionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "version_no": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "trigger_event": {
+            "type": "string",
+            "nullable": true
+          },
+          "conditions": {
+            "nullable": true
+          },
+          "goal_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "goal_target": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "goal_field": {
+            "type": "string",
+            "nullable": true
+          },
+          "recurrence_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "limit_per_period": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "limit_total": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "active_period_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "recipient_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "mission_type_config": {
+            "nullable": true
+          },
+          "audience": {
+            "nullable": true
+          },
+          "active_from": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "active_to": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "unlock_after_campaign_mission_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "game_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "plays_per_period": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "has_point": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "published_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebOutcomeDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "mission_version_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "recipient_role_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "points": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reward_item_name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebPointLedgerDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "delta": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "before_balance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "after_balance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "metadata_json": {
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "create_by_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "consumer_point_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reason_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "idempotency_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "reverses_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "earned_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebProgressDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "mission_version_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "period_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "progress_value": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "target": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "seen_values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Danh sách giá trị đã ghi nhận (chống trùng) của kỳ",
+            "nullable": true
+          },
+          "completions": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_event_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebRedemptionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "source_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "redemption_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "cash_value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_point_used": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_cash_paid": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "request_channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "request_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approval_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approval_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "inventory_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "inventory_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "inventory_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "fulfillment_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "fulfillment_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "fulfillment_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "payment_status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "payment_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "shipping_tracking_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancel_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancel_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancel_uid": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "expired_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "idempotency_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "debit_point_ledger_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "refund_point_ledger_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "delivered_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "failed_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "item_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "requested_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebReferralDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "inviter_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "invitee_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "invite_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "qualified_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revoked_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "invited_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "invitee_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "invitee_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionProgressWebSubmissionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "mission_version_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "event_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "form_mission_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "answers": {
+            "nullable": true
+          },
+          "attachments": {
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "period_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "attempt_no": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewer_by": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reviewed_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "review_note": {
+            "type": "string",
+            "nullable": true
+          },
+          "reject_reason_public": {
+            "type": "string",
+            "nullable": true
+          },
+          "completion_by": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "submitted_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -9389,6 +11331,399 @@
             "description": "Thứ tự hiển thị",
             "format": "int32",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebApproveDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "integer",
+            "description": "1 = thành công, 0 = lỗi nghiệp vụ, -1 = lỗi hệ thống",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "description": "success / error",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Thông báo kết quả",
+            "nullable": true
+          },
+          "action": {
+            "type": "string",
+            "description": "approve / reject",
+            "nullable": true
+          },
+          "record_id": {
+            "type": "integer",
+            "description": "Id dòng tiến độ đã xử lý",
+            "format": "int64",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/FnCampaignMissionProgressWebApproveDataDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebApproveDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignMissionProgressWebApproveDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebApproveDataDTO": {
+        "type": "object",
+        "properties": {
+          "progress_status_key": {
+            "type": "string",
+            "description": "Trạng thái tiến độ sau khi xử lý (completed / rejected)",
+            "nullable": true
+          },
+          "completion_id": {
+            "type": "integer",
+            "description": "Id bản ghi campaign_mission_completion được duyệt / tạo mới / từ chối",
+            "format": "int64",
+            "nullable": true
+          },
+          "submission_id": {
+            "type": "integer",
+            "description": "Id bài nộp (campaign_mission_submission) gần nhất được xử lý",
+            "format": "int64",
+            "nullable": true
+          },
+          "points_awarded": {
+            "type": "integer",
+            "description": "Số điểm đã cộng vào ví (chỉ khi duyệt)",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_items_pending": {
+            "type": "integer",
+            "description": "Số phần quà đang chờ phát (chỉ khi duyệt)",
+            "format": "int32",
+            "nullable": true
+          },
+          "allow_resubmit": {
+            "type": "boolean",
+            "description": "Có cho nộp lại hay không (chỉ khi từ chối)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebApproveRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "id": {
+            "type": "integer",
+            "description": "Id dòng campaign_mission_progress cần duyệt / từ chối (bắt buộc, > 0)",
+            "format": "int64"
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái đích (bắt buộc): campaign.mission.progress.status.completed (duyệt) hoặc\r\ncampaign.mission.progress.status.rejected (từ chối).",
+            "nullable": true
+          },
+          "reject_reason_public": {
+            "type": "string",
+            "description": "Lý do từ chối hiển thị cho người tham gia (bắt buộc khi status_key = rejected)",
+            "nullable": true
+          },
+          "review_note": {
+            "type": "string",
+            "description": "Ghi chú nội bộ của người duyệt (tùy chọn)",
+            "nullable": true
+          },
+          "allow_resubmit": {
+            "type": "boolean",
+            "description": "Cho phép người tham gia nộp lại khi từ chối (mặc định false)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebGetByIdDTO": {
+        "type": "object",
+        "properties": {
+          "campaign_mission_progress": {
+            "$ref": "#/components/schemas/CampaignMissionProgressWebProgressDTO"
+          },
+          "campaign_consumer": {
+            "$ref": "#/components/schemas/CampaignMissionProgressWebConsumerDTO"
+          },
+          "campaign_mission": {
+            "$ref": "#/components/schemas/CampaignMissionProgressWebMissionDTO"
+          },
+          "campaign_mission_version": {
+            "$ref": "#/components/schemas/CampaignMissionProgressWebMissionVersionDTO"
+          },
+          "campaign_mission_outcome": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebOutcomeDTO"
+            },
+            "description": "Phần thưởng của phiên bản (bảng campaign_mission_outcome)",
+            "nullable": true
+          },
+          "campaign_mission_completion": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebCompletionDTO"
+            },
+            "description": "Các lần đạt trong kỳ (bảng campaign_mission_completion)",
+            "nullable": true
+          },
+          "campaign_event": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebEventDTO"
+            },
+            "description": "Timeline sự kiện liên quan nhiệm vụ trong kỳ (bảng campaign_event)",
+            "nullable": true
+          },
+          "campaign_mission_submission": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebSubmissionDTO"
+            },
+            "description": "Bài nộp của người tham gia (bảng campaign_mission_submission)",
+            "nullable": true
+          },
+          "campaign_referral": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebReferralDTO"
+            },
+            "description": "Bạn bè được mời (bảng campaign_referral, chỉ mission referral)",
+            "nullable": true
+          },
+          "campaign_mission_game_play": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebGamePlayDTO"
+            },
+            "description": "Lượt chơi game (bảng campaign_mission_game_play, chỉ mission game)",
+            "nullable": true
+          },
+          "campaign_consumer_redemption_entitlement": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebEntitlementDTO"
+            },
+            "description": "Quyền lợi mở khóa nhiệm vụ (bảng campaign_consumer_redemption_entitlement)",
+            "nullable": true
+          },
+          "campaign_consumer_point_ledger": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebPointLedgerDTO"
+            },
+            "description": "Lịch sử điểm phát sinh từ nhiệm vụ / lượt chơi (bảng campaign_consumer_point_ledger)",
+            "nullable": true
+          },
+          "campaign_consumer_redemption": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionProgressWebRedemptionDTO"
+            },
+            "description": "Quà phát sinh từ nhiệm vụ / lượt chơi (bảng campaign_consumer_redemption)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebGetByIdDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignMissionProgressWebGetByIdDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebListPageindexRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "pageindex": {
+            "type": "integer",
+            "description": "Trang hiện tại (bắt buộc, >= 1)",
+            "format": "int32",
+            "default": 1,
+            "minimum": 1,
+            "example": 1
+          },
+          "pagesize": {
+            "type": "integer",
+            "description": "Số dòng mỗi trang (bắt buộc, >= 1)",
+            "format": "int32",
+            "default": 20,
+            "minimum": 1,
+            "example": 20
+          },
+          "sortby": {
+            "type": "string",
+            "description": "Cột sắp xếp: id | consumer_name | mission_name | progress_percent | status_key | status_name |\r\nlast_activity_date | created_date (giá trị khác → created_date).",
+            "nullable": true
+          },
+          "sortdir": {
+            "type": "string",
+            "description": "Chiều sắp xếp: ASC / DESC (giá trị khác → DESC)",
+            "nullable": true,
+            "enum": [
+              "ASC",
+              "DESC"
+            ],
+            "default": "DESC"
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc theo ngày tạo tiến độ (từ ngày)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc theo ngày tạo tiến độ (đến hết ngày này)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Lọc theo 1 trạng thái tiến độ: campaign.mission.progress.status.progress | pending |\r\ncompleted | rejected | limit | missed. Bỏ trống = không lọc.",
+            "nullable": true
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tên người tham gia, số điện thoại hoặc campaign_consumer_id",
+            "nullable": true,
+            "example": ""
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign (bỏ trống = toàn bộ campaign của tenant)",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebListTotalrowDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số dòng (có áp dụng bộ lọc status_key nếu được truyền)",
+            "format": "int64"
+          },
+          "status_summary": {
+            "description": "Số dòng theo từng trạng thái: campaign.mission.progress.status.progress | pending | completed |\r\nrejected | limit | missed và campaign.mission.progress.metric.total (tổng không lọc status_key).",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebListTotalrowDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignMissionProgressWebListTotalrowDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignMissionProgressWebListTotalrowRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc theo ngày tạo tiến độ (từ ngày)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc theo ngày tạo tiến độ (đến hết ngày này)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Lọc theo 1 trạng thái tiến độ (giống list-pageindex)",
+            "nullable": true
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tên, số điện thoại hoặc campaign_consumer_id",
+            "nullable": true,
+            "example": ""
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign (bỏ trống = toàn bộ campaign của tenant)",
+            "format": "int64",
+            "nullable": true,
+            "example": null
           }
         },
         "additionalProperties": false

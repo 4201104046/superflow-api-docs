@@ -20,7 +20,8 @@
       "^/api/v1/reward/web/reward-type/(list)$",
       "^/api/v1/reward/web/ui-list-field/(list)$",
       "^/api/v1/reward/web/campaign-mission/(list|list-game|create|delete|update-active|duplicate|get-by-id|update-sequence)$",
-      "^/api/v1/reward/web/mission-type/(list)$"
+      "^/api/v1/reward/web/mission-type/(list)$",
+      "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|get-by-id)$"
     ]
   },
   "info": {
@@ -63,6 +64,11 @@
       "name": "Mission",
       "match": "/campaign-mission/",
       "description": "Màn **Missions** của campaign: danh sách, tạo/sửa (kèm phần thưởng), bật/tắt, nhân bản, xóa."
+    },
+    {
+      "name": "Mission progress",
+      "match": "/campaign-mission-progress/",
+      "description": "Màn **Mission progress** của campaign: tiến độ nhiệm vụ của từng người tham gia, duyệt bài nộp.\n\n**Luồng gọi:**\n1. Gọi song song `list-totalrow` (số trên tab + tổng phân trang) và `list-pageindex` với cùng bộ lọc.\n2. Bấm 1 dòng → `get-by-id?id=` mở drawer chi tiết.\n3. Dòng `pending` (nhiệm vụ duyệt tay) → nút **Duyệt** / **Từ chối** gọi `approve`. Xong gọi lại bước 1."
     },
     {
       "name": "Mission types",
@@ -1373,7 +1379,7 @@
         "config_jsonb": {},
         "active": true
       },
-      "ui": "`id = 0` tạo mới, `id > 0` cập nhật (field `null` giữ giá trị cũ)."
+      "ui": "`id = 0` tạo mới, `id > 0` cập nhật (field `null` giữ giá trị cũ).\n\n### `config_jsonb` theo loại reward\nLoại lấy từ `reward-type/list` (`code`). Loại khác gửi `{}`.\n\n**Game play** (`reward_type` code `GAME_PLAY`): tặng thêm lượt chơi cho 1 game.\n```json\n\"config_jsonb\": {\n  \"game_code\": \"CODE_GAME\",\n  \"plays_granted\": 1,\n  \"plays_valid\": \"\",\n  \"count_toward_game_limit\": false\n}\n```\n| Field | Ý nghĩa | Lấy giá trị từ |\n|---|---|---|\n| `game_code` | Game được cộng lượt | `game_code` của nhiệm vụ game (`campaign-mission/list-game`) |\n| `plays_granted` | Số lượt tặng | Ô nhập số |\n| `plays_valid` | Thời hạn dùng lượt (ô **Plays valid**) | Key option, danh sách từ module_config parent key `reward.item.plays.valid` |\n| `count_toward_game_limit` | Lượt tặng có tính vào giới hạn lượt chơi của game không | Checkbox |\n\n**Mission unlock** (`reward_type` code `MISSION_UNLOCK`): đổi quà để mở 1 nhiệm vụ đặc biệt.\n```json\n\"config_jsonb\": {\n  \"mission_id\": 1,\n  \"unlock_days\": \"\"\n}\n```\n| Field | Ý nghĩa | Lấy giá trị từ |\n|---|---|---|\n| `mission_id` | Nhiệm vụ được mở | `id` từ `campaign-mission/list` |\n| `unlock_days` | Mở trong bao lâu (ô **Unlocked for**) | Key option, danh sách từ module_config parent key `reward.item.unlock.days` |\n\n> `config_jsonb` lưu nguyên khối FE gửi (server không kiểm tra field). Khi cập nhật (`id > 0`) gửi `null` = giữ cấu hình cũ; gửi object = **thay cả khối**, nên phải gửi đủ field.\n> ⚠️ Trên dev chưa có option nào cho parent key `reward.item.plays.valid` và `reward.item.unlock.days` (`module-config` trả rỗng) → dropdown sẽ trống cho tới khi team DB thêm cấu hình."
     },
     "POST /api/v1/reward/web/reward-item-code/list-pageindex": {
       "badges": [
@@ -1798,6 +1804,208 @@
         "frozen_date": null
       },
       "ui": "Nút **Nhả chốt**. Gửi `id` = id bảng từ `get-by-campaign-id`. Xong gọi lại `get-by-campaign-id` + `list`. Sau khi nhả, `list` quay lại xếp theo điểm trực tiếp.\n\nLỗi: \"Chỉ nhả chốt được bảng xếp hạng đang ở trạng thái đã chốt.\", \"Không tìm thấy bảng xếp hạng.\""
+    },
+    "POST /api/v1/reward/web/campaign-mission-progress/list-pageindex": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "pageindex": 1,
+        "pagesize": 20,
+        "searchtext": "",
+        "status_key": null,
+        "from_date": null,
+        "to_date": null,
+        "sortby": "created_date",
+        "sortdir": "DESC"
+      },
+      "result_example": [
+        {
+          "id": 16,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "campaign_consumer_id": 128,
+          "consumer_name": "Lê Hoàng Nam",
+          "consumer_phone": "0987654321",
+          "campaign_mission_id": 49,
+          "mission_code": "TEST_FN_FORM",
+          "mission_name": "Test - Nộp khảo sát",
+          "mission_type_id": 8,
+          "mission_type_code": "SUBMIT_FORM",
+          "mission_type_name": "Submit form",
+          "mission_type_color": "#db2777",
+          "is_manual_review": true,
+          "is_unlocked_by_reward": false,
+          "period_key": "C",
+          "progress_value": 1,
+          "target": 1,
+          "progress_percent": 100,
+          "completions": 0,
+          "status_key": "campaign.mission.progress.status.pending",
+          "status_name": "Pending review",
+          "status_color": "#D08700",
+          "status_note": "Submitted · waiting for review",
+          "last_activity_date": "2026-11-13T08:19:33.469206",
+          "reward_points": null,
+          "reward_item_count": null,
+          "created_date": "2026-11-13T08:19:33.469206"
+        }
+      ],
+      "ui": "| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`."
+    },
+    "POST /api/v1/reward/web/campaign-mission-progress/list-totalrow": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "searchtext": "",
+        "status_key": null,
+        "from_date": null,
+        "to_date": null
+      },
+      "result_example": {
+        "total": 18,
+        "status_summary": {
+          "campaign.mission.progress.metric.total": 18,
+          "campaign.mission.progress.status.progress": 7,
+          "campaign.mission.progress.status.pending": 2,
+          "campaign.mission.progress.status.completed": 5,
+          "campaign.mission.progress.status.rejected": 1,
+          "campaign.mission.progress.status.limit": 2,
+          "campaign.mission.progress.status.missed": 1
+        }
+      },
+      "ui": "| Tab | `status_summary` key | Gửi `status_key` |\n|---|---|---|\n| All | `campaign.mission.progress.metric.total` | `null` |\n| In progress | `...status.progress` | `campaign.mission.progress.status.progress` |\n| Pending review | `...status.pending` | `campaign.mission.progress.status.pending` |\n| Completed | `...status.completed` | `campaign.mission.progress.status.completed` |\n| Rejected | `...status.rejected` | `campaign.mission.progress.status.rejected` |\n| Limit reached (game) | `...status.limit` | `campaign.mission.progress.status.limit` |\n| Missed | `...status.missed` | `campaign.mission.progress.status.missed` |\n\n`total` đã áp `status_key` (dùng phân trang); `metric.total` luôn là tổng không lọc trạng thái."
+    },
+    "POST /api/v1/reward/web/campaign-mission-progress/approve": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 16,
+        "status_key": "campaign.mission.progress.status.completed",
+        "reject_reason_public": null,
+        "review_note": "Bài khảo sát đầy đủ",
+        "allow_resubmit": false
+      },
+      "result_example": {
+        "result": 1,
+        "status": "success",
+        "message": "Duyệt nhiệm vụ thành công.",
+        "action": "approve",
+        "record_id": 16,
+        "data": {
+          "progress_status_key": "campaign.mission.progress.status.completed",
+          "completion_id": 21,
+          "submission_id": 9,
+          "points_awarded": 50,
+          "reward_items_pending": 1,
+          "allow_resubmit": null
+        }
+      },
+      "ui": "Chỉ dùng cho dòng đang `campaign.mission.progress.status.pending`.\n\n| Nút | Gửi | Bắt buộc |\n|---|---|---|\n| **Duyệt** | `status_key = campaign.mission.progress.status.completed` | — |\n| **Từ chối** | `status_key = campaign.mission.progress.status.rejected` | `reject_reason_public` (người tham gia thấy) |\n| Cho nộp lại | `allow_resubmit = true` (khi từ chối) | — |\n| Ghi chú nội bộ | `review_note` | — |\n\nDuyệt → cộng điểm (`data.points_awarded`) và tạo quà chờ phát (`data.reward_items_pending`). Lỗi nghiệp vụ trả `success = false` kèm `message` của DB (vd dòng không còn ở trạng thái chờ duyệt).\n\n> `result_example` minh họa theo DTO; chưa gọi thử trên dev vì API ghi dữ liệu."
+    },
+    "GET /api/v1/reward/web/campaign-mission-progress/get-by-id": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 18
+      },
+      "result_example": {
+        "campaign_mission_progress": {
+          "id": 18,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "campaign_mission_id": 50,
+          "mission_version_id": 41,
+          "campaign_consumer_id": 127,
+          "period_key": "C",
+          "progress_value": 1,
+          "target": 1,
+          "seen_values": [],
+          "completions": 1,
+          "status_key": "campaign.mission.progress.status.completed",
+          "last_event_id": null,
+          "status_name": "Completed",
+          "status_color": "#00A65E"
+        },
+        "campaign_consumer": {
+          "id": 127,
+          "name": "Trần Thị Bích",
+          "phone": "0912345678",
+          "email": "bich.tran@agency.com",
+          "job_title": "Marketing Lead",
+          "workplace": "Creative Media",
+          "total_balance": 500000.0,
+          "total_mission": 4
+        },
+        "campaign_mission": {
+          "id": 50,
+          "code": "TEST_FN_UNLOCK",
+          "name": "Test - Check-in Hội thảo VIP",
+          "mission_type_code": "REGISTRATION",
+          "mission_type_name": "Registration",
+          "unlock_item_id": 102,
+          "status_key": "campaign.mission.status.active"
+        },
+        "campaign_mission_version": {
+          "id": 41,
+          "version_no": 1,
+          "trigger_event": "EVENT_CHECKIN_VERIFIED",
+          "goal_type_key": "single",
+          "goal_target": 1,
+          "game_code": null,
+          "active_from": "2026-11-15T09:00:00+07:00",
+          "active_to": "2026-12-13T08:19:33.469206+07:00"
+        },
+        "campaign_mission_outcome": [
+          {
+            "id": 74,
+            "kind_key": "campaign.mission.outcome.kind.points",
+            "points": 50,
+            "quantity": 0,
+            "reward_item_id": null,
+            "reward_item_name": null
+          },
+          {
+            "id": 75,
+            "kind_key": "campaign.mission.outcome.kind.item",
+            "points": null,
+            "quantity": 1,
+            "reward_item_id": 29,
+            "reward_item_name": "test create"
+          }
+        ],
+        "campaign_mission_completion": [],
+        "campaign_event": [],
+        "campaign_mission_submission": [],
+        "campaign_referral": [],
+        "campaign_mission_game_play": [],
+        "campaign_consumer_redemption_entitlement": [
+          {
+            "id": 6,
+            "kind_key": "campaign.consumer.redemption.entitlement.kind.mission_unlock",
+            "granted": 1,
+            "used": 0,
+            "redemption_no": "R-TEST-0002",
+            "reward_item_id": 102,
+            "status_key": "campaign.consumer.redemption.entitlement.status.active",
+            "status_name": "Khả dụng",
+            "status_color": "#00A65E",
+            "expires_date": "2026-12-13T08:19:33.469206"
+          }
+        ],
+        "campaign_consumer_point_ledger": [],
+        "campaign_consumer_redemption": []
+      },
+      "ui": "Drawer chi tiết tiến độ.\n\n| Khối UI | Field |\n|---|---|\n| Header (người + nhiệm vụ + trạng thái) | `campaign_consumer`, `campaign_mission`, `campaign_mission_progress` |\n| Điều kiện / mục tiêu | `campaign_mission_version` (`trigger_event`, `goal_*`, `active_from` / `active_to`) |\n| Phần thưởng | `campaign_mission_outcome` (`kind_key` points / item) |\n| Các lần đạt | `campaign_mission_completion` |\n| Timeline | `campaign_event` |\n| Bài nộp (form / content) | `campaign_mission_submission` |\n| Bạn được mời (referral) | `campaign_referral` |\n| Lượt chơi (game) | `campaign_mission_game_play` |\n| Mở khóa bằng quà | `campaign_consumer_redemption_entitlement` |\n| Điểm / quà đã nhận | `campaign_consumer_point_ledger`, `campaign_consumer_redemption` |\n\nMảng không có dữ liệu trả `[]`. `id` thuộc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\" (fn chỉ nhận `p_id`, API tự so tenant)."
     }
   }
 }
