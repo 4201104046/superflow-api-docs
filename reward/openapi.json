@@ -56,11 +56,11 @@
     },
     {
       "name": "Point",
-      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nNút **Adjust points** → `adjust`, **Revoke this entry** → `revoke`."
+      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nNút **Adjust points** → `adjust`, **Revoke this entry** → `revoke`, **Export** → `export-excel-list`."
     },
     {
       "name": "Campaign redemption",
-      "description": "Phiếu đổi quà của campaign (bảng `campaign_consumer_redemption`).\n\n- Màn **Redemption**: `list-totalrow` (số trên tab) + `list-pageindex` (bảng).\n- Nút **Approve**: `approve`; **Reject / Mark delivered**: `update-status`.\n- Tab **Redemptions** trong drawer người tham gia: `list-by-consumer` (không phân trang).\n\nTenant của phiếu lấy theo người tham gia (`campaign_consumer.tenant_id`)."
+      "description": "Phiếu đổi quà của campaign (bảng `campaign_consumer_redemption`).\n\n- Màn **Redemption**: `list-totalrow` (số trên tab) + `list-pageindex` (bảng).\n- Nút **Export**: `export-excel-list` (cùng bộ lọc với bảng).\n- Nút **Approve**: `approve`; **Reject / Mark delivered**: `update-status`.\n- Tab **Redemptions** trong drawer người tham gia: `list-by-consumer` (không phân trang).\n\nTenant của phiếu lấy theo người tham gia (`campaign_consumer.tenant_id`)."
     },
     {
       "name": "Mission",
@@ -410,6 +410,74 @@
                     }
                   },
                   "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign-consumer-point-ledger/export-excel-list": {
+      "post": {
+        "tags": [
+          "Point"
+        ],
+        "summary": "Xuất Excel sổ điểm (ledger)",
+        "description": "Trả file `.xlsx` theo `columns` (có tên hiển thị); null = bộ cột mặc định.\r\nLọc theo `status_key` (1 trạng thái), `from_date`/`to_date` theo ngày tạo giao dịch (to_date tính hết ngày).\r\nLỗi thì trả `ResponseDTO` có `error`.\n\n### Map lên màn hình\n\nNút **Export** ở màn Points history.\n\nGửi **cùng bộ lọc** đang dùng ở bảng (`searchtext`, `status_key` của tab đang chọn — tab All gửi `null`, `filter_definition`, `from_date`/`to_date`). `to_date` tính hết ngày.\n\n`columns` = các cột đang hiển thị kèm `column_display_name` (tiêu đề cột Excel); `null` = bộ cột mặc định.\n\nThành công trả **file `.xlsx`** (tải bằng `responseType: blob`); lỗi trả JSON `ResponseDTO` có `error` → kiểm tra `Content-Type` trước khi lưu file.",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_point_ledger_export_excel_list",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerExportListRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "campaign_id": 32,
+                "searchtext": "",
+                "status_key": null,
+                "filter_definition": null,
+                "columns": [
+                  {
+                    "column_name": "name",
+                    "column_data_type": "character varying",
+                    "column_display_name": "Giao dịch"
+                  },
+                  {
+                    "column_name": "delta",
+                    "column_data_type": "numeric",
+                    "column_display_name": "Điểm"
+                  },
+                  {
+                    "column_name": "create_date",
+                    "column_data_type": "timestamp without time zone",
+                    "column_display_name": "Ngày tạo"
+                  }
+                ],
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File tải về",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -887,6 +955,79 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign-consumer-redemption/export-excel-list": {
+      "post": {
+        "tags": [
+          "Campaign redemption"
+        ],
+        "summary": "Xuất Excel danh sách phiếu đổi quà",
+        "description": "Trả file `.xlsx` theo `columns` (có tên hiển thị); null = bộ cột mặc định.\r\nLọc theo `status_key` (1 trạng thái), `from_date`/`to_date` theo ngày tạo phiếu (to_date tính hết ngày).\r\nLỗi thì trả `ResponseDTO` có `error`.\n\n### Map lên màn hình\n\nNút **Export** ở màn Redemption.\n\nGửi **cùng bộ lọc** đang dùng ở bảng (`searchtext`, `status_key` của tab đang chọn — tab All gửi `null`, `filter_definition`, `from_date`/`to_date`). `to_date` tính hết ngày.\n\n`columns` = các cột đang hiển thị kèm `column_display_name` (tiêu đề cột Excel); `null` = bộ cột mặc định.\n\nThành công trả **file `.xlsx`** (tải bằng `responseType: blob`); lỗi trả JSON `ResponseDTO` có `error` → kiểm tra `Content-Type` trước khi lưu file.",
+        "operationId": "post_api_v1_reward_web_campaign_consumer_redemption_export_excel_list",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerRedemptionExportListRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "campaign_id": 32,
+                "searchtext": "",
+                "status_key": null,
+                "filter_definition": null,
+                "columns": [
+                  {
+                    "column_name": "redemption_no",
+                    "column_data_type": "character varying",
+                    "column_display_name": "Mã phiếu"
+                  },
+                  {
+                    "column_name": "consumer_name",
+                    "column_data_type": "character varying",
+                    "column_display_name": "Người tham gia"
+                  },
+                  {
+                    "column_name": "reward_name",
+                    "column_data_type": "character varying",
+                    "column_display_name": "Quà"
+                  },
+                  {
+                    "column_name": "status_name",
+                    "column_data_type": "character varying",
+                    "column_display_name": "Trạng thái"
+                  }
+                ],
+                "from_date": null,
+                "to_date": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File tải về",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign-consumer-redemption/update-status": {
       "post": {
         "tags": [
@@ -1245,12 +1386,12 @@
           "Participants"
         ],
         "summary": "Xuất Excel người tham gia",
-        "description": "Trả file `.xlsx` theo `columns` (có tên hiển thị). Lỗi thì trả `ResponseDTO` có `error`.\n\n### Map lên màn hình\n\n> ⚠️ Xuất Excel **vẫn dùng `list_status_key` (mảng)** vì fn export trên DB chưa đổi. Đang lọc tab nào ở danh sách (`status_key`) thì gửi `list_status_key = [status_key]`; tab All gửi `null`.",
+        "description": "Trả file `.xlsx` theo `columns` (có tên hiển thị). Lỗi thì trả `ResponseDTO` có `error`.\n\n### Map lên màn hình\n\n> **Đổi tham số:** `list_status_key` (mảng) → **`status_key`** (1 giá trị, giống `list-pageindex`). Tab All gửi `null`.\n\nGửi **cùng bộ lọc** đang dùng ở bảng (`searchtext`, `status_key` của tab đang chọn — tab All gửi `null`, `filter_definition`, `from_date`/`to_date`). `to_date` tính hết ngày.\n\n`columns` = các cột đang hiển thị kèm `column_display_name` (tiêu đề cột Excel); `null` = bộ cột mặc định.\n\nThành công trả **file `.xlsx`** (tải bằng `responseType: blob`); lỗi trả JSON `ResponseDTO` có `error` → kiểm tra `Content-Type` trước khi lưu file.",
         "operationId": "post_api_v1_reward_web_campaign_consumer_export_excel_list",
         "x-badges": [
           {
-            "name": "Filter nâng cao đang lỗi",
-            "color": "#B42318"
+            "name": "Đổi tham số",
+            "color": "#6941C6"
           }
         ],
         "requestBody": {
@@ -1260,10 +1401,10 @@
                 "$ref": "#/components/schemas/FnCampaignConsumerExportListRequestDTO"
               },
               "example": {
-                "tenant_id": 1,
-                "campaign_id": 2,
+                "tenant_id": 71268,
+                "campaign_id": 32,
                 "searchtext": "",
-                "list_status_key": null,
+                "status_key": null,
                 "filter_definition": null,
                 "columns": [
                   {
@@ -2295,12 +2436,16 @@
           "Mission progress"
         ],
         "summary": "Danh sách tiến độ nhiệm vụ của người tham gia",
-        "description": "Màn **Mission Progress**: phân trang, tìm kiếm, lọc và sắp xếp theo bộ lọc của\r\n`fn_campaign_mission_progress_web_list_pageindex`.\r\n            \r\n- `pageindex` >= 1, `pagesize` >= 1, `tenant_id` bắt buộc.\r\n- `campaign_id` bỏ trống = toàn bộ campaign của tenant.\r\n- `campaign_mission_id` bỏ trống = toàn bộ nhiệm vụ trong campaign.\r\n- `status_key` chỉ nhận 1 giá trị: `campaign.mission.progress.status.progress` / `pending` /\r\n  `completed` / `rejected` / `limit` / `missed` (bỏ trống = không lọc).\r\n- `searchtext` tìm theo tên, số điện thoại hoặc `campaign_consumer_id`.\r\n- `from_date` / `to_date` lọc theo `created_date` (to_date tính hết ngày).\r\n- `sortby`: id | consumer_name | mission_name | progress_percent | status_key | status_name |\r\n  last_activity_date | created_date; `sortdir`: ASC / DESC.\r\n            \r\nTrạng thái `limit` của nhiệm vụ không phải GAME được chuẩn hóa thành `completed`.\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`.",
+        "description": "Màn **Mission Progress**: phân trang, tìm kiếm, lọc và sắp xếp theo bộ lọc của\r\n`fn_campaign_mission_progress_web_list_pageindex`.\r\n            \r\n- `pageindex` >= 1, `pagesize` >= 1, `tenant_id` bắt buộc.\r\n- `campaign_id` bỏ trống = toàn bộ campaign của tenant.\r\n- `campaign_mission_id` bỏ trống = toàn bộ nhiệm vụ trong campaign.\r\n- `status_key` chỉ nhận 1 giá trị: `campaign.mission.progress.status.progress` / `pending` /\r\n  `completed` / `rejected` / `limit` / `missed` (bỏ trống = không lọc).\r\n- `searchtext` tìm theo tên, số điện thoại hoặc `campaign_consumer_id`.\r\n- `from_date` / `to_date` lọc theo `created_date` (to_date tính hết ngày).\r\n- `sortby`: id | consumer_name | mission_name | progress_percent | status_key | status_name |\r\n  last_activity_date | created_date; `sortdir`: ASC / DESC.\r\n            \r\nTrạng thái `limit` của nhiệm vụ không phải GAME được chuẩn hóa thành `completed`.\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`.\n\nDropdown **lọc theo nhiệm vụ**: gửi `campaign_mission_id` (id từ `campaign-mission/list`); `null` = tất cả nhiệm vụ. Gửi cùng giá trị cho `list-totalrow`.",
         "operationId": "post_api_v1_reward_web_campaign_mission_progress_list_pageindex",
         "x-badges": [
           {
             "name": "Mới",
             "color": "#0B7A45"
+          },
+          {
+            "name": "Đổi tham số",
+            "color": "#6941C6"
           }
         ],
         "requestBody": {
@@ -2312,6 +2457,7 @@
               "example": {
                 "tenant_id": 71268,
                 "campaign_id": 32,
+                "campaign_mission_id": null,
                 "pageindex": 1,
                 "pagesize": 20,
                 "searchtext": "",
@@ -2384,12 +2530,16 @@
           "Mission progress"
         ],
         "summary": "Tổng số dòng tiến độ + thống kê theo trạng thái",
-        "description": "Gọi cùng bộ lọc với `list-pageindex` (trừ `pageindex` / `pagesize` / `sortby` / `sortdir`).\r\n            \r\nTrả về `total` (tổng số dòng, có áp dụng `status_key` nếu được truyền) và\r\n`status_summary` gồm số dòng theo từng trạng thái\r\n(`campaign.mission.progress.status.progress` / `pending` / `completed` / `rejected` / `limit` / `missed`)\r\ncùng `campaign.mission.progress.metric.total` (tổng không lọc theo `status_key`).\n\n### Map lên màn hình\n\n| Tab | `status_summary` key | Gửi `status_key` |\n|---|---|---|\n| All | `campaign.mission.progress.metric.total` | `null` |\n| In progress | `...status.progress` | `campaign.mission.progress.status.progress` |\n| Pending review | `...status.pending` | `campaign.mission.progress.status.pending` |\n| Completed | `...status.completed` | `campaign.mission.progress.status.completed` |\n| Rejected | `...status.rejected` | `campaign.mission.progress.status.rejected` |\n| Limit reached (game) | `...status.limit` | `campaign.mission.progress.status.limit` |\n| Missed | `...status.missed` | `campaign.mission.progress.status.missed` |\n\n`total` đã áp `status_key` (dùng phân trang); `metric.total` luôn là tổng không lọc trạng thái.",
+        "description": "Gọi cùng bộ lọc với `list-pageindex` (trừ `pageindex` / `pagesize` / `sortby` / `sortdir`).\r\n            \r\nTrả về `total` (tổng số dòng, có áp dụng `status_key` nếu được truyền) và\r\n`status_summary` gồm số dòng theo từng trạng thái\r\n(`campaign.mission.progress.status.progress` / `pending` / `completed` / `rejected` / `limit` / `missed`)\r\ncùng `campaign.mission.progress.metric.total` (tổng không lọc theo `status_key`).\n\n### Map lên màn hình\n\n| Tab | `status_summary` key | Gửi `status_key` |\n|---|---|---|\n| All | `campaign.mission.progress.metric.total` | `null` |\n| In progress | `...status.progress` | `campaign.mission.progress.status.progress` |\n| Pending review | `...status.pending` | `campaign.mission.progress.status.pending` |\n| Completed | `...status.completed` | `campaign.mission.progress.status.completed` |\n| Rejected | `...status.rejected` | `campaign.mission.progress.status.rejected` |\n| Limit reached (game) | `...status.limit` | `campaign.mission.progress.status.limit` |\n| Missed | `...status.missed` | `campaign.mission.progress.status.missed` |\n\n`total` đã áp `status_key` (dùng phân trang); `metric.total` luôn là tổng không lọc trạng thái.\n\nDropdown **lọc theo nhiệm vụ**: gửi `campaign_mission_id` (id từ `campaign-mission/list`); `null` = tất cả nhiệm vụ. Gửi cùng giá trị với `list-pageindex`.",
         "operationId": "post_api_v1_reward_web_campaign_mission_progress_list_totalrow",
         "x-badges": [
           {
             "name": "Mới",
             "color": "#0B7A45"
+          },
+          {
+            "name": "Đổi tham số",
+            "color": "#6941C6"
           }
         ],
         "requestBody": {
@@ -2401,6 +2551,7 @@
               "example": {
                 "tenant_id": 71268,
                 "campaign_id": 32,
+                "campaign_mission_id": null,
                 "searchtext": "",
                 "status_key": null,
                 "from_date": null,
@@ -10325,6 +10476,71 @@
         },
         "additionalProperties": false
       },
+      "FnCampaignConsumerPointLedgerExportListRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: tên giao dịch, mã nguồn (source_code), tên/SĐT người tham gia, ghi chú, tên trạng thái, tên loại nguồn",
+            "nullable": true,
+            "example": ""
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Lọc theo 1 trạng thái: campaign.consumer.point.ledger.status.* ; bỏ trống = tất cả",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOptionExport"
+            },
+            "description": "Cột xuất Excel kèm tên hiển thị (column_display_name); null = bộ cột mặc định",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo giao dịch từ ngày",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo giao dịch đến hết ngày này",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "additionalProperties": false
+      },
       "FnCampaignConsumerPointLedgerWebAdjustDTO": {
         "type": "object",
         "properties": {
@@ -11081,6 +11297,71 @@
             "type": "boolean",
             "description": "true = mở lại nhiệm vụ để người tham gia làm lại; false (mặc định) = chỉ thu hồi điểm",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionExportListRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "description": "Lọc theo campaign",
+            "format": "int64",
+            "nullable": true,
+            "example": null
+          },
+          "searchtext": {
+            "type": "string",
+            "description": "Từ khóa: mã phiếu, tên/SĐT người tham gia, tên/mã quà, mã nguồn (source_no), hình thức giao quà",
+            "nullable": true,
+            "example": ""
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Lọc theo 1 trạng thái: campaign.consumer.redemption.status.* ; bỏ trống = tất cả",
+            "nullable": true
+          },
+          "filter_definition": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FilterDefinition"
+              }
+            ],
+            "nullable": true,
+            "description": "Bộ lọc nâng cao (Match all/any + rule). ⚠️ Đang lỗi trên dev, gửi null."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataCollumnOptionExport"
+            },
+            "description": "Cột xuất Excel kèm tên hiển thị (column_display_name); null = bộ cột mặc định",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo phiếu từ ngày",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Lọc ngày tạo phiếu đến hết ngày này",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
           }
         },
         "additionalProperties": false

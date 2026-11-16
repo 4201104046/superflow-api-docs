@@ -12,8 +12,8 @@
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
       "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$",
       "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$",
-      "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer|adjust|revoke)$",
-      "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
+      "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|export-excel-list|get-by-id|list-by-consumer|adjust|revoke)$",
+      "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|export-excel-list|update-status|approve|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
       "^/api/v1/reward/web/reward-item/(list|list-mission|create|update-active|duplicate|delete|get-by-id|list-stock-nopaging)$",
       "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
@@ -54,12 +54,12 @@
     {
       "name": "Point",
       "match": "/campaign-consumer-point-ledger/",
-      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nNút **Adjust points** → `adjust`, **Revoke this entry** → `revoke`."
+      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nNút **Adjust points** → `adjust`, **Revoke this entry** → `revoke`, **Export** → `export-excel-list`."
     },
     {
       "name": "Campaign redemption",
       "match": "/campaign-consumer-redemption/",
-      "description": "Phiếu đổi quà của campaign (bảng `campaign_consumer_redemption`).\n\n- Màn **Redemption**: `list-totalrow` (số trên tab) + `list-pageindex` (bảng).\n- Nút **Approve**: `approve`; **Reject / Mark delivered**: `update-status`.\n- Tab **Redemptions** trong drawer người tham gia: `list-by-consumer` (không phân trang).\n\nTenant của phiếu lấy theo người tham gia (`campaign_consumer.tenant_id`)."
+      "description": "Phiếu đổi quà của campaign (bảng `campaign_consumer_redemption`).\n\n- Màn **Redemption**: `list-totalrow` (số trên tab) + `list-pageindex` (bảng).\n- Nút **Export**: `export-excel-list` (cùng bộ lọc với bảng).\n- Nút **Approve**: `approve`; **Reject / Mark delivered**: `update-status`.\n- Tab **Redemptions** trong drawer người tham gia: `list-by-consumer` (không phân trang).\n\nTenant của phiếu lấy theo người tham gia (`campaign_consumer.tenant_id`)."
     },
     {
       "name": "Mission",
@@ -644,13 +644,13 @@
     },
     "POST /api/v1/reward/web/campaign-consumer/export-excel-list": {
       "badges": [
-        "filter-broken"
+        "changed"
       ],
       "request_example": {
-        "tenant_id": 1,
-        "campaign_id": 2,
+        "tenant_id": 71268,
+        "campaign_id": 32,
         "searchtext": "",
-        "list_status_key": null,
+        "status_key": null,
         "filter_definition": null,
         "columns": [
           {
@@ -667,7 +667,7 @@
         "from_date": null,
         "to_date": null
       },
-      "ui": "> ⚠️ Xuất Excel **vẫn dùng `list_status_key` (mảng)** vì fn export trên DB chưa đổi. Đang lọc tab nào ở danh sách (`status_key`) thì gửi `list_status_key = [status_key]`; tab All gửi `null`."
+      "ui": "> **Đổi tham số:** `list_status_key` (mảng) → **`status_key`** (1 giá trị, giống `list-pageindex`). Tab All gửi `null`.\n\nGửi **cùng bộ lọc** đang dùng ở bảng (`searchtext`, `status_key` của tab đang chọn — tab All gửi `null`, `filter_definition`, `from_date`/`to_date`). `to_date` tính hết ngày.\n\n`columns` = các cột đang hiển thị kèm `column_display_name` (tiêu đề cột Excel); `null` = bộ cột mặc định.\n\nThành công trả **file `.xlsx`** (tải bằng `responseType: blob`); lỗi trả JSON `ResponseDTO` có `error` → kiểm tra `Content-Type` trước khi lưu file."
     },
     "GET /api/v1/reward/web/campaign-consumer/get-by-id": {
       "badges": [
@@ -1843,11 +1843,13 @@
     },
     "POST /api/v1/reward/web/campaign-mission-progress/list-pageindex": {
       "badges": [
-        "new"
+        "new",
+        "changed"
       ],
       "request_example": {
         "tenant_id": 71268,
         "campaign_id": 32,
+        "campaign_mission_id": null,
         "pageindex": 1,
         "pagesize": 20,
         "searchtext": "",
@@ -1889,15 +1891,17 @@
           "created_date": "2026-11-13T08:19:33.469206"
         }
       ],
-      "ui": "| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`."
+      "ui": "| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`.\n\nDropdown **lọc theo nhiệm vụ**: gửi `campaign_mission_id` (id từ `campaign-mission/list`); `null` = tất cả nhiệm vụ. Gửi cùng giá trị cho `list-totalrow`."
     },
     "POST /api/v1/reward/web/campaign-mission-progress/list-totalrow": {
       "badges": [
-        "new"
+        "new",
+        "changed"
       ],
       "request_example": {
         "tenant_id": 71268,
         "campaign_id": 32,
+        "campaign_mission_id": null,
         "searchtext": "",
         "status_key": null,
         "from_date": null,
@@ -1915,7 +1919,7 @@
           "campaign.mission.progress.status.missed": 1
         }
       },
-      "ui": "| Tab | `status_summary` key | Gửi `status_key` |\n|---|---|---|\n| All | `campaign.mission.progress.metric.total` | `null` |\n| In progress | `...status.progress` | `campaign.mission.progress.status.progress` |\n| Pending review | `...status.pending` | `campaign.mission.progress.status.pending` |\n| Completed | `...status.completed` | `campaign.mission.progress.status.completed` |\n| Rejected | `...status.rejected` | `campaign.mission.progress.status.rejected` |\n| Limit reached (game) | `...status.limit` | `campaign.mission.progress.status.limit` |\n| Missed | `...status.missed` | `campaign.mission.progress.status.missed` |\n\n`total` đã áp `status_key` (dùng phân trang); `metric.total` luôn là tổng không lọc trạng thái."
+      "ui": "| Tab | `status_summary` key | Gửi `status_key` |\n|---|---|---|\n| All | `campaign.mission.progress.metric.total` | `null` |\n| In progress | `...status.progress` | `campaign.mission.progress.status.progress` |\n| Pending review | `...status.pending` | `campaign.mission.progress.status.pending` |\n| Completed | `...status.completed` | `campaign.mission.progress.status.completed` |\n| Rejected | `...status.rejected` | `campaign.mission.progress.status.rejected` |\n| Limit reached (game) | `...status.limit` | `campaign.mission.progress.status.limit` |\n| Missed | `...status.missed` | `campaign.mission.progress.status.missed` |\n\n`total` đã áp `status_key` (dùng phân trang); `metric.total` luôn là tổng không lọc trạng thái.\n\nDropdown **lọc theo nhiệm vụ**: gửi `campaign_mission_id` (id từ `campaign-mission/list`); `null` = tất cả nhiệm vụ. Gửi cùng giá trị với `list-pageindex`."
     },
     "POST /api/v1/reward/web/campaign-mission-progress/approve": {
       "badges": [
@@ -2366,6 +2370,75 @@
         }
       ],
       "ui": "Mỗi phần tử = 1 **thẻ**: mission được mở khóa (`campaign_mission`, `id = null` = quà không gắn mission) + badge tiến độ (`campaign_mission_progress`), tổng `granted` / `used` / `remaining`, hạn gần nhất `expires_date`.\n\n`lines[]` = các dòng quyền lợi (sắp hết hạn lên trước): `kind_name`/`kind_color`, `status_name`/`status_color` (`active` / `used_up` / `expired` / `revoked`, tính động), `source_type_name`, `reward_item_name`, `redemption_no`.\n\n`campaign_consumer_id` bắt buộc; người tham gia khác tenant → lỗi."
+    },
+    "POST /api/v1/reward/web/campaign-consumer-point-ledger/export-excel-list": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "searchtext": "",
+        "status_key": null,
+        "filter_definition": null,
+        "columns": [
+          {
+            "column_name": "name",
+            "column_data_type": "character varying",
+            "column_display_name": "Giao dịch"
+          },
+          {
+            "column_name": "delta",
+            "column_data_type": "numeric",
+            "column_display_name": "Điểm"
+          },
+          {
+            "column_name": "create_date",
+            "column_data_type": "timestamp without time zone",
+            "column_display_name": "Ngày tạo"
+          }
+        ],
+        "from_date": null,
+        "to_date": null
+      },
+      "ui": "Nút **Export** ở màn Points history.\n\nGửi **cùng bộ lọc** đang dùng ở bảng (`searchtext`, `status_key` của tab đang chọn — tab All gửi `null`, `filter_definition`, `from_date`/`to_date`). `to_date` tính hết ngày.\n\n`columns` = các cột đang hiển thị kèm `column_display_name` (tiêu đề cột Excel); `null` = bộ cột mặc định.\n\nThành công trả **file `.xlsx`** (tải bằng `responseType: blob`); lỗi trả JSON `ResponseDTO` có `error` → kiểm tra `Content-Type` trước khi lưu file."
+    },
+    "POST /api/v1/reward/web/campaign-consumer-redemption/export-excel-list": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "searchtext": "",
+        "status_key": null,
+        "filter_definition": null,
+        "columns": [
+          {
+            "column_name": "redemption_no",
+            "column_data_type": "character varying",
+            "column_display_name": "Mã phiếu"
+          },
+          {
+            "column_name": "consumer_name",
+            "column_data_type": "character varying",
+            "column_display_name": "Người tham gia"
+          },
+          {
+            "column_name": "reward_name",
+            "column_data_type": "character varying",
+            "column_display_name": "Quà"
+          },
+          {
+            "column_name": "status_name",
+            "column_data_type": "character varying",
+            "column_display_name": "Trạng thái"
+          }
+        ],
+        "from_date": null,
+        "to_date": null
+      },
+      "ui": "Nút **Export** ở màn Redemption.\n\nGửi **cùng bộ lọc** đang dùng ở bảng (`searchtext`, `status_key` của tab đang chọn — tab All gửi `null`, `filter_definition`, `from_date`/`to_date`). `to_date` tính hết ngày.\n\n`columns` = các cột đang hiển thị kèm `column_display_name` (tiêu đề cột Excel); `null` = bộ cột mặc định.\n\nThành công trả **file `.xlsx`** (tải bằng `responseType: blob`); lỗi trả JSON `ResponseDTO` có `error` → kiểm tra `Content-Type` trước khi lưu file."
     }
   }
 }
