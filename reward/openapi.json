@@ -3602,6 +3602,94 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign/overview-trend": {
+      "get": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Biểu đồ xu hướng theo tuần của campaign",
+        "description": "Màn Campaign overview, biểu đồ Trend: mỗi phần tử là 1 tuần tính từ `start_date` của campaign\r\ntới hôm nay (hoặc ngày kết thúc nếu đã kết thúc), nhãn `W1`, `W2`...\r\n`metric` truyền nguyên xuống DB: mặc định `joined` = số người tham gia mới trong tuần.\r\n`weeks` giới hạn số tuần **đầu tiên** tính từ ngày bắt đầu (không phải N tuần gần nhất).\r\nCampaign chưa có `start_date`, không tồn tại hoặc không thuộc tenant → mảng rỗng.\n\n### Map lên màn hình\n\n> ⚠️ **`metric` đang lỗi ở DB**: chỉ có 2 nhánh — `metric = \"campaign.overview.trend.metric.joined\"` lại trả **điểm đã phát** theo tuần; mọi giá trị khác (kể cả mặc định `joined`) trả **số người tham gia mới**. Đã báo team DB đặt lại key. Tạm thời FE chỉ dùng `joined` (mặc định) cho biểu đồ Participants; **chưa có key ổn định cho Points** — đừng hard-code `...metric.joined` cho Points vì sẽ đổi khi DB sửa.\n\n| Biểu đồ Trend | Field |\n|---|---|\n| Trục X | `label` (`W1`, `W2`...), tooltip `from_date` – `to_date` |\n| Trục Y | `value` |\n\n- Tuần tính từ `start_date` của campaign tới hôm nay / ngày kết thúc; `weeks` = giới hạn N tuần **đầu tiên**.\n- Campaign chưa có `start_date` / sai tenant → mảng rỗng.",
+        "operationId": "get_api_v1_reward_web_campaign_overview_trend",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Có nhánh đang lỗi",
+            "color": "#B54708"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "description": "Chỉ số vẽ biểu đồ, truyền nguyên xuống DB. Mặc định `joined` = số người tham gia mới theo tuần (xem remarks của API)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "weeks",
+            "in": "query",
+            "description": "Số tuần tối đa tính từ ngày bắt đầu campaign (bỏ trống = toàn bộ thời gian chạy, tối đa 104 tuần)",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignWebOverviewTrendItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "period_no": 1,
+                      "label": "W1",
+                      "from_date": "2026-11-02T09:00:00",
+                      "to_date": "2026-11-09T08:59:59",
+                      "value": 12
+                    },
+                    {
+                      "period_no": 2,
+                      "label": "W2",
+                      "from_date": "2026-11-09T09:00:00",
+                      "to_date": "2026-11-16T08:59:59",
+                      "value": 27
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign/list-pageindex": {
       "post": {
         "tags": [
@@ -13336,6 +13424,63 @@
         "properties": {
           "result": {
             "$ref": "#/components/schemas/FnCampaignWebOverviewNeedsAttentionDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewTrendItemDTO": {
+        "type": "object",
+        "properties": {
+          "period_no": {
+            "type": "integer",
+            "description": "Số thứ tự tuần, bắt đầu từ 1 tại ngày bắt đầu campaign",
+            "format": "int32",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "description": "Nhãn trục X (`W1`, `W2`...)",
+            "nullable": true
+          },
+          "from_date": {
+            "type": "string",
+            "description": "Thời điểm bắt đầu tuần",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "to_date": {
+            "type": "string",
+            "description": "Thời điểm kết thúc tuần (hết giây cuối)",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "value": {
+            "type": "integer",
+            "description": "Giá trị của tuần theo `metric`",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewTrendItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignWebOverviewTrendItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
           },
           "success": {
             "type": "boolean"

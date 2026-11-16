@@ -6,7 +6,7 @@
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
       "^/api/v1/reward/web/campaign-leaderboard/(list-score-nopaging|get-by-campaign-id|list|freeze|unfreeze)$",
-      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list|overview-kpi|overview-needs-attention)$",
+      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list|overview-kpi|overview-needs-attention|overview-trend)$",
       "^/api/v1/reward/web/campaign-consumer/(list|list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
@@ -2145,6 +2145,35 @@
         }
       ],
       "ui": "> ⚠️ **Đang lỗi trên dev**: `completions`, `participants_completed`, `completion_rate` luôn = 0 — fn lọc `status = 'campaign.mission.completion.status.approved'` nhưng completion được ghi là `'approved'`. Đã báo team DB; `points_issued` không bị ảnh hưởng. FE cứ map field, số sẽ đúng khi DB sửa (không đổi API).\n\n| Cột UI (Mission performance) | Field |\n|---|---|\n| Mission | `name` (+ `code`), sự kiện `trigger_event` |\n| Status | `status_name` + `status_color` |\n| Completions | `completions` (lượt đã duyệt) |\n| Participants | `participants_completed` (người, không trùng) |\n| Completion rate | `completion_rate` % (trên người tham gia active) |\n| Points issued | `points_issued` (earn − revoke) |\n\n- Sắp xếp sẵn theo `display_order`, `id`. `campaign_id` bắt buộc."
+    },
+    "GET /api/v1/reward/web/campaign/overview-trend": {
+      "badges": [
+        "new",
+        "partial-broken"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 56,
+        "metric": "joined",
+        "weeks": null
+      },
+      "result_example": [
+        {
+          "period_no": 1,
+          "label": "W1",
+          "from_date": "2026-11-02T09:00:00",
+          "to_date": "2026-11-09T08:59:59",
+          "value": 12
+        },
+        {
+          "period_no": 2,
+          "label": "W2",
+          "from_date": "2026-11-09T09:00:00",
+          "to_date": "2026-11-16T08:59:59",
+          "value": 27
+        }
+      ],
+      "ui": "> ⚠️ **`metric` đang lỗi ở DB**: chỉ có 2 nhánh — `metric = \"campaign.overview.trend.metric.joined\"` lại trả **điểm đã phát** theo tuần; mọi giá trị khác (kể cả mặc định `joined`) trả **số người tham gia mới**. Đã báo team DB đặt lại key. Tạm thời FE chỉ dùng `joined` (mặc định) cho biểu đồ Participants; **chưa có key ổn định cho Points** — đừng hard-code `...metric.joined` cho Points vì sẽ đổi khi DB sửa.\n\n| Biểu đồ Trend | Field |\n|---|---|\n| Trục X | `label` (`W1`, `W2`...), tooltip `from_date` – `to_date` |\n| Trục Y | `value` |\n\n- Tuần tính từ `start_date` của campaign tới hôm nay / ngày kết thúc; `weeks` = giới hạn N tuần **đầu tiên**.\n- Campaign chưa có `start_date` / sai tenant → mảng rỗng."
     }
   }
 }
