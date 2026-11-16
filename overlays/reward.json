@@ -12,22 +12,23 @@
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
       "^/api/v1/reward/web/module-tags/(create|delete|get-active|get-all)$",
       "^/api/v1/reward/web/module-config/(create|delete|list-nopaging|list-by-parent-key|list-pageindex|list-totalrow)$",
-      "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer|adjust)$",
+      "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer|adjust|revoke)$",
       "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
       "^/api/v1/reward/web/reward-item/(list|list-mission|create|update-active|duplicate|delete|get-by-id|list-stock-nopaging)$",
       "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
       "^/api/v1/reward/web/reward-type/(list)$",
       "^/api/v1/reward/web/ui-list-field/(list)$",
-      "^/api/v1/reward/web/campaign-mission/(list|list-game|create|delete|update-active|duplicate|get-by-id|update-sequence|list-performance-nopaging)$",
+      "^/api/v1/reward/web/campaign-mission/(list|list-game|list-by-consumer|create|delete|update-active|duplicate|get-by-id|update-sequence|list-performance-nopaging)$",
       "^/api/v1/reward/web/mission-type/(list)$",
-      "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|get-by-id)$"
+      "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|approve-all|get-by-id)$",
+      "^/api/v1/reward/web/campaign-redemption-entitlement/(list-by-consumer)$"
     ]
   },
   "info": {
     "title": "Reward",
     "version": "1.0",
-    "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 09/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | `campaign-consumer-point-ledger/list-by-consumer` lỗi trên DB (fn còn dùng cột `reference_*` đã đổi thành `source_*`) | Dùng `list-pageindex` |\n| 4 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 5 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
+    "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 09/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 4 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
   },
   "tags": [
     {
@@ -53,7 +54,7 @@
     {
       "name": "Point",
       "match": "/campaign-consumer-point-ledger/",
-      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nChưa có API cho các nút: Adjust points, Revoke this entry, Export Excel."
+      "description": "Màn **Points history**: bảng sổ điểm (ledger) có phân trang (`list-pageindex` + `list-totalrow`), drawer *Transaction …* (`get-by-id`), và tab **Points** trong drawer người tham gia (`list-by-consumer`).\n\nGiao dịch quá `expire_date` tự hiện trạng thái `campaign.consumer.point.ledger.status.expire`.\n\nNút **Adjust points** → `adjust`, **Revoke this entry** → `revoke`."
     },
     {
       "name": "Campaign redemption",
@@ -63,12 +64,17 @@
     {
       "name": "Mission",
       "match": "/campaign-mission/",
-      "description": "Màn **Missions** của campaign: danh sách, tạo/sửa (kèm phần thưởng), bật/tắt, nhân bản, xóa."
+      "description": "Màn **Missions** của campaign: danh sách, tạo/sửa (kèm phần thưởng), bật/tắt, nhân bản, xóa.\n\nTab **Missions** trong drawer người tham gia: `list-by-consumer` (nhiệm vụ + tiến độ kỳ hiện tại của 1 người)."
     },
     {
       "name": "Mission progress",
       "match": "/campaign-mission-progress/",
-      "description": "Màn **Mission progress** của campaign: tiến độ nhiệm vụ của từng người tham gia, duyệt bài nộp.\n\n**Luồng gọi:**\n1. Gọi song song `list-totalrow` (số trên tab + tổng phân trang) và `list-pageindex` với cùng bộ lọc.\n2. Bấm 1 dòng → `get-by-id?id=` mở drawer chi tiết.\n3. Dòng `pending` (nhiệm vụ duyệt tay) → nút **Duyệt** / **Từ chối** gọi `approve`. Xong gọi lại bước 1."
+      "description": "Màn **Mission progress** của campaign: tiến độ nhiệm vụ của từng người tham gia, duyệt bài nộp.\n\n**Luồng gọi:**\n1. Gọi song song `list-totalrow` (số trên tab + tổng phân trang) và `list-pageindex` với cùng bộ lọc.\n2. Bấm 1 dòng → `get-by-id?id=` mở drawer chi tiết.\n3. Dòng `pending` (nhiệm vụ duyệt tay) → nút **Duyệt** / **Từ chối** gọi `approve`. Nút **Duyệt tất cả** gọi `approve-all` (duyệt mọi dòng `pending` của campaign). Xong gọi lại bước 1."
+    },
+    {
+      "name": "Redemption entitlement",
+      "match": "/campaign-redemption-entitlement/",
+      "description": "Tab **Rewards / quyền lợi** trong drawer người tham gia: các quyền lợi (lượt chơi game, quà mở khóa nhiệm vụ…) của 1 người, gom thành thẻ theo mission được mở khóa."
     },
     {
       "name": "Mission types",
@@ -936,8 +942,38 @@
     "GET /api/v1/reward/web/campaign-consumer-point-ledger/list-by-consumer": {
       "badges": [
         "new",
-        "broken"
-      ]
+        "changed-response"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_consumer_id": 132,
+        "searchtext": ""
+      },
+      "result_example": [
+        {
+          "id": 33,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "campaign_consumer_id": 132,
+          "source_type_key": "campaign.consumer.point.ledger.source.type.adjust",
+          "source_id": null,
+          "source_code": null,
+          "delta": 100.0,
+          "before_balance": 522.0,
+          "after_balance": 622.0,
+          "expire_date": null,
+          "metadata_json": {},
+          "name": "Offline mission completed",
+          "description": null,
+          "notes": "1",
+          "status_key": "campaign.consumer.point.ledger.status.adjust",
+          "status_name": "Adjust",
+          "status_color": "#7F56D9",
+          "active": true,
+          "create_date": "2026-11-12T14:19:26"
+        }
+      ],
+      "ui": "Tab **Points** trong drawer người tham gia. Không phân trang, mới nhất lên trước.\n\n> **Đổi response:** `reference_type_key` / `reference_id` / `reference_no` → `source_type_key` / `source_id` / `source_code` (cùng tên với `list-pageindex`, `get-by-id`).\n\n`campaign_consumer_id` thuộc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\""
     },
     "GET /api/v1/reward/web/campaign-consumer-redemption/list-by-consumer": {
       "badges": [
@@ -1912,7 +1948,8 @@
     },
     "GET /api/v1/reward/web/campaign-mission-progress/get-by-id": {
       "badges": [
-        "new"
+        "new",
+        "changed-response"
       ],
       "request_example": {
         "tenant_id": 71268,
@@ -1965,24 +2002,10 @@
           "active_from": "2026-11-15T09:00:00+07:00",
           "active_to": "2026-12-13T08:19:33.469206+07:00"
         },
-        "campaign_mission_outcome": [
-          {
-            "id": 74,
-            "kind_key": "campaign.mission.outcome.kind.points",
-            "points": 50,
-            "quantity": 0,
-            "reward_item_id": null,
-            "reward_item_name": null
-          },
-          {
-            "id": 75,
-            "kind_key": "campaign.mission.outcome.kind.item",
-            "points": null,
-            "quantity": 1,
-            "reward_item_id": 29,
-            "reward_item_name": "test create"
-          }
-        ],
+        "campaign_mission_outcome": {
+          "points": 50,
+          "total_item": 1
+        },
         "campaign_mission_completion": [],
         "campaign_event": [],
         "campaign_mission_submission": [],
@@ -2005,7 +2028,7 @@
         "campaign_consumer_point_ledger": [],
         "campaign_consumer_redemption": []
       },
-      "ui": "Drawer chi tiết tiến độ.\n\n| Khối UI | Field |\n|---|---|\n| Header (người + nhiệm vụ + trạng thái) | `campaign_consumer`, `campaign_mission`, `campaign_mission_progress` |\n| Điều kiện / mục tiêu | `campaign_mission_version` (`trigger_event`, `goal_*`, `active_from` / `active_to`) |\n| Phần thưởng | `campaign_mission_outcome` (`kind_key` points / item) |\n| Các lần đạt | `campaign_mission_completion` |\n| Timeline | `campaign_event` |\n| Bài nộp (form / content) | `campaign_mission_submission` |\n| Bạn được mời (referral) | `campaign_referral` |\n| Lượt chơi (game) | `campaign_mission_game_play` |\n| Mở khóa bằng quà | `campaign_consumer_redemption_entitlement` |\n| Điểm / quà đã nhận | `campaign_consumer_point_ledger`, `campaign_consumer_redemption` |\n\nMảng không có dữ liệu trả `[]`. `id` thuộc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\" (fn chỉ nhận `p_id`, API tự so tenant)."
+      "ui": "Drawer chi tiết tiến độ.\n\n| Khối UI | Field |\n|---|---|\n| Header (người + nhiệm vụ + trạng thái) | `campaign_consumer`, `campaign_mission`, `campaign_mission_progress` |\n| Điều kiện / mục tiêu | `campaign_mission_version` (`trigger_event`, `goal_*`, `active_from` / `active_to`) |\n| Phần thưởng | `campaign_mission_outcome` — **object** `{points, total_item}` (trước đây là mảng) |\n| Các lần đạt | `campaign_mission_completion` |\n| Timeline | `campaign_event` |\n| Bài nộp (form / content) | `campaign_mission_submission` |\n| Bạn được mời (referral) | `campaign_referral` |\n| Lượt chơi (game) | `campaign_mission_game_play` |\n| Mở khóa bằng quà | `campaign_consumer_redemption_entitlement` |\n| Điểm / quà đã nhận | `campaign_consumer_point_ledger`, `campaign_consumer_redemption` |\n\nMảng không có dữ liệu trả `[]`. `id` thuộc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\" (fn chỉ nhận `p_id`, API tự so tenant)."
     },
     "GET /api/v1/reward/web/campaign/overview-kpi": {
       "badges": [
@@ -2174,6 +2197,175 @@
         }
       ],
       "ui": "> ⚠️ **`metric` đang lỗi ở DB**: chỉ có 2 nhánh — `metric = \"campaign.overview.trend.metric.joined\"` lại trả **điểm đã phát** theo tuần; mọi giá trị khác (kể cả mặc định `joined`) trả **số người tham gia mới**. Đã báo team DB đặt lại key. Tạm thời FE chỉ dùng `joined` (mặc định) cho biểu đồ Participants; **chưa có key ổn định cho Points** — đừng hard-code `...metric.joined` cho Points vì sẽ đổi khi DB sửa.\n\n| Biểu đồ Trend | Field |\n|---|---|\n| Trục X | `label` (`W1`, `W2`...), tooltip `from_date` – `to_date` |\n| Trục Y | `value` |\n\n- Tuần tính từ `start_date` của campaign tới hôm nay / ngày kết thúc; `weeks` = giới hạn N tuần **đầu tiên**.\n- Campaign chưa có `start_date` / sai tenant → mảng rỗng."
+    },
+    "POST /api/v1/reward/web/campaign-consumer-point-ledger/revoke": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 18,
+        "reason_key": null,
+        "notes": "Hoàn thành nhiệm vụ không hợp lệ",
+        "allow_redo": false
+      },
+      "result_example": {
+        "type": "create",
+        "id": 231,
+        "result": 1,
+        "message": "Thu hồi điểm thành công.",
+        "ledger_id": 231,
+        "revoked_ledger_id": 18,
+        "before_balance": 700,
+        "after_balance": 650,
+        "revoked_amount": 50,
+        "deducted": 50,
+        "shortfall": 0,
+        "allow_redo": false,
+        "mission_reset": false,
+        "completion_id": 21
+      },
+      "ui": "Nút **Revoke this entry** trong drawer giao dịch — chỉ hiện với bút toán **Earn** (`delta > 0`) chưa bị thu hồi.\n\n| Field | Ghi chú |\n|---|---|\n| `notes` | Bắt buộc (ô lý do) |\n| `reason_key` | Dropdown lý do `campaign.consumer.point.ledger.reason.*`; bỏ trống = `...reason.other` |\n| `allow_redo` | Checkbox \"Cho làm lại nhiệm vụ\" → mở lại tiến độ (`mission_reset = true`) |\n\nVí không âm: số dư không đủ thì trừ tới 0, phần thiếu ở `shortfall`. Thu hồi lần 2 → lỗi \"Bút toán này đã được thu hồi trước đó\". Xong gọi lại `list-pageindex` + `list-totalrow`.\n\n> `result_example` minh họa theo DTO; chưa gọi thử trên dev vì API ghi dữ liệu."
+    },
+    "GET /api/v1/reward/web/campaign-mission/list-by-consumer": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_consumer_id": 132,
+        "searchtext": ""
+      },
+      "result_example": [
+        {
+          "id": 32,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "campaign_consumer_id": 132,
+          "mission_code": "MS_REFERRAL_FRIENDS_02",
+          "mission_name": "Mời 3 bạn bè tham gia ứng dụng",
+          "mission_type_id": 6,
+          "mission_type_code": "REFERRAL",
+          "mission_type_name": "Referral",
+          "mission_type_color": "#7c3aed",
+          "is_manual_review": false,
+          "is_unlocked_by_reward": false,
+          "sequence": 3,
+          "start_date": null,
+          "end_date": null,
+          "period_key": "C",
+          "progress_value": 0,
+          "target": 3,
+          "progress_percent": 0,
+          "completions": 0,
+          "limit_per_period": 1,
+          "status_key": "campaign.mission.progress.status.not_started",
+          "status_name": "Not started",
+          "status_color": "#6A7282",
+          "status_note": "+500 pts available",
+          "last_completed_date": null,
+          "reward_points": 500,
+          "reward_item_count": 1,
+          "points_earned": 0
+        }
+      ],
+      "ui": "Tab **Missions** trong drawer người tham gia. Mỗi dòng = 1 nhiệm vụ + tiến độ kỳ hiện tại.\n\n| Khối UI | Field |\n|---|---|\n| Tên + badge loại | `mission_name`, `mission_type_name` / `mission_type_color` |\n| Thanh tiến độ | `progress_value` / `target`, `progress_percent` |\n| Badge trạng thái | `status_name` / `status_color` (tính động) |\n| Dòng mô tả | `status_note` |\n| Phần thưởng | `reward_points`, `reward_item_count`; điểm thực nhận `points_earned` |\n\n`campaign_consumer_id` bắt buộc. Không phân trang."
+    },
+    "POST /api/v1/reward/web/campaign-mission-progress/approve-all": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 32
+      },
+      "result_example": {
+        "result": 1,
+        "status": "success",
+        "message": "Đã duyệt 3/3 tiến độ.",
+        "action": "approve_all",
+        "record_id": 32,
+        "data": {
+          "total": 3,
+          "success_count": 3,
+          "failed_count": 0,
+          "points_awarded": 150,
+          "success_ids": [
+            16,
+            17,
+            19
+          ],
+          "errors": []
+        }
+      },
+      "ui": "Nút **Duyệt tất cả**: duyệt mọi dòng `campaign.mission.progress.status.pending` của campaign (từng dòng như `approve` với `status_key = completed`).\n\n`status = partial` khi có dòng lỗi → hiện `data.errors[]` (`id`, `message`). Không có dòng chờ duyệt vẫn trả `result = 1`, `total = 0`. Xong gọi lại `list-totalrow` + `list-pageindex`.\n\n> `result_example` minh họa theo DTO; chưa gọi thử trên dev vì API ghi dữ liệu."
+    },
+    "GET /api/v1/reward/web/campaign-redemption-entitlement/list-by-consumer": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_consumer_id": 132,
+        "searchtext": ""
+      },
+      "result_example": [
+        {
+          "used": 0,
+          "lines": [
+            {
+              "id": 1,
+              "used": 0,
+              "notes": "Mời bạn cùng tham gia",
+              "granted": 2,
+              "kind_key": "campaign.consumer.redemption.entitlement.kind.game_play",
+              "data_json": {
+                "point_cost": 0,
+                "point_display": "0 pts"
+              },
+              "game_code": null,
+              "kind_name": "Lượt chơi game",
+              "source_id": null,
+              "tenant_id": 71268,
+              "kind_color": "#155DFC",
+              "status_key": "campaign.consumer.redemption.entitlement.status.expired",
+              "campaign_id": 32,
+              "create_date": "2026-03-14T16:18:00",
+              "source_code": "MS_REFERRAL_3",
+              "status_date": null,
+              "status_name": "Hết hạn",
+              "expires_date": "2026-04-12T23:59:00",
+              "status_color": "#6A7282",
+              "redemption_no": null,
+              "reward_item_id": 101,
+              "source_type_key": "campaign.consumer.redemption.source.type.mission",
+              "reward_item_name": "Vòng quay may mắn",
+              "source_type_name": "Mission",
+              "total_point_used": 0,
+              "source_type_color": "#00A65E",
+              "source_mission_code": null,
+              "source_mission_name": null,
+              "campaign_consumer_id": 132,
+              "consumer_redemption_id": null
+            }
+          ],
+          "granted": 2,
+          "game_code": null,
+          "remaining": 0,
+          "expires_date": null,
+          "campaign_mission": {
+            "id": null,
+            "code": null,
+            "name": null
+          },
+          "campaign_mission_progress": {
+            "status_key": null,
+            "status_name": "",
+            "status_color": ""
+          }
+        }
+      ],
+      "ui": "Mỗi phần tử = 1 **thẻ**: mission được mở khóa (`campaign_mission`, `id = null` = quà không gắn mission) + badge tiến độ (`campaign_mission_progress`), tổng `granted` / `used` / `remaining`, hạn gần nhất `expires_date`.\n\n`lines[]` = các dòng quyền lợi (sắp hết hạn lên trước): `kind_name`/`kind_color`, `status_name`/`status_color` (`active` / `used_up` / `expired` / `revoked`, tính động), `source_type_name`, `reward_item_name`, `redemption_no`.\n\n`campaign_consumer_id` bắt buộc; người tham gia khác tenant → lỗi."
     }
   }
 }

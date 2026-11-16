@@ -200,6 +200,10 @@
     "changed": {
       "name": "Đổi tham số",
       "color": "#6941C6"
+    },
+    "changed-response": {
+      "name": "Đổi response",
+      "color": "#6941C6"
     }
   },
   "schemas": {
