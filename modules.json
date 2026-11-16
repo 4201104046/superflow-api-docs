@@ -7,6 +7,20 @@
     "rev": "eb8cf11f9c"
   },
   {
+    "id": "ca-quan-govap",
+    "title": "Cổng dân cư · CA Gò Vấp",
+    "url": "ca-quan-govap/openapi.enc.json",
+    "protected": true,
+    "auth": {
+      "storageKey": "cqgv_doc_token",
+      "login": "/ca-quan-govap/staff/auth/(login|mfa/sms/verify)(\\?|$)",
+      "attach": "/ca-quan-govap/(staff|admin)/",
+      "scheme": "StaffBearer"
+    },
+    "updated": "16:25 16/11/2026",
+    "rev": "662aafef3c"
+  },
+  {
     "id": "reward",
     "title": "Reward",
     "url": "reward/openapi.json",

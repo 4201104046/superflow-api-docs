@@ -31,6 +31,22 @@
   .sf-token button:hover { color: var(--hdr-fg); }
   #boot { font: 14px system-ui, sans-serif; color: #5A665F; padding: 40px 24px; }
   @media (max-width: 640px) { .sf-meta { display: none; } .sf-pick span { display: none; } .sf-pick select { min-width: 0; } }
+  /* Form đăng nhập docs — chỉ hiện với module "protected" trong modules.json */
+  .sf-lock { min-height: calc(100vh - var(--hdr-h)); box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+    padding: 24px 16px; background: var(--hdr-bg); color: var(--hdr-fg); font: 14px "IBM Plex Sans", system-ui, sans-serif; }
+  .sf-lock form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; padding: 28px 24px;
+    border: 1px solid var(--hdr-line); border-radius: 10px; background: var(--hdr-bg); }
+  .sf-lock h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  .sf-lock p { margin: 0; color: var(--hdr-muted); font-size: 13px; line-height: 1.5; }
+  .sf-lock label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--hdr-muted); }
+  .sf-lock input { font: 14px "IBM Plex Sans", system-ui, sans-serif; color: var(--hdr-fg); background: var(--hdr-input);
+    border: 1px solid var(--hdr-line); border-radius: 7px; padding: 9px 10px; }
+  .sf-lock input:focus-visible, .sf-lock button:focus-visible { outline: 2px solid var(--hdr-accent); outline-offset: 1px; }
+  .sf-lock button { font: 600 14px "IBM Plex Sans", system-ui, sans-serif; color: #fff; background: var(--hdr-accent);
+    border: 0; border-radius: 7px; padding: 10px; cursor: pointer; }
+  .sf-lock button[disabled] { opacity: .6; cursor: progress; }
+  .sf-lock .sf-err { color: #C2412D; min-height: 1.4em; }
+  .sf-lock[hidden] { display: none; }   /* display:flex ở trên đè thuộc tính hidden → phải ẩn tường minh */
 </style>
 </head>
 <body>
@@ -41,12 +57,27 @@
   <div class="sf-meta" id="sf-meta"></div>
 </header>
 <div id="boot">Đang tải tài liệu…</div>
+<div class="sf-lock" id="sf-lock" hidden>
+  <form id="sf-lock-form" autocomplete="on">
+    <h1 id="sf-lock-title">Đăng nhập tài liệu</h1>
+    <p>Tài liệu module này cần tài khoản docs. Hỏi người quản lý tài liệu để được cấp.</p>
+    <label>Tài khoản<input id="sf-lock-user" name="username" autocomplete="username" required></label>
+    <label>Mật khẩu<input id="sf-lock-pass" name="password" type="password" autocomplete="current-password" required></label>
+    <div class="sf-err" id="sf-lock-err" role="alert"></div>
+    <button type="submit" id="sf-lock-btn">Mở tài liệu</button>
+  </form>
+</div>
 <div id="app"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.74.0/dist/browser/standalone.js"></script>
 <script>
   // ---- Token đăng nhập: gọi core/web/auth/login thành công → lưu token, tự gắn Bearer cho các request sau ----
+  // Module có "auth" trong modules.json dùng token riêng (khóa lưu, URL login, URL được gắn token, security scheme).
+  // Không có "auth" → giá trị mặc định dưới đây (hành vi cũ của core / reward).
   var TOKEN_KEY = 'sf_doc_token';
+  var LOGIN_RE = /\/core\/web\/auth\/login(\?|$)/i;
+  var ATTACH_RE = null;          // null = gắn cho mọi request (trừ login)
+  var SCHEME = 'Bearer';
   function readToken() {
     try {
       var t = JSON.parse(sessionStorage.getItem(TOKEN_KEY) || 'null');
@@ -65,8 +96,51 @@
       (t.expired ? ' · hết hạn ' + new Date(t.expired).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '');
   }
   document.getElementById('sf-token-clear').addEventListener('click', function () { saveToken(null); });
-  showToken();
-  var isLogin = function (url) { return /\/core\/web\/auth\/login(\?|$)/i.test(url || ''); };
+  var isLogin = function (url) { return LOGIN_RE.test(url || ''); };
+  function useModuleAuth(auth) {
+    if (!auth) return;
+    if (auth.storageKey) TOKEN_KEY = auth.storageKey;
+    if (auth.login) LOGIN_RE = new RegExp(auth.login, 'i');
+    if (auth.attach) ATTACH_RE = new RegExp(auth.attach, 'i');
+    if (auth.scheme) SCHEME = auth.scheme;
+  }
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  // Module "protected": hỏi tài khoản docs, giải mã openapi trong trình duyệt (protected.js) → trả object OpenAPI
+  function unlockModule(cur) {
+    return loadScript('protected.js?v=' + encodeURIComponent(cur.rev || '')).then(function () {
+      if (!window.DocsLock.supported) throw new Error('Trình duyệt không hỗ trợ giải mã (cần Chrome / Edge / Firefox / Safari bản mới).');
+      return window.DocsLock.restore(cur);
+    }).then(function (spec) {
+      if (spec) return spec;
+      return new Promise(function (resolve) {
+        var lock = document.getElementById('sf-lock'), form = document.getElementById('sf-lock-form');
+        var btn = document.getElementById('sf-lock-btn'), err = document.getElementById('sf-lock-err');
+        document.getElementById('sf-lock-title').textContent = 'Đăng nhập · ' + cur.title;
+        document.getElementById('boot').hidden = true;
+        lock.hidden = false;
+        document.getElementById('sf-lock-user').focus();
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          btn.disabled = true; err.textContent = ''; btn.textContent = 'Đang mở…';
+          window.DocsLock.unlock(cur, document.getElementById('sf-lock-user').value, document.getElementById('sf-lock-pass').value)
+            .then(function (s) { lock.remove(); document.getElementById('boot').hidden = false; resolve(s); })
+            .catch(function (e) {
+              err.textContent = e && e.message === 'credentials' ? 'Sai tài khoản hoặc mật khẩu.' : 'Không mở được tài liệu, thử lại.';
+              btn.disabled = false; btn.textContent = 'Mở tài liệu';
+              document.getElementById('sf-lock-pass').select();
+            });
+        });
+      });
+    });
+  }
 
   // Danh sách module do scripts/build.py ghi vào modules.json. Mỗi lần chỉ nạp 1 module, chọn qua ?module=<id>.
   fetch('modules.json', { cache: 'no-store' })
@@ -85,12 +159,37 @@
         location.href = '?module=' + encodeURIComponent(sel.value);
       });
 
-      var meta = document.getElementById('sf-meta');
-      meta.innerHTML = 'Cập nhật ' + (cur.updated || '—') + ' · <a href="' + cur.url + '">openapi.json</a> (import Apidog)';
+      useModuleAuth(cur.auth);
+      showToken();
 
+      var meta = document.getElementById('sf-meta');
+      if (!cur.protected) {
+        meta.innerHTML = 'Cập nhật ' + (cur.updated || '—') + ' · <a href="' + cur.url + '">openapi.json</a> (import Apidog)';
+        start(cur, { url: cur.url + '?v=' + encodeURIComponent(cur.rev || cur.updated || Date.now()) });
+        return;
+      }
+      meta.textContent = 'Cập nhật ' + (cur.updated || '—');
+      return unlockModule(cur).then(function (spec) {
+        // Tải bản đã giải mã để import Apidog; đăng xuất docs = quên khóa trong tab này
+        var file = URL.createObjectURL(new Blob([JSON.stringify(spec, null, 1)], { type: 'application/json' }));
+        meta.innerHTML = 'Cập nhật ' + (cur.updated || '—') + ' · <a download="' + cur.id + '.openapi.json" href="' + file +
+          '">openapi.json</a> (import Apidog) · <a href="#" id="sf-docs-logout">Đăng xuất docs</a>';
+        document.getElementById('sf-docs-logout').addEventListener('click', function (ev) {
+          ev.preventDefault(); window.DocsLock.forget(cur); saveToken(null); location.reload();
+        });
+        start(cur, { content: spec });
+      }).catch(function (e) {
+        document.getElementById('boot').textContent = (e && e.message) || 'Không mở được tài liệu.';
+      });
+    })
+    .catch(function () {
+      document.getElementById('boot').textContent = 'Không tải được modules.json.';
+    });
+
+  // source = { url } (module thường) hoặc { content } (module protected, đã giải mã)
+  function start(cur, source) {
       document.getElementById('boot').remove();
-      Scalar.createApiReference('#app', {
-        url: cur.url + '?v=' + encodeURIComponent(cur.rev || cur.updated || Date.now()),
+      Scalar.createApiReference('#app', Object.assign(source, {
         metaData: { title: cur.title + ' · SuperFlow API Docs' },
         persistAuth: false, // token chỉ giữ trong phiên (tab) hiện tại
         // tắt nút "Open API Client" mở sang client.scalar.com; Test Request trong trang vẫn dùng được
@@ -101,18 +200,19 @@
           ctx.response.clone().json().then(function (body) {
             var r = body && body.result;
             if (body && body.success && r && r.access_token) {
-              saveToken({ access_token: r.access_token, expired: r.expired, name: r.user && (r.user.name || r.user.phone) });
+              saveToken({ access_token: r.access_token, expired: r.expired, name: (r.user && (r.user.name || r.user.phone)) || r.actor });
             }
           }).catch(function () {});
         },
-        // mọi request (trừ login) tự gắn Bearer token đã lưu
+        // mọi request (trừ login) tự gắn Bearer token đã lưu; module có auth.attach: chỉ request khớp attach
         onBeforeRequest: function (ctx) {
           var t = readToken(), h = ctx && ctx.requestBuilder && ctx.requestBuilder.headers;
-          if (!t || !h || isLogin(ctx.request && ctx.request.url)) return;
+          var url = ctx && ctx.request && ctx.request.url;
+          if (!t || !h || isLogin(url) || (ATTACH_RE && !ATTACH_RE.test(url || ''))) return;
           if (typeof h.delete === 'function') h.delete('authorization');
           h.set('Authorization', 'Bearer ' + t.access_token);
         },
-        authentication: { preferredSecurityScheme: 'Bearer' },
+        authentication: { preferredSecurityScheme: SCHEME },
         defaultHttpClient: { targetKey: 'js', clientKey: 'axios' },
         defaultOpenAllTags: true,
         theme: 'default',
@@ -124,11 +224,8 @@
           '.explore-scalar, .agent-button-container, [class*="generate-sdk"] { display: none !important; }',
           '.t-doc__sidebar > div > button.whitespace-nowrap { display: none !important; }'
         ].join('\n')
-      });
-    })
-    .catch(function () {
-      document.getElementById('boot').textContent = 'Không tải được modules.json.';
-    });
+      }));
+  }
 </script>
 </body>
 </html>
