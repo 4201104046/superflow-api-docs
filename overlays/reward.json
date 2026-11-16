@@ -6,7 +6,7 @@
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
       "^/api/v1/reward/web/campaign-leaderboard/(list-score-nopaging|get-by-campaign-id|list|freeze|unfreeze)$",
-      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list|overview-kpi)$",
+      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list|overview-kpi|overview-needs-attention)$",
       "^/api/v1/reward/web/campaign-consumer/(list|list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
@@ -2088,6 +2088,22 @@
         }
       ],
       "ui": "| UI (khối Reward stock) | Field |\n|---|---|\n| Tên quà + badge loại | `name`, `reward_type_name` + `reward_type_color` |\n| Thanh tồn kho | `issued` / `total`, % = `usage_percent` (null khi total = 0) |\n| Còn lại | `left` (= total − reserved − issued, không âm); đang giữ chỗ: `reserved` |\n| Cảnh báo sắp hết | `is_low_stock` (left ≤ `stock_alert_amount`) |\n\n- Chỉ trả quà **có giới hạn kho**; quà không giới hạn không có dòng.\n- `campaign_id` bắt buộc. Số `low_stock_count` / `stock_percent` ở `campaign/overview-kpi` tính từ cùng nguồn này."
+    },
+    "GET /api/v1/reward/web/campaign/overview-needs-attention": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 32
+      },
+      "result_example": {
+        "registrations_awaiting_approval": 3,
+        "redemptions_to_fulfil": 2,
+        "mission_completions_to_review": 5,
+        "rewards_low_in_stock": 1
+      },
+      "ui": "| Dòng Needs attention | Field | Bấm vào → màn |\n|---|---|---|\n| Registrations awaiting approval | `registrations_awaiting_approval` | Participants, lọc chờ duyệt |\n| Redemptions to fulfil | `redemptions_to_fulfil` (pending + đã duyệt nhưng giao quà thất bại) | Redemptions |\n| Mission completions to review | `mission_completions_to_review` | Mission progress, lọc `pending` |\n| Rewards low in stock | `rewards_low_in_stock` | `reward-item/list-stock-nopaging` (`is_low_stock = true`) |\n\n> Số = 0 có thể ẩn dòng. Campaign không tồn tại / không thuộc `tenant_id` → `data = null`."
     }
   }
 }

@@ -3460,6 +3460,63 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign/overview-needs-attention": {
+      "get": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "Việc cần xử lý của campaign",
+        "description": "Màn Campaign overview, khối Needs attention: số đăng ký chờ duyệt, lượt đổi quà cần xử lý,\r\nhoàn thành nhiệm vụ chờ duyệt và số quà sắp hết kho. Số = 0 thì FE có thể ẩn dòng tương ứng.\r\nCampaign không tồn tại / không thuộc tenant → `data = null`.\n\n### Map lên màn hình\n\n| Dòng Needs attention | Field | Bấm vào → màn |\n|---|---|---|\n| Registrations awaiting approval | `registrations_awaiting_approval` | Participants, lọc chờ duyệt |\n| Redemptions to fulfil | `redemptions_to_fulfil` (pending + đã duyệt nhưng giao quà thất bại) | Redemptions |\n| Mission completions to review | `mission_completions_to_review` | Mission progress, lọc `pending` |\n| Rewards low in stock | `rewards_low_in_stock` | `reward-item/list-stock-nopaging` (`is_low_stock = true`) |\n\n> Số = 0 có thể ẩn dòng. Campaign không tồn tại / không thuộc `tenant_id` → `data = null`.",
+        "operationId": "get_api_v1_reward_web_campaign_overview_needs_attention",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignWebOverviewNeedsAttentionDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "registrations_awaiting_approval": 3,
+                    "redemptions_to_fulfil": 2,
+                    "mission_completions_to_review": 5,
+                    "rewards_low_in_stock": 1
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign/list-pageindex": {
       "post": {
         "tags": [
@@ -13065,6 +13122,51 @@
             "description": "% quà đã phát trên tổng kho, làm tròn 1 chữ số",
             "format": "double",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewNeedsAttentionDTO": {
+        "type": "object",
+        "properties": {
+          "registrations_awaiting_approval": {
+            "type": "integer",
+            "description": "Số đăng ký tham gia đang chờ duyệt (`campaign.consumer.approved.pending`)",
+            "format": "int64",
+            "nullable": true
+          },
+          "redemptions_to_fulfil": {
+            "type": "integer",
+            "description": "Số lượt đổi quà cần xử lý: đang chờ duyệt (`pending`), hoặc đã duyệt nhưng có lần giao quà thất bại",
+            "format": "int64",
+            "nullable": true
+          },
+          "mission_completions_to_review": {
+            "type": "integer",
+            "description": "Số lượt hoàn thành nhiệm vụ đang chờ duyệt tay (`pending_review`)",
+            "format": "int64",
+            "nullable": true
+          },
+          "rewards_low_in_stock": {
+            "type": "integer",
+            "description": "Số loại quà sắp hết kho (cùng nguồn `reward-item/list-stock-nopaging`, `is_low_stock = true`)",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewNeedsAttentionDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignWebOverviewNeedsAttentionDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false
