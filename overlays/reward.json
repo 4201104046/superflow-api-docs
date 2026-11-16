@@ -6,7 +6,7 @@
     "include": [
       "^/api/v1/reward/web/consumer-redemption/(list-pageindex|list-totalrow|get-by-id)$",
       "^/api/v1/reward/web/campaign-leaderboard/(list-score-nopaging|get-by-campaign-id|list|freeze|unfreeze)$",
-      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list)$",
+      "^/api/v1/reward/web/campaign/(create|update-active|update-status|update-end-early|close-redemption-window|delete|get-by-id|list-pageindex|list-totalrow|export-excel-list|overview-kpi)$",
       "^/api/v1/reward/web/campaign-consumer/(list|list-pageindex|list-totalrow|export-excel-list|get-by-id|update-active|approve)$",
       "^/api/v1/reward/campaign-integrated-app/(create|delete|view)$",
       "^/api/v1/reward/web/campaign-consumer-field/(create|get-by-campaign-id)$",
@@ -2006,6 +2006,44 @@
         "campaign_consumer_redemption": []
       },
       "ui": "Drawer chi tiết tiến độ.\n\n| Khối UI | Field |\n|---|---|\n| Header (người + nhiệm vụ + trạng thái) | `campaign_consumer`, `campaign_mission`, `campaign_mission_progress` |\n| Điều kiện / mục tiêu | `campaign_mission_version` (`trigger_event`, `goal_*`, `active_from` / `active_to`) |\n| Phần thưởng | `campaign_mission_outcome` (`kind_key` points / item) |\n| Các lần đạt | `campaign_mission_completion` |\n| Timeline | `campaign_event` |\n| Bài nộp (form / content) | `campaign_mission_submission` |\n| Bạn được mời (referral) | `campaign_referral` |\n| Lượt chơi (game) | `campaign_mission_game_play` |\n| Mở khóa bằng quà | `campaign_consumer_redemption_entitlement` |\n| Điểm / quà đã nhận | `campaign_consumer_point_ledger`, `campaign_consumer_redemption` |\n\nMảng không có dữ liệu trả `[]`. `id` thuộc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\" (fn chỉ nhận `p_id`, API tự so tenant)."
+    },
+    "GET /api/v1/reward/web/campaign/overview-kpi": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 32
+      },
+      "result_example": {
+        "participants": {
+          "total": 40,
+          "pending": 0,
+          "active": 5,
+          "inactive": 1
+        },
+        "points_issued": {
+          "total": 12500,
+          "last_7d": 1800,
+          "prev_7d": 1200,
+          "delta_vs_last_week": 600
+        },
+        "points_redeemed": {
+          "total": 3400,
+          "percent": 27.2,
+          "redemption_count": 8
+        },
+        "points_outstanding": {
+          "total": 9100,
+          "expire_date": "2026-12-12T10:49:43"
+        },
+        "rewards_redeemed": {
+          "total": 15,
+          "low_stock_count": 2,
+          "stock_percent": 37.5
+        }
+      },
+      "ui": "| Thẻ KPI | Field |\n|---|---|\n| Participants | `participants.total` (kèm `pending` / `active` / `inactive`) |\n| Points issued | `points_issued.total`; dòng so sánh tuần trước: `delta_vs_last_week` (âm = giảm), `last_7d` vs `prev_7d` |\n| Points redeemed | `points_redeemed.total` + `percent` (% trên điểm đã phát) + `redemption_count` (số lượt đổi, không tính bị từ chối) |\n| Points outstanding | `points_outstanding.total` (balance + held); hết hạn: `expire_date` = ngày đóng đổi quà, có thể `null` |\n| Rewards redeemed | `rewards_redeemed.total` + `stock_percent`; cảnh báo sắp hết: `low_stock_count` |\n\n> Campaign không tồn tại / không thuộc `tenant_id` → `data = null`."
     }
   }
 }

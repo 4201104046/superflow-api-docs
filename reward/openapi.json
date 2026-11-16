@@ -2195,7 +2195,7 @@
           "Mission progress"
         ],
         "summary": "Danh sách tiến độ nhiệm vụ của người tham gia",
-        "description": "Màn **Mission Progress**: phân trang, tìm kiếm, lọc và sắp xếp theo bộ lọc của\r\n`fn_campaign_mission_progress_web_list_pageindex`.\r\n            \r\n- `pageindex` >= 1, `pagesize` >= 1, `tenant_id` bắt buộc.\r\n- `campaign_id` bỏ trống = toàn bộ campaign của tenant.\r\n- `status_key` chỉ nhận 1 giá trị: `campaign.mission.progress.status.progress` / `pending` /\r\n  `completed` / `rejected` / `limit` / `missed` (bỏ trống = không lọc).\r\n- `searchtext` tìm theo tên, số điện thoại hoặc `campaign_consumer_id`.\r\n- `from_date` / `to_date` lọc theo `created_date` (to_date tính hết ngày).\r\n- `sortby`: id | consumer_name | mission_name | progress_percent | status_key | status_name |\r\n  last_activity_date | created_date; `sortdir`: ASC / DESC.\r\n            \r\nTrạng thái `limit` của nhiệm vụ không phải GAME được chuẩn hóa thành `completed`.\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`.",
+        "description": "Màn **Mission Progress**: phân trang, tìm kiếm, lọc và sắp xếp theo bộ lọc của\r\n`fn_campaign_mission_progress_web_list_pageindex`.\r\n            \r\n- `pageindex` >= 1, `pagesize` >= 1, `tenant_id` bắt buộc.\r\n- `campaign_id` bỏ trống = toàn bộ campaign của tenant.\r\n- `campaign_mission_id` bỏ trống = toàn bộ nhiệm vụ trong campaign.\r\n- `status_key` chỉ nhận 1 giá trị: `campaign.mission.progress.status.progress` / `pending` /\r\n  `completed` / `rejected` / `limit` / `missed` (bỏ trống = không lọc).\r\n- `searchtext` tìm theo tên, số điện thoại hoặc `campaign_consumer_id`.\r\n- `from_date` / `to_date` lọc theo `created_date` (to_date tính hết ngày).\r\n- `sortby`: id | consumer_name | mission_name | progress_percent | status_key | status_name |\r\n  last_activity_date | created_date; `sortdir`: ASC / DESC.\r\n            \r\nTrạng thái `limit` của nhiệm vụ không phải GAME được chuẩn hóa thành `completed`.\n\n### Map lên màn hình\n\n| Cột UI | Field | `sortby` |\n|---|---|---|\n| Participant | `consumer_name`, `consumer_phone` | `consumer_name` |\n| Mission | `mission_name`, `mission_code`; badge loại `mission_type_name` + `mission_type_color` | `mission_name` |\n| Nhãn phụ | `is_manual_review` (duyệt tay), `is_unlocked_by_reward` (mở bằng quà) | — |\n| Progress | `progress_value` / `target`, thanh % `progress_percent` | `progress_percent` |\n| Status | `status_name` + `status_color`, dòng phụ `status_note` | `status_name` |\n| Reward | `reward_points` điểm + `reward_item_count` quà (chỉ có khi completed / limit) | — |\n| Last activity | `last_activity_date` | `last_activity_date` |\n\n- `status_key` lọc **1** trạng thái (xem bảng ở `list-totalrow`).\n- `searchtext`: tên, SĐT hoặc `campaign_consumer_id`.\n- `from_date` / `to_date` lọc theo ngày tạo tiến độ (to_date tính hết ngày).\n- `sortby` khác danh sách → `created_date`.\n- Nhiệm vụ không phải GAME đạt giới hạn (`limit`) hiển thị là `completed`.",
         "operationId": "post_api_v1_reward_web_campaign_mission_progress_list_pageindex",
         "x-badges": [
           {
@@ -3371,6 +3371,85 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FnCampaignWebGetByIdDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/web/campaign/overview-kpi": {
+      "get": {
+        "tags": [
+          "Campaign"
+        ],
+        "summary": "KPI tổng quan campaign",
+        "description": "Màn Campaign overview: các thẻ KPI Participants, Points issued (so với tuần trước), Points redeemed,\r\nPoints outstanding (kèm ngày đóng đổi quà), Rewards redeemed (kèm số quà sắp hết).\r\nCampaign không tồn tại / không thuộc tenant → `data = null`.\n\n### Map lên màn hình\n\n| Thẻ KPI | Field |\n|---|---|\n| Participants | `participants.total` (kèm `pending` / `active` / `inactive`) |\n| Points issued | `points_issued.total`; dòng so sánh tuần trước: `delta_vs_last_week` (âm = giảm), `last_7d` vs `prev_7d` |\n| Points redeemed | `points_redeemed.total` + `percent` (% trên điểm đã phát) + `redemption_count` (số lượt đổi, không tính bị từ chối) |\n| Points outstanding | `points_outstanding.total` (balance + held); hết hạn: `expire_date` = ngày đóng đổi quà, có thể `null` |\n| Rewards redeemed | `rewards_redeemed.total` + `stock_percent`; cảnh báo sắp hết: `low_stock_count` |\n\n> Campaign không tồn tại / không thuộc `tenant_id` → `data = null`.",
+        "operationId": "get_api_v1_reward_web_campaign_overview_kpi",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignWebOverviewKpiDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "participants": {
+                      "total": 40,
+                      "pending": 0,
+                      "active": 5,
+                      "inactive": 1
+                    },
+                    "points_issued": {
+                      "total": 12500,
+                      "last_7d": 1800,
+                      "prev_7d": 1200,
+                      "delta_vs_last_week": 600
+                    },
+                    "points_redeemed": {
+                      "total": 3400,
+                      "percent": 27.2,
+                      "redemption_count": 8
+                    },
+                    "points_outstanding": {
+                      "total": 9100,
+                      "expire_date": "2026-12-12T10:49:43"
+                    },
+                    "rewards_redeemed": {
+                      "total": 15,
+                      "low_stock_count": 2,
+                      "stock_percent": 37.5
+                    }
+                  },
+                  "error": null
                 }
               }
             }
@@ -8666,17 +8745,14 @@
           },
           "searchtext": {
             "type": "string",
+            "description": "Từ khóa: tìm theo tên, SĐT, email, tỉnh/thành, phường/xã, nghề nghiệp, nơi làm việc",
             "nullable": true,
-            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
             "example": ""
           },
-          "list_status_key": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true,
-            "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+          "status_key": {
+            "type": "string",
+            "description": "Lọc theo 1 trạng thái người tham gia (campaign.consumer.status.*); bỏ trống = tất cả",
+            "nullable": true
           },
           "filter_definition": {
             "allOf": [
@@ -11663,6 +11739,12 @@
             "format": "int64",
             "nullable": true,
             "example": null
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "description": "Lọc theo nhiệm vụ (campaign_mission.id, bỏ trống = toàn bộ nhiệm vụ)",
+            "format": "int64",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -11741,6 +11823,12 @@
             "format": "int64",
             "nullable": true,
             "example": null
+          },
+          "campaign_mission_id": {
+            "type": "integer",
+            "description": "Lọc theo nhiệm vụ (campaign_mission.id, bỏ trống = toàn bộ nhiệm vụ)",
+            "format": "int64",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12730,6 +12818,168 @@
             "format": "date-time",
             "nullable": true,
             "example": null
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewKpiDTO": {
+        "type": "object",
+        "properties": {
+          "participants": {
+            "$ref": "#/components/schemas/FnCampaignWebOverviewKpiParticipantsDTO"
+          },
+          "points_issued": {
+            "$ref": "#/components/schemas/FnCampaignWebOverviewKpiPointsIssuedDTO"
+          },
+          "points_redeemed": {
+            "$ref": "#/components/schemas/FnCampaignWebOverviewKpiPointsRedeemedDTO"
+          },
+          "points_outstanding": {
+            "$ref": "#/components/schemas/FnCampaignWebOverviewKpiPointsOutstandingDTO"
+          },
+          "rewards_redeemed": {
+            "$ref": "#/components/schemas/FnCampaignWebOverviewKpiRewardsRedeemedDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewKpiDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignWebOverviewKpiDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewKpiParticipantsDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số người tham gia (chưa xóa)",
+            "format": "int64",
+            "nullable": true
+          },
+          "pending": {
+            "type": "integer",
+            "description": "Số người đang chờ duyệt (`campaign.consumer.approved.pending`)",
+            "format": "int64",
+            "nullable": true
+          },
+          "active": {
+            "type": "integer",
+            "description": "Số người đang hoạt động (`campaign.consumer.status.active`)",
+            "format": "int64",
+            "nullable": true
+          },
+          "inactive": {
+            "type": "integer",
+            "description": "Số người ngừng hoạt động (`campaign.consumer.status.inactive`)",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewKpiPointsIssuedDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng điểm đã phát (lifetime_earned của ví)",
+            "format": "int64",
+            "nullable": true
+          },
+          "last_7d": {
+            "type": "integer",
+            "description": "Điểm phát trong 7 ngày gần nhất (chỉ bút toán earn cộng)",
+            "format": "int64",
+            "nullable": true
+          },
+          "prev_7d": {
+            "type": "integer",
+            "description": "Điểm phát trong 7 ngày trước đó (ngày 8–14)",
+            "format": "int64",
+            "nullable": true
+          },
+          "delta_vs_last_week": {
+            "type": "integer",
+            "description": "Chênh lệch `last_7d - prev_7d` (âm = giảm so với tuần trước)",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewKpiPointsOutstandingDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng điểm còn lại = balance + held của mọi ví",
+            "format": "int64",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "description": "Ngày đóng đổi quà = (end_early_date ?? end_date) + redemption_window ngày; null nếu campaign chưa có ngày kết thúc",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewKpiPointsRedeemedDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng điểm đã dùng đổi quà (lifetime_redeemed của ví)",
+            "format": "int64",
+            "nullable": true
+          },
+          "percent": {
+            "type": "number",
+            "description": "% điểm đã đổi trên tổng điểm đã phát, làm tròn 1 chữ số",
+            "format": "double",
+            "nullable": true
+          },
+          "redemption_count": {
+            "type": "integer",
+            "description": "Số lượt đổi quà (không tính lượt bị từ chối)",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignWebOverviewKpiRewardsRedeemedDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Tổng số quà đã phát (issued từ kho)",
+            "format": "int64",
+            "nullable": true
+          },
+          "low_stock_count": {
+            "type": "integer",
+            "description": "Số loại quà đang sắp hết hàng",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_percent": {
+            "type": "number",
+            "description": "% quà đã phát trên tổng kho, làm tròn 1 chữ số",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
