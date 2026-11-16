@@ -5115,6 +5115,91 @@
         }
       }
     },
+    "/api/v1/reward/web/reward-item/list-stock-nopaging": {
+      "get": {
+        "tags": [
+          "Reward item"
+        ],
+        "summary": "Tồn kho quà của campaign",
+        "description": "Màn Campaign overview, khối Reward stock: mỗi dòng 1 quà có giới hạn kho (quà không giới hạn kho không trả về),\r\nkèm thanh tồn kho `issued` / `total` (`usage_percent`), số còn lại `left` và cờ sắp hết `is_low_stock`.\r\n`campaign_id` bắt buộc. Sắp xếp theo `id` tăng dần.\n\n### Map lên màn hình\n\n| UI (khối Reward stock) | Field |\n|---|---|\n| Tên quà + badge loại | `name`, `reward_type_name` + `reward_type_color` |\n| Thanh tồn kho | `issued` / `total`, % = `usage_percent` (null khi total = 0) |\n| Còn lại | `left` (= total − reserved − issued, không âm); đang giữ chỗ: `reserved` |\n| Cảnh báo sắp hết | `is_low_stock` (left ≤ `stock_alert_amount`) |\n\n- Chỉ trả quà **có giới hạn kho**; quà không giới hạn không có dòng.\n- `campaign_id` bắt buộc. Số `low_stock_count` / `stock_percent` ở `campaign/overview-kpi` tính từ cùng nguồn này.",
+        "operationId": "get_api_v1_reward_web_reward_item_list_stock_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardItemWebStockListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 24,
+                      "code": "RWD_ITEM_API_001",
+                      "name": "Voucher 50K",
+                      "reward_type_key": "reward.item.reward.type.gift",
+                      "reward_type_name": "Gift",
+                      "reward_type_color": "#7C3AED",
+                      "total": 500,
+                      "reserved": 20,
+                      "issued": 130,
+                      "left": 350,
+                      "usage_percent": 26.0,
+                      "stock_alert_amount": 10,
+                      "is_low_stock": false,
+                      "active": true
+                    },
+                    {
+                      "id": 26,
+                      "code": "RWD_ITEM_API_002",
+                      "name": "Bình nước",
+                      "reward_type_key": "reward.item.reward.type.gift",
+                      "reward_type_name": "Gift",
+                      "reward_type_color": "#7C3AED",
+                      "total": 100,
+                      "reserved": 0,
+                      "issued": 95,
+                      "left": 5,
+                      "usage_percent": 95.0,
+                      "stock_alert_amount": 10,
+                      "is_low_stock": true,
+                      "active": true
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/reward-type/list": {
       "get": {
         "tags": [
@@ -15449,6 +15534,109 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RewardItemWebListMissionItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RewardItemWebStockListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id reward item",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã quà",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên quà",
+            "nullable": true
+          },
+          "reward_type_key": {
+            "type": "string",
+            "description": "Key loại quà (`module_config` parent `reward.item.reward.type`)",
+            "nullable": true
+          },
+          "reward_type_name": {
+            "type": "string",
+            "description": "Tên loại quà",
+            "nullable": true
+          },
+          "reward_type_color": {
+            "type": "string",
+            "description": "Màu badge loại quà",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "description": "Tổng số lượng trong kho (tổng các lô inventory, không có lô thì lấy `stock_total` của quà)",
+            "format": "int64",
+            "nullable": true
+          },
+          "reserved": {
+            "type": "integer",
+            "description": "Số đang giữ chỗ (đổi chờ duyệt)",
+            "format": "int64",
+            "nullable": true
+          },
+          "issued": {
+            "type": "integer",
+            "description": "Số đã phát",
+            "format": "int64",
+            "nullable": true
+          },
+          "left": {
+            "type": "integer",
+            "description": "Còn lại = max(total - reserved - issued, 0)",
+            "format": "int64",
+            "nullable": true
+          },
+          "usage_percent": {
+            "type": "number",
+            "description": "% đã phát trên tổng kho, làm tròn 1 chữ số; null nếu total = 0",
+            "format": "double",
+            "nullable": true
+          },
+          "stock_alert_amount": {
+            "type": "integer",
+            "description": "Ngưỡng cảnh báo sắp hết (null = không cài)",
+            "format": "int32",
+            "nullable": true
+          },
+          "is_low_stock": {
+            "type": "boolean",
+            "description": "true khi số còn lại <= ngưỡng cảnh báo",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Quà đang bật",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RewardItemWebStockListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RewardItemWebStockListItemDTO"
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true

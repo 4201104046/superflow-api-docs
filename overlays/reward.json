@@ -15,7 +15,7 @@
       "^/api/v1/reward/web/campaign-consumer-point-ledger/(list-pageindex|list-totalrow|get-by-id|list-by-consumer|adjust)$",
       "^/api/v1/reward/web/campaign-consumer-redemption/(list-pageindex|list-totalrow|update-status|approve|list-by-consumer)$",
       "^/api/v1/reward/web/campaign-import/(template|create|get-by-id|preview|export-error|update-status|field/get-by-key)$",
-      "^/api/v1/reward/web/reward-item/(list|list-mission|create|update-active|duplicate|delete|get-by-id)$",
+      "^/api/v1/reward/web/reward-item/(list|list-mission|create|update-active|duplicate|delete|get-by-id|list-stock-nopaging)$",
       "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
       "^/api/v1/reward/web/reward-type/(list)$",
       "^/api/v1/reward/web/ui-list-field/(list)$",
@@ -2044,6 +2044,50 @@
         }
       },
       "ui": "| Thẻ KPI | Field |\n|---|---|\n| Participants | `participants.total` (kèm `pending` / `active` / `inactive`) |\n| Points issued | `points_issued.total`; dòng so sánh tuần trước: `delta_vs_last_week` (âm = giảm), `last_7d` vs `prev_7d` |\n| Points redeemed | `points_redeemed.total` + `percent` (% trên điểm đã phát) + `redemption_count` (số lượt đổi, không tính bị từ chối) |\n| Points outstanding | `points_outstanding.total` (balance + held); hết hạn: `expire_date` = ngày đóng đổi quà, có thể `null` |\n| Rewards redeemed | `rewards_redeemed.total` + `stock_percent`; cảnh báo sắp hết: `low_stock_count` |\n\n> Campaign không tồn tại / không thuộc `tenant_id` → `data = null`."
+    },
+    "GET /api/v1/reward/web/reward-item/list-stock-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 43
+      },
+      "result_example": [
+        {
+          "id": 24,
+          "code": "RWD_ITEM_API_001",
+          "name": "Voucher 50K",
+          "reward_type_key": "reward.item.reward.type.gift",
+          "reward_type_name": "Gift",
+          "reward_type_color": "#7C3AED",
+          "total": 500,
+          "reserved": 20,
+          "issued": 130,
+          "left": 350,
+          "usage_percent": 26.0,
+          "stock_alert_amount": 10,
+          "is_low_stock": false,
+          "active": true
+        },
+        {
+          "id": 26,
+          "code": "RWD_ITEM_API_002",
+          "name": "Bình nước",
+          "reward_type_key": "reward.item.reward.type.gift",
+          "reward_type_name": "Gift",
+          "reward_type_color": "#7C3AED",
+          "total": 100,
+          "reserved": 0,
+          "issued": 95,
+          "left": 5,
+          "usage_percent": 95.0,
+          "stock_alert_amount": 10,
+          "is_low_stock": true,
+          "active": true
+        }
+      ],
+      "ui": "| UI (khối Reward stock) | Field |\n|---|---|\n| Tên quà + badge loại | `name`, `reward_type_name` + `reward_type_color` |\n| Thanh tồn kho | `issued` / `total`, % = `usage_percent` (null khi total = 0) |\n| Còn lại | `left` (= total − reserved − issued, không âm); đang giữ chỗ: `reserved` |\n| Cảnh báo sắp hết | `is_low_stock` (left ≤ `stock_alert_amount`) |\n\n- Chỉ trả quà **có giới hạn kho**; quà không giới hạn không có dòng.\n- `campaign_id` bắt buộc. Số `low_stock_count` / `stock_percent` ở `campaign/overview-kpi` tính từ cùng nguồn này."
     }
   }
 }
