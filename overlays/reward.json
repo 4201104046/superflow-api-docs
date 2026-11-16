@@ -19,7 +19,7 @@
       "^/api/v1/reward/web/reward-item-code/(list-pageindex|list-totalrow|export-excel-list|import-create)$",
       "^/api/v1/reward/web/reward-type/(list)$",
       "^/api/v1/reward/web/ui-list-field/(list)$",
-      "^/api/v1/reward/web/campaign-mission/(list|list-game|create|delete|update-active|duplicate|get-by-id|update-sequence)$",
+      "^/api/v1/reward/web/campaign-mission/(list|list-game|create|delete|update-active|duplicate|get-by-id|update-sequence|list-performance-nopaging)$",
       "^/api/v1/reward/web/mission-type/(list)$",
       "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|get-by-id)$"
     ]
@@ -2104,6 +2104,47 @@
         "rewards_low_in_stock": 1
       },
       "ui": "| Dòng Needs attention | Field | Bấm vào → màn |\n|---|---|---|\n| Registrations awaiting approval | `registrations_awaiting_approval` | Participants, lọc chờ duyệt |\n| Redemptions to fulfil | `redemptions_to_fulfil` (pending + đã duyệt nhưng giao quà thất bại) | Redemptions |\n| Mission completions to review | `mission_completions_to_review` | Mission progress, lọc `pending` |\n| Rewards low in stock | `rewards_low_in_stock` | `reward-item/list-stock-nopaging` (`is_low_stock = true`) |\n\n> Số = 0 có thể ẩn dòng. Campaign không tồn tại / không thuộc `tenant_id` → `data = null`."
+    },
+    "GET /api/v1/reward/web/campaign-mission/list-performance-nopaging": {
+      "badges": [
+        "new",
+        "partial-broken"
+      ],
+      "request_example": {
+        "tenant_id": 1,
+        "campaign_id": 32
+      },
+      "result_example": [
+        {
+          "id": 9,
+          "code": "MS_REFERRAL_FRIENDS_01",
+          "name": "Mời 3 bạn bè tham gia ứng dụng",
+          "trigger_event": "USER_INVITE_REFERRAL_SUCCESS",
+          "status_key": "campaign.mission.status.active",
+          "status_name": "Active",
+          "status_color": "#00A65E",
+          "completions": 42,
+          "participants_completed": 35,
+          "completion_rate": 18,
+          "points_issued": 4200,
+          "display_order": 1
+        },
+        {
+          "id": 10,
+          "code": "MS_DAILY_CHECKIN_01",
+          "name": "Điểm danh mỗi ngày",
+          "trigger_event": "USER_DAILY_CHECKIN",
+          "status_key": "campaign.mission.status.active",
+          "status_name": "Active",
+          "status_color": "#00A65E",
+          "completions": 310,
+          "participants_completed": 120,
+          "completion_rate": 62,
+          "points_issued": 3100,
+          "display_order": 2
+        }
+      ],
+      "ui": "> ⚠️ **Đang lỗi trên dev**: `completions`, `participants_completed`, `completion_rate` luôn = 0 — fn lọc `status = 'campaign.mission.completion.status.approved'` nhưng completion được ghi là `'approved'`. Đã báo team DB; `points_issued` không bị ảnh hưởng. FE cứ map field, số sẽ đúng khi DB sửa (không đổi API).\n\n| Cột UI (Mission performance) | Field |\n|---|---|\n| Mission | `name` (+ `code`), sự kiện `trigger_event` |\n| Status | `status_name` + `status_color` |\n| Completions | `completions` (lượt đã duyệt) |\n| Participants | `participants_completed` (người, không trùng) |\n| Completion rate | `completion_rate` % (trên người tham gia active) |\n| Points issued | `points_issued` (earn − revoke) |\n\n- Sắp xếp sẵn theo `display_order`, `id`. `campaign_id` bắt buộc."
     }
   }
 }

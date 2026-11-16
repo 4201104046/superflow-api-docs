@@ -3035,6 +3035,91 @@
         }
       }
     },
+    "/api/v1/reward/web/campaign-mission/list-performance-nopaging": {
+      "get": {
+        "tags": [
+          "Mission"
+        ],
+        "summary": "Hiệu quả nhiệm vụ của campaign",
+        "description": "Màn Campaign overview, bảng Mission performance: mỗi dòng 1 nhiệm vụ (chưa xóa) của campaign, sắp theo `sequence`, `id`.\r\n`completions` = lượt hoàn thành đã duyệt; `completion_rate` = % người hoàn thành / người tham gia active;\r\n`points_issued` = điểm ròng (earn − revoke) phát qua nhiệm vụ. `campaign_id` bắt buộc.\n\n### Map lên màn hình\n\n> ⚠️ **Đang lỗi trên dev**: `completions`, `participants_completed`, `completion_rate` luôn = 0 — fn lọc `status = 'campaign.mission.completion.status.approved'` nhưng completion được ghi là `'approved'`. Đã báo team DB; `points_issued` không bị ảnh hưởng. FE cứ map field, số sẽ đúng khi DB sửa (không đổi API).\n\n| Cột UI (Mission performance) | Field |\n|---|---|\n| Mission | `name` (+ `code`), sự kiện `trigger_event` |\n| Status | `status_name` + `status_color` |\n| Completions | `completions` (lượt đã duyệt) |\n| Participants | `participants_completed` (người, không trùng) |\n| Completion rate | `completion_rate` % (trên người tham gia active) |\n| Points issued | `points_issued` (earn − revoke) |\n\n- Sắp xếp sẵn theo `display_order`, `id`. `campaign_id` bắt buộc.",
+        "operationId": "get_api_v1_reward_web_campaign_mission_list_performance_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Có nhánh đang lỗi",
+            "color": "#B54708"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignMissionWebPerformanceListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 9,
+                      "code": "MS_REFERRAL_FRIENDS_01",
+                      "name": "Mời 3 bạn bè tham gia ứng dụng",
+                      "trigger_event": "USER_INVITE_REFERRAL_SUCCESS",
+                      "status_key": "campaign.mission.status.active",
+                      "status_name": "Active",
+                      "status_color": "#00A65E",
+                      "completions": 42,
+                      "participants_completed": 35,
+                      "completion_rate": 18,
+                      "points_issued": 4200,
+                      "display_order": 1
+                    },
+                    {
+                      "id": 10,
+                      "code": "MS_DAILY_CHECKIN_01",
+                      "name": "Điểm danh mỗi ngày",
+                      "trigger_event": "USER_DAILY_CHECKIN",
+                      "status_key": "campaign.mission.status.active",
+                      "status_name": "Active",
+                      "status_color": "#00A65E",
+                      "completions": 310,
+                      "participants_completed": 120,
+                      "completion_rate": 62,
+                      "points_issued": 3100,
+                      "display_order": 2
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign/create": {
       "post": {
         "tags": [
@@ -8432,6 +8517,96 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CampaignMissionWebListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionWebPerformanceListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id nhiệm vụ",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã nhiệm vụ",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên nhiệm vụ",
+            "nullable": true
+          },
+          "trigger_event": {
+            "type": "string",
+            "description": "Sự kiện kích hoạt của version hiện tại",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Key trạng thái nhiệm vụ (`campaign.mission.status.*`)",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "completions": {
+            "type": "integer",
+            "description": "Số lượt hoàn thành đã duyệt",
+            "format": "int64",
+            "nullable": true
+          },
+          "participants_completed": {
+            "type": "integer",
+            "description": "Số người (không trùng) đã hoàn thành ít nhất 1 lần",
+            "format": "int64",
+            "nullable": true
+          },
+          "completion_rate": {
+            "type": "number",
+            "description": "% người hoàn thành trên số người tham gia đang active, làm tròn số nguyên",
+            "format": "double",
+            "nullable": true
+          },
+          "points_issued": {
+            "type": "integer",
+            "description": "Điểm ròng đã phát qua nhiệm vụ (earn trừ revoke)",
+            "format": "int64",
+            "nullable": true
+          },
+          "display_order": {
+            "type": "integer",
+            "description": "Thứ tự hiển thị (`sequence`)",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignMissionWebPerformanceListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignMissionWebPerformanceListItemDTO"
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true
