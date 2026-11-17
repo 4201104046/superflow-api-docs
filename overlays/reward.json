@@ -569,7 +569,7 @@
         "sortby": "create_date",
         "sortdir": "DESC"
       },
-      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
+      "ui": "> ➕ **Thêm field response (17/11)**: mỗi dòng có thêm **`redemption_window_open`** (`bool?`) — còn cho đổi quà sau khi campaign kết thúc; `false` sau khi gọi `close-redemption-window`.\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
       "badges": [
         "changed"
       ]
