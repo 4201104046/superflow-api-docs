@@ -23,7 +23,10 @@
       "^/api/v1/reward/web/mission-type/(list)$",
       "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|approve-all|get-by-id)$",
       "^/api/v1/reward/web/campaign-redemption-entitlement/(list-by-consumer)$",
-      "^/api/v1/reward/zalo/campaign/(list-nopaging)$"
+      "^/api/v1/reward/zalo/campaign/(list-nopaging)$",
+      "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
+      "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
+      "^/api/v1/reward/zalo/campaign-consumer/(create)$"
     ]
   },
   "info": {
@@ -32,6 +35,16 @@
     "description": "API cho 2 tab **Redemption** và **Point** trong trang chi tiết campaign (design *Opella Reward · Admin v1.0*).\n\n## Cách dùng chung cho màn danh sách\n1. Gọi song song `list-totalrow` (số trên tab + tổng để phân trang) và `list-pageindex` (dữ liệu trang hiện tại) với **cùng bộ filter**.\n2. Đổi trang chỉ gọi lại `list-pageindex`.\n3. Bấm 1 dòng → `get-by-id` với `id` của dòng đó để mở drawer.\n\nMọi response bọc trong `{ success, result, error }`. Ngày giờ dạng `yyyy-MM-ddTHH:mm:ss` (giờ local).\n\n## Vấn đề đang mở (dev, 09/11/2026)\n| # | Vấn đề | FE làm tạm |\n|---|---|---|\n| 1 | Bộ lọc nâng cao (`filter_definition`) lỗi: thiếu function trên DB. `list-pageindex` trả `[]`, `list-totalrow` trả lỗi | Gửi `null` |\n| 2 | `campaign_id` chưa có tác dụng: tab của 1 campaign hiện dữ liệu mọi campaign | Vẫn gửi `campaign_id` để khi BE sửa không phải đổi |\n| 3 | Redemption trên dev: tenant của người tham gia đang là 0 nên `tenant_id=1` ra 0 dòng | Dữ liệu dev, không phải lỗi code |\n| 4 | Thiếu field so với design (xem badge từng API) | Ẩn cột / hiện \"—\" |\n"
   },
   "tags": [
+    {
+      "name": "Zalo – Campaign",
+      "match": "/zalo/campaign/",
+      "description": "API cho **Zalo Mini App** (consumer đăng nhập bằng Zalo, cần header zuId). `consumer_id` lấy từ token, client không gửi."
+    },
+    {
+      "name": "Zalo – Đăng ký campaign",
+      "match": "/zalo/campaign-co",
+      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+    },
     {
       "name": "Campaign",
       "match": "/web/campaign/",
@@ -126,11 +139,6 @@
       "name": "Module config",
       "match": "/module-config/",
       "description": "Cấu hình dùng chung của module (trạng thái, loại, nhãn...) theo `key` / `parent_key`.\n\nCấu hình hệ thống nằm ở `tenant_id = -1`. Cũng gọi được qua route `/reward/web/module/config/...` (cùng controller)."
-    },
-    {
-      "name": "Zalo – Campaign",
-      "match": "/zalo/campaign/",
-      "description": "API cho **Zalo Mini App** (consumer đăng nhập bằng Zalo, cần header zuId). `consumer_id` lấy từ token, client không gửi."
     }
   ],
   "schema_patches": {
@@ -2502,6 +2510,103 @@
           "is_registration_open": true
         }
       ]
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer-field/list-nopaging": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 105
+      },
+      "ui": "| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Nhãn | `name` | |\n| Loại control | `type_key` | text / phone / email / ... |\n| Bắt buộc | `config.required` | |\n| Placeholder, gợi ý | `config.placeholder`, `config.help_text` | |\n| Lựa chọn (select/radio) | `config.options` | |\n| Thứ tự | `sequence` | Đã sắp sẵn |\n\n> Submit: field `is_system = true` gửi vào property cùng tên `code` của `campaign-consumer/create`; field còn lại gửi trong `data_json` với key = `code`.\n\n> ⚠️ fn chưa lọc theo tenant (`p_tenant_id` không dùng).",
+      "result_example": [
+        {
+          "id": 301,
+          "campaign_id": 105,
+          "base_field_id": 1,
+          "tenant_field_id": null,
+          "code": "name",
+          "name": "Họ và tên",
+          "description": null,
+          "type_key": "reward.registration.field.text",
+          "data_type_key": "string",
+          "format": null,
+          "config": {
+            "options": [],
+            "can_edit": true,
+            "required": true,
+            "help_text": "",
+            "placeholder": "",
+            "show_on_form": true,
+            "use_in_eligibility": false
+          },
+          "default_value": null,
+          "is_system": true,
+          "is_show_form": true,
+          "sequence": 1,
+          "active": true
+        }
+      ]
+    },
+    "GET /api/v1/reward/zalo/campaign-config/list-legal": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 105
+      },
+      "ui": "| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Checkbox | `name` | |\n| Nội dung chi tiết | `description` | |\n| Thứ tự | `sequence` | Đã sắp sẵn |\n\n> Mục đã tick gửi trong `data_json` của `campaign-consumer/create` (key = `key`).\n\n> ⚠️ Hiện chỉ trả bản ghi riêng của campaign; **không** trả 4 mục mặc định hệ thống (tenant/campaign = -1) — đang chờ team DB xác nhận.",
+      "result_example": [
+        {
+          "id": 11,
+          "tenant_id": 71268,
+          "campaign_id": 105,
+          "key": "campaign.consumer.field.legal.follow_zalo_oa",
+          "parent_key": "campaign.consumer.field.legal",
+          "name": "Follow Zalo OA",
+          "description": "",
+          "value": null,
+          "config_json": {},
+          "sequence": 4,
+          "active": true
+        }
+      ]
+    },
+    "POST /api/v1/reward/zalo/campaign-consumer/create": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "campaign_id": 105,
+        "province_id": null,
+        "ward_id": null,
+        "zalooa_uid": null,
+        "zalo_avatar": "https://h5.zdn.vn/static/images/avatar.png",
+        "name": "Nguyễn Văn A",
+        "phone": "0901234567",
+        "email": "a@example.com",
+        "birthday": "1995-08-20",
+        "gender_key": null,
+        "address": null,
+        "job_title": null,
+        "workplace": null,
+        "data_json": {
+          "store_code": "S001",
+          "campaign.consumer.field.legal.terms_privacy_consent": true,
+          "campaign.consumer.field.legal.personal_data_consent": true
+        }
+      },
+      "ui": "> Nút **Đăng ký**. Lỗi trả về (`success = false`, `error.message`): campaign không tìm thấy / không thuộc tenant, campaign draft/cancelled/ended, đã đăng ký rồi.\n\n> Trạng thái duyệt mặc định `campaign.consumer.approved.pending`. ⚠️ Chưa chặn theo giờ mở/đóng đăng ký và giới hạn số người (`registration_status_key` của `zalo/campaign/list-nopaging`) — FE ẩn nút theo `is_registration_open`.",
+      "result_example": {
+        "id": 5123,
+        "result": 1,
+        "message": "Thêm mới thành công",
+        "type": "create"
+      }
     }
   }
 }
