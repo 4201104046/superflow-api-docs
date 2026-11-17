@@ -47,6 +47,10 @@
       "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
     },
     {
+      "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
+      "description": "Danh mục đơn vị hành chính cho dropdown địa chỉ trên Zalo Mini App (form đăng ký campaign, hồ sơ):\n\n1. `province/list-nopaging`: chọn **Tỉnh/Thành** → lấy `id` làm `province_id`.\n2. `ward/list-nopaging?province_id=...`: chọn **Phường/Xã** → lấy `id` làm `ward_id`.\n\nDữ liệu hệ thống dùng chung, không phân theo tenant. Danh mục theo mô hình 2 cấp (tỉnh → phường/xã, không có quận/huyện)."
+    },
+    {
       "name": "Campaign",
       "description": "Màn **Campaign list** và tạo/sửa campaign."
     },
@@ -5058,6 +5062,194 @@
                       "zalo_avatar": "https://…/avatar.jpg"
                     }
                   },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/location/province/list-nopaging": {
+      "get": {
+        "tags": [
+          "Zalo – Địa chỉ (Tỉnh/Phường)"
+        ],
+        "summary": "Danh sách tỉnh/thành (Zalo Mini App)",
+        "description": "Dropdown **Tỉnh/Thành** trên form đăng ký campaign / hồ sơ người dùng. Dữ liệu hệ thống dùng chung, không phân theo tenant; chỉ trả tỉnh đang active, sắp theo tên.\r\nTìm theo mã hoặc tên (`searchtext`). `id` dùng làm `province_id` khi gửi đăng ký.\n\n### Map lên màn hình\n\n| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Tên trong dropdown | `name` | Đã gồm tiền tố \"Thành phố\" / \"Tỉnh\" |\n| Giá trị chọn | `id` | Gửi vào `province_id` (`campaign-consumer/create`, `ward/list-nopaging`) |\n\n> Không phân trang (34 tỉnh/thành). Chỉ trả bản ghi active, sắp theo `name`. `searchtext` tìm theo mã hoặc tên; có thể tải 1 lần rồi lọc ở client.",
+        "operationId": "get_api_v1_reward_zalo_location_province_list_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnSysProvinceZaloAppListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 28,
+                      "code": "79",
+                      "province_type_key": "PROVINCE",
+                      "name": "Thành phố Hồ Chí Minh",
+                      "active": true,
+                      "active_date": "2026-07-18T16:51:04"
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/location/ward/list-nopaging": {
+      "get": {
+        "tags": [
+          "Zalo – Địa chỉ (Tỉnh/Phường)"
+        ],
+        "summary": "Danh sách phường/xã theo tỉnh/thành (Zalo Mini App)",
+        "description": "Dropdown **Phường/Xã** trên form đăng ký campaign / hồ sơ người dùng, gọi sau khi chọn tỉnh. Dữ liệu hệ thống dùng chung, không phân theo tenant; chỉ trả phường/xã đang active, sắp theo tên.\r\n`province_id` bắt buộc (thiếu → lỗi). Tìm theo mã hoặc tên (`searchtext`). `id` dùng làm `ward_id` khi gửi đăng ký.\n\n### Map lên màn hình\n\n| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Tên trong dropdown | `name` | Đã gồm tiền tố \"Phường\" / \"Xã\" / \"Đặc khu\" |\n| Loại | `ward_type_key` | ⚠️ Hiện luôn là `WARD` (kể cả Xã / Đặc khu) → không dùng để phân loại |\n| Giá trị chọn | `id` | Gửi vào `ward_id` của `campaign-consumer/create` |\n\n> Gọi sau khi chọn tỉnh; đổi tỉnh → xóa phường/xã đã chọn và gọi lại. Không phân trang (vd TP.HCM `province_id = 28` có 168 phường/xã), chỉ trả bản ghi active, sắp theo `name`.\n\n> `province_id` **bắt buộc**: thiếu hoặc ≤ 0 → `success = false`, `error.code = -100`, message `province_id không hợp lệ.`",
+        "operationId": "get_api_v1_reward_zalo_location_ward_list_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "province_id",
+            "in": "query",
+            "description": "Id tỉnh/thành (lấy từ `zalo/location/province/list-nopaging`). Bắt buộc.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnSysWardZaloAppListByProvinceIdItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 3649,
+                      "province_id": 28,
+                      "code": "26882",
+                      "ward_type_key": "WARD",
+                      "name": "Phường An Hội Tây",
+                      "active": true,
+                      "active_date": "2026-07-18T16:56:37"
+                    }
+                  ],
                   "error": null
                 }
               }
@@ -17662,6 +17854,121 @@
           "active": {
             "type": "boolean",
             "description": "true = bật, false = tắt"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnSysProvinceZaloAppListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id tỉnh/thành, gửi vào `province_id` khi đăng ký campaign và khi lấy danh sách phường/xã.",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã hành chính tỉnh/thành.",
+            "nullable": true
+          },
+          "province_type_key": {
+            "type": "string",
+            "description": "Loại đơn vị hành chính (vd PROVINCE).",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "active_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnSysProvinceZaloAppListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnSysProvinceZaloAppListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnSysWardZaloAppListByProvinceIdItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id phường/xã, gửi vào `ward_id` khi đăng ký campaign.",
+            "format": "int64",
+            "nullable": true
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Mã hành chính phường/xã.",
+            "nullable": true
+          },
+          "ward_type_key": {
+            "type": "string",
+            "description": "Loại đơn vị hành chính (vd WARD).",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "active_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnSysWardZaloAppListByProvinceIdItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnSysWardZaloAppListByProvinceIdItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false

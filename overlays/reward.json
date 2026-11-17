@@ -26,7 +26,8 @@
       "^/api/v1/reward/zalo/campaign/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
-      "^/api/v1/reward/zalo/campaign-consumer/(create)$"
+      "^/api/v1/reward/zalo/campaign-consumer/(create)$",
+      "^/api/v1/reward/zalo/location/(province/list-nopaging|ward/list-nopaging)$"
     ]
   },
   "info": {
@@ -44,6 +45,11 @@
       "name": "Zalo – Đăng ký campaign",
       "match": "/zalo/campaign-co",
       "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+    },
+    {
+      "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
+      "match": "/zalo/location/",
+      "description": "Danh mục đơn vị hành chính cho dropdown địa chỉ trên Zalo Mini App (form đăng ký campaign, hồ sơ):\n\n1. `province/list-nopaging`: chọn **Tỉnh/Thành** → lấy `id` làm `province_id`.\n2. `ward/list-nopaging?province_id=...`: chọn **Phường/Xã** → lấy `id` làm `ward_id`.\n\nDữ liệu hệ thống dùng chung, không phân theo tenant. Danh mục theo mô hình 2 cấp (tỉnh → phường/xã, không có quận/huyện)."
     },
     {
       "name": "Campaign",
@@ -2607,6 +2613,48 @@
         "message": "Thêm mới thành công",
         "type": "create"
       }
+    },
+    "GET /api/v1/reward/zalo/location/province/list-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "searchtext": ""
+      },
+      "ui": "| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Tên trong dropdown | `name` | Đã gồm tiền tố \"Thành phố\" / \"Tỉnh\" |\n| Giá trị chọn | `id` | Gửi vào `province_id` (`campaign-consumer/create`, `ward/list-nopaging`) |\n\n> Không phân trang (34 tỉnh/thành). Chỉ trả bản ghi active, sắp theo `name`. `searchtext` tìm theo mã hoặc tên; có thể tải 1 lần rồi lọc ở client.",
+      "result_example": [
+        {
+          "id": 28,
+          "code": "79",
+          "province_type_key": "PROVINCE",
+          "name": "Thành phố Hồ Chí Minh",
+          "active": true,
+          "active_date": "2026-07-18T16:51:04"
+        }
+      ]
+    },
+    "GET /api/v1/reward/zalo/location/ward/list-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "province_id": 28,
+        "searchtext": ""
+      },
+      "ui": "| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Tên trong dropdown | `name` | Đã gồm tiền tố \"Phường\" / \"Xã\" / \"Đặc khu\" |\n| Loại | `ward_type_key` | ⚠️ Hiện luôn là `WARD` (kể cả Xã / Đặc khu) → không dùng để phân loại |\n| Giá trị chọn | `id` | Gửi vào `ward_id` của `campaign-consumer/create` |\n\n> Gọi sau khi chọn tỉnh; đổi tỉnh → xóa phường/xã đã chọn và gọi lại. Không phân trang (vd TP.HCM `province_id = 28` có 168 phường/xã), chỉ trả bản ghi active, sắp theo `name`.\n\n> `province_id` **bắt buộc**: thiếu hoặc ≤ 0 → `success = false`, `error.code = -100`, message `province_id không hợp lệ.`",
+      "result_example": [
+        {
+          "id": 3649,
+          "province_id": 28,
+          "code": "26882",
+          "ward_type_key": "WARD",
+          "name": "Phường An Hội Tây",
+          "active": true,
+          "active_date": "2026-07-18T16:56:37"
+        }
+      ]
     }
   }
 }
