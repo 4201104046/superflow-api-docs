@@ -3642,8 +3642,14 @@
           "Campaign"
         ],
         "summary": "Tạo hoặc cập nhật campaign",
-        "description": "`id = 0` → tạo mới (status mặc định `campaign.status.draft`); `id > 0` → cập nhật campaign đó.\r\nThành công trả `record_id` của campaign.\n\n### Map lên màn hình\n\n| Field | Gửi gì | Ghi chú |\n|---|---|---|\n| `id` | 0 = tạo mới, > 0 = cập nhật | |\n| `tags` | mảng **id** tag `[1, 2]` | lấy từ `module-tags/get-active`; có phần tử không phải số → khi xem trả `[]` |\n| `participation_methods` | mảng **key** | `campaign.participation.method.form` (Registration form) · `.auto` (Auto-enroll) · `.invite` (Invite list only). **Không** gửi object hay tên ngắn |\n| `redemption_window` | số ngày | hạn đổi quà = `end_date` + N ngày (hiện ở danh sách là `redemption_closes_at`) |\n| `status_key` | trống = draft | |\n| `campaign_config` | tùy chọn | lưu kèm sau khi campaign lưu thành công |\n\n> **Cập nhật (`id > 0`)**: field gửi `null` = **giữ nguyên** giá trị cũ (`tags`, `participation_methods`, `config_json`...). Muốn xóa hết danh sách → gửi `[]`.",
+        "description": "`id = 0` → tạo mới (status mặc định `campaign.status.draft`); `id > 0` → cập nhật campaign đó.\r\nThành công trả `record_id` của campaign.\n\n### Map lên màn hình\n\n| Field | Gửi gì | Ghi chú |\n|---|---|---|\n| `id` | 0 = tạo mới, > 0 = cập nhật | |\n| `tags` | mảng **id** tag `[1, 2]` | lấy từ `module-tags/get-active`; có phần tử không phải số → khi xem trả `[]` |\n| `participation_methods` | mảng **key** | `campaign.participation.method.form` (Registration form) · `.auto` (Auto-enroll) · `.invite` (Invite list only). **Không** gửi object hay tên ngắn |\n| `redemption_window` | số ngày | hạn đổi quà = `end_date` + N ngày (hiện ở danh sách là `redemption_closes_at`) |\n| `status_key` | trống = draft | |\n| `zaloapp_id` | Zalo Mini App ID của campaign | **mới (17/11)**; dùng để build `zaloapp_qrcode` ở `get-by-id`. Cập nhật: `null` = giữ nguyên |\n| `campaign_config` | tùy chọn | lưu kèm sau khi campaign lưu thành công |\n\n> **Cập nhật (`id > 0`)**: field gửi `null` = **giữ nguyên** giá trị cũ (`tags`, `participation_methods`, `config_json`...). Muốn xóa hết danh sách → gửi `[]`.",
         "operationId": "post_api_v1_reward_web_campaign_create",
+        "x-badges": [
+          {
+            "name": "Đổi tham số",
+            "color": "#6941C6"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3678,6 +3684,7 @@
                   "campaign.participation.method.form",
                   "campaign.participation.method.auto"
                 ],
+                "zaloapp_id": "ZALOAPP_TEST_001",
                 "campaign_config": null
               }
             }
@@ -3949,12 +3956,16 @@
           "Campaign"
         ],
         "summary": "Chi tiết campaign",
-        "description": "Thông tin campaign theo `id` cho màn chỉnh sửa / overview.\n\n### Map lên màn hình\n\n| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled giữ nguyên; còn lại upcoming · ongoing · ended theo `start_date` và `coalesce(end_early_date, end_date)` |\n| `campaign.campaign_type_key`, `color`, `published_date` | thông tin chung |\n| `campaign.max_reward`, `max_customer`, `repeat_allow`, `repeat_limit` | giới hạn tham gia / quà |\n| `campaign.total_consumer`, `total_point_issued`, `total_redeemed` | số liệu tổng (có thể null) |\n| `campaign.cancel_uid`, `cancel_date` | khi đã hủy |\n| `campaign.end_early_uid`, `end_early_date` | khi đã kết thúc sớm (`update-end-early`) |\n| `campaign_config` | cấu hình kèm theo (có thể null) |\n\n> `tenant_id = 0` thì API bỏ qua bước so tenant.",
+        "description": "Thông tin campaign theo `id` cho màn chỉnh sửa / overview.\n\n### Map lên màn hình\n\n| Field | Dạng trả về |\n|---|---|\n| `campaign.tags` | `[{ id, name }]` |\n| `campaign.participation_methods` | `[{ key, name, sequence }]` |\n| `campaign.status_key` | tính theo thời điểm hiện tại: draft / cancelled giữ nguyên; còn lại upcoming · ongoing · ended theo `start_date` và `coalesce(end_early_date, end_date)` |\n| `campaign.campaign_type_key`, `color`, `published_date` | thông tin chung |\n| `campaign.max_reward`, `max_customer`, `repeat_allow`, `repeat_limit` | giới hạn tham gia / quà |\n| `campaign.total_consumer`, `total_point_issued`, `total_redeemed` | số liệu tổng (có thể null) |\n| `campaign.cancel_uid`, `cancel_date` | khi đã hủy |\n| `campaign.end_early_uid`, `end_early_date` | khi đã kết thúc sớm (`update-end-early`) |\n| `campaign.zaloapp_id` | Zalo Mini App ID (mới 17/11) |\n| `campaign.zaloapp_qrcode` | **mới (17/11)**: `https://zalo.me/s/{zaloapp_id}/campaign/{code}` (API tự build) → FE render thành QR. Rỗng `\"\"` khi thiếu `zaloapp_id` hoặc `code` |\n| `campaign_config` | cấu hình kèm theo (có thể null) |\n\n> `tenant_id = 0` thì API bỏ qua bước so tenant.",
         "operationId": "get_api_v1_reward_web_campaign_get_by_id",
         "x-badges": [
           {
             "name": "Chưa lọc tenant",
             "color": "#B42318"
+          },
+          {
+            "name": "Đổi tham số",
+            "color": "#6941C6"
           }
         ],
         "parameters": [
@@ -14147,6 +14158,11 @@
             "description": "Mảng key hình thức tham gia: campaign.participation.method.form | .auto | .invite. Cập nhật: null = giữ nguyên, [] = xóa hết",
             "nullable": true
           },
+          "zaloapp_id": {
+            "type": "string",
+            "description": "Zalo Mini App ID gắn với campaign (dùng để build zaloapp_qrcode). Cập nhật: null = giữ nguyên",
+            "nullable": true
+          },
           "campaign_config": {
             "$ref": "#/components/schemas/FnCampaignConfigWebCreateRequestDTO"
           }
@@ -14362,6 +14378,16 @@
           },
           "participation_methods": {
             "description": "Hình thức tham gia: [{ key, name, sequence }] (đã ghép tên từ module_config)",
+            "nullable": true
+          },
+          "zaloapp_id": {
+            "type": "string",
+            "description": "Zalo Mini App ID gắn với campaign",
+            "nullable": true
+          },
+          "zaloapp_qrcode": {
+            "type": "string",
+            "description": "Link QR mở campaign trên Zalo Mini App: https://zalo.me/s/{zaloapp_id}/campaign/{code}. Rỗng nếu thiếu zaloapp_id hoặc code",
             "nullable": true
           },
           "cancel_uid": {
