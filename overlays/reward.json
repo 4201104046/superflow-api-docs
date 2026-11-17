@@ -22,7 +22,8 @@
       "^/api/v1/reward/web/campaign-mission/(list|list-game|list-by-consumer|create|delete|update-active|duplicate|get-by-id|update-sequence|list-performance-nopaging)$",
       "^/api/v1/reward/web/mission-type/(list)$",
       "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|approve-all|get-by-id)$",
-      "^/api/v1/reward/web/campaign-redemption-entitlement/(list-by-consumer)$"
+      "^/api/v1/reward/web/campaign-redemption-entitlement/(list-by-consumer)$",
+      "^/api/v1/reward/zalo/campaign/(list-nopaging)$"
     ]
   },
   "info": {
@@ -125,6 +126,11 @@
       "name": "Module config",
       "match": "/module-config/",
       "description": "Cấu hình dùng chung của module (trạng thái, loại, nhãn...) theo `key` / `parent_key`.\n\nCấu hình hệ thống nằm ở `tenant_id = -1`. Cũng gọi được qua route `/reward/web/module/config/...` (cùng controller)."
+    },
+    {
+      "name": "Zalo – Campaign",
+      "match": "/zalo/campaign/",
+      "description": "API cho **Zalo Mini App** (consumer đăng nhập bằng Zalo, cần header zuId). `consumer_id` lấy từ token, client không gửi."
     }
   ],
   "schema_patches": {
@@ -2443,6 +2449,59 @@
         "to_date": null
       },
       "ui": "Nút **Export** ở màn Redemption.\n\nGửi **cùng bộ lọc** đang dùng ở bảng (`searchtext`, `status_key` của tab đang chọn — tab All gửi `null`, `filter_definition`, `from_date`/`to_date`). `to_date` tính hết ngày.\n\n`columns` = các cột đang hiển thị kèm `column_display_name` (tiêu đề cột Excel); `null` = bộ cột mặc định.\n\nThành công trả **file `.xlsx`** (tải bằng `responseType: blob`); lỗi trả JSON `ResponseDTO` có `error` → kiểm tra `Content-Type` trước khi lưu file."
+    },
+    "GET /api/v1/reward/zalo/campaign/list-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "searchtext": "",
+        "image_preview_limit": 3
+      },
+      "ui": "| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Banner / logo | `banner_image`, `logo_image` | URL đầy đủ |\n| Tên, mô tả | `name`, `description` | |\n| Trạng thái campaign | `status_name`, `status_color` | Chỉ có `upcoming` / `ongoing` |\n| Thời gian | `start_date` – `end_date` | |\n| Số người tham gia | `total_participants` / `max_participants` | `max_participants` = 0 là không giới hạn |\n| Avatar top BXH | `image_preview[].image` | Tối đa `image_preview_limit` (mặc định 3) |\n| Nút Đăng ký | `is_registration_open`, `is_registered` | Ẩn nút nếu đã đăng ký; `registration_status_key` = `waitlist` → vào danh sách chờ |\n\n> Không phân trang. Chỉ trả campaign chưa kết thúc, bỏ draft/cancelled, sắp theo ngày tạo mới nhất. `tenant_id` bắt buộc.",
+      "result_example": [
+        {
+          "id": 108,
+          "tenant_id": 71268,
+          "code": "CP108",
+          "name": "test",
+          "description": "",
+          "server_files": "https://cdn.example.com",
+          "banner_filepath": "/campaign/",
+          "banner_filename": "banner.png",
+          "banner_image": "https://cdn.example.com/campaign/banner.png",
+          "logo_filepath": "/campaign/",
+          "logo_filename": "logo.png",
+          "logo_image": "https://cdn.example.com/campaign/logo.png",
+          "color": "#1677ff",
+          "start_date": "2026-11-01T00:00:00",
+          "end_date": "2026-12-31T23:59:59",
+          "published_date": "2026-11-01T00:00:00",
+          "max_reward": 0,
+          "max_customer": 0,
+          "repeat_allow": false,
+          "repeat_limit": 0,
+          "active": true,
+          "is_registered": false,
+          "status_key": "campaign.status.ongoing",
+          "status_name": "Ongoing",
+          "status_color": "#52c41a",
+          "total_participants": 0,
+          "image_preview": [],
+          "approval_mode_key": "campaign.approval.mode.auto",
+          "participation_methods": [
+            "campaign.participation.method.form",
+            "campaign.participation.method.invite"
+          ],
+          "registration_open": null,
+          "registration_close": null,
+          "max_participants": 0,
+          "on_limit_key": "campaign.on.limit.close",
+          "registration_status_key": "campaign.registration.status.open",
+          "is_registration_open": true
+        }
+      ]
     }
   }
 }

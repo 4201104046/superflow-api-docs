@@ -113,6 +113,10 @@
     {
       "name": "Module config",
       "description": "Cấu hình dùng chung của module (trạng thái, loại, nhãn...) theo `key` / `parent_key`.\n\nCấu hình hệ thống nằm ở `tenant_id = -1`. Cũng gọi được qua route `/reward/web/module/config/...` (cùng controller)."
+    },
+    {
+      "name": "Zalo – Campaign",
+      "description": "API cho **Zalo Mini App** (consumer đăng nhập bằng Zalo, cần header zuId). `consumer_id` lấy từ token, client không gửi."
     }
   ],
   "paths": {
@@ -4372,6 +4376,136 @@
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign/list-nopaging": {
+      "get": {
+        "tags": [
+          "Zalo – Campaign"
+        ],
+        "summary": "Danh sách campaign (Zalo Mini App, không phân trang)",
+        "description": "Màn danh sách campaign trên Zalo Mini App: chỉ trả campaign chưa kết thúc, không draft/cancelled, sắp theo ngày tạo mới nhất.\r\nTìm theo mã / tên / mô tả (`searchtext`). `consumer_id` lấy từ token để tính `is_registered`.\r\nKèm trạng thái đăng ký (`registration_status_key`, `is_registration_open`) và avatar top bảng xếp hạng (`image_preview`).\n\n### Map lên màn hình\n\n| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Banner / logo | `banner_image`, `logo_image` | URL đầy đủ |\n| Tên, mô tả | `name`, `description` | |\n| Trạng thái campaign | `status_name`, `status_color` | Chỉ có `upcoming` / `ongoing` |\n| Thời gian | `start_date` – `end_date` | |\n| Số người tham gia | `total_participants` / `max_participants` | `max_participants` = 0 là không giới hạn |\n| Avatar top BXH | `image_preview[].image` | Tối đa `image_preview_limit` (mặc định 3) |\n| Nút Đăng ký | `is_registration_open`, `is_registered` | Ẩn nút nếu đã đăng ký; `registration_status_key` = `waitlist` → vào danh sách chờ |\n\n> Không phân trang. Chỉ trả campaign chưa kết thúc, bỏ draft/cancelled, sắp theo ngày tạo mới nhất. `tenant_id` bắt buộc.",
+        "operationId": "get_api_v1_reward_zalo_campaign_list_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "name": "image_preview_limit",
+            "in": "query",
+            "description": "Số avatar top bảng xếp hạng trả trong image_preview. Mặc định 3.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignZaloAppListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 108,
+                      "tenant_id": 71268,
+                      "code": "CP108",
+                      "name": "test",
+                      "description": "",
+                      "server_files": "https://cdn.example.com",
+                      "banner_filepath": "/campaign/",
+                      "banner_filename": "banner.png",
+                      "banner_image": "https://cdn.example.com/campaign/banner.png",
+                      "logo_filepath": "/campaign/",
+                      "logo_filename": "logo.png",
+                      "logo_image": "https://cdn.example.com/campaign/logo.png",
+                      "color": "#1677ff",
+                      "start_date": "2026-11-01T00:00:00",
+                      "end_date": "2026-12-31T23:59:59",
+                      "published_date": "2026-11-01T00:00:00",
+                      "max_reward": 0,
+                      "max_customer": 0,
+                      "repeat_allow": false,
+                      "repeat_limit": 0,
+                      "active": true,
+                      "is_registered": false,
+                      "status_key": "campaign.status.ongoing",
+                      "status_name": "Ongoing",
+                      "status_color": "#52c41a",
+                      "total_participants": 0,
+                      "image_preview": [],
+                      "approval_mode_key": "campaign.approval.mode.auto",
+                      "participation_methods": [
+                        "campaign.participation.method.form",
+                        "campaign.participation.method.invite"
+                      ],
+                      "registration_open": null,
+                      "registration_close": null,
+                      "max_participants": 0,
+                      "on_limit_key": "campaign.on.limit.close",
+                      "registration_status_key": "campaign.registration.status.open",
+                      "is_registration_open": true
+                    }
+                  ],
+                  "error": null
                 }
               }
             }
@@ -14940,6 +15074,200 @@
           "cancel_notes": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignZaloAppListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_image": {
+            "type": "string",
+            "description": "URL đầy đủ ảnh banner (server_files + banner_filepath + banner_filename).",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_image": {
+            "type": "string",
+            "description": "URL đầy đủ ảnh logo (server_files + logo_filepath + logo_filename).",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "published_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "max_reward": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "max_customer": {
+            "type": "integer",
+            "description": "Số người tham gia tối đa (cột max_consumer).",
+            "format": "int32",
+            "nullable": true
+          },
+          "repeat_allow": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "repeat_limit": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "is_registered": {
+            "type": "boolean",
+            "description": "Consumer đang đăng nhập đã đăng ký campaign này chưa.",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái tính động: campaign.status.upcoming / ongoing (list chỉ trả campaign chưa kết thúc, không draft/cancelled).",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_participants": {
+            "type": "integer",
+            "description": "Tổng số người đã tham gia (campaign.total_consumer).",
+            "format": "int32",
+            "nullable": true
+          },
+          "image_preview": {
+            "description": "Mảng avatar top bảng xếp hạng kỳ C: [{ consumer_id, image }], tối đa image_preview_limit phần tử.",
+            "nullable": true
+          },
+          "approval_mode_key": {
+            "type": "string",
+            "description": "Chế độ duyệt đăng ký.",
+            "nullable": true
+          },
+          "participation_methods": {
+            "description": "Các cách tham gia campaign (jsonb).",
+            "nullable": true
+          },
+          "registration_open": {
+            "type": "string",
+            "description": "Giờ mở đăng ký (null = mở cùng start_date).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "registration_close": {
+            "type": "string",
+            "description": "Giờ đóng đăng ký (null = không giới hạn).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "max_participants": {
+            "type": "integer",
+            "description": "Số người tham gia tối đa (0 = không giới hạn).",
+            "format": "int32",
+            "nullable": true
+          },
+          "on_limit_key": {
+            "type": "string",
+            "description": "Hành vi khi đủ số lượng: campaign.on.limit.close / campaign.on.limit.waitlist.",
+            "nullable": true
+          },
+          "registration_status_key": {
+            "type": "string",
+            "description": "Trạng thái đăng ký: campaign.registration.status.not_open / closed / waitlist / full / open.",
+            "nullable": true
+          },
+          "is_registration_open": {
+            "type": "boolean",
+            "description": "true khi registration_status_key là open hoặc waitlist (hiện nút Đăng ký).",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignZaloAppListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignZaloAppListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false
