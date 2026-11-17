@@ -315,6 +315,21 @@
         "example": "sequence",
         "description": "Cột sắp xếp; bỏ trống → `sequence`. `total_gifts` sắp theo cùng giá trị với `points`."
       }
+    },
+    "FnCampaignWebListPageindexRequestDTO": {
+      "sortby": {
+        "enum": [
+          "id",
+          "create_date",
+          "start_date",
+          "end_date",
+          "name",
+          "code"
+        ],
+        "default": "create_date",
+        "example": "create_date",
+        "description": "Cột sắp xếp. Giá trị ngoài danh sách tự về `create_date`."
+      }
     }
   },
   "operations": {
@@ -563,15 +578,15 @@
         "searchtext": "",
         "status_key": null,
         "list_tag_id": null,
-        "list_campaign_type_key": [],
         "from_date": null,
         "to_date": null,
         "sortby": "create_date",
         "sortdir": "DESC"
       },
-      "ui": "> ➕ **Thêm field response (17/11)**: mỗi dòng có thêm **`redemption_window_open`** (`bool?`) — còn cho đổi quà sau khi campaign kết thúc; `false` sau khi gọi `close-redemption-window`.\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
+      "ui": "> ⚠️ **`list_campaign_type_key` chưa hoạt động**: fn chưa có tham số lọc theo loại campaign, gửi lên sẽ bị bỏ qua (đã gửi yêu cầu team DB).\n\n> ➕ **Thêm field response (17/11)**: mỗi dòng có thêm **`redemption_window_open`** (`bool?`) — còn cho đổi quà sau khi campaign kết thúc; `false` sau khi gọi `close-redemption-window`.\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | chỉ nhận `id`, `create_date`, `start_date`, `end_date`, `name`, `code`; giá trị khác **tự về `create_date`** (không báo lỗi) |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
       "badges": [
-        "changed"
+        "changed",
+        "filter-broken"
       ]
     },
     "POST /api/v1/reward/web/campaign/list-totalrow": {
@@ -580,14 +595,14 @@
         "searchtext": "",
         "status_key": null,
         "list_tag_id": null,
-        "list_campaign_type_key": [],
         "from_date": null,
         "to_date": null
       },
       "badges": [
-        "changed"
+        "changed",
+        "filter-broken"
       ],
-      "ui": "> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n> 🔄 **Response đổi dạng**: trước là `result.totalrow.total`, giờ là **`result.total`** + `result.status_summary` (bỏ lớp `totalrow`). `total` đổi kiểu `int` → `long`.\n\n| Tab | Lấy số từ | Bấm tab → gửi `status_key` |\n|---|---|---|\n| All | `status_summary[\"campaign.metric.total\"]` | `null` |\n| Draft / Upcoming / Ongoing / Ended / Cancelled | `status_summary[\"campaign.status.<tên>\"]` | `\"campaign.status.<tên>\"` |",
+      "ui": "> ⚠️ **`list_campaign_type_key` chưa hoạt động**: fn chưa có tham số lọc theo loại campaign, gửi lên sẽ bị bỏ qua (đã gửi yêu cầu team DB).\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n> 🔄 **Response đổi dạng**: trước là `result.totalrow.total`, giờ là **`result.total`** + `result.status_summary` (bỏ lớp `totalrow`). `total` đổi kiểu `int` → `long`.\n\n| Tab | Lấy số từ | Bấm tab → gửi `status_key` |\n|---|---|---|\n| All | `status_summary[\"campaign.metric.total\"]` | `null` |\n| Draft / Upcoming / Ongoing / Ended / Cancelled | `status_summary[\"campaign.status.<tên>\"]` | `\"campaign.status.<tên>\"` |",
       "result_example": {
         "total": 12,
         "status_summary": {

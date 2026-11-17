@@ -4514,12 +4514,16 @@
           "Campaign"
         ],
         "summary": "Danh sách campaign",
-        "description": "Màn Campaign list: phân trang, tìm theo mã hoặc tên, lọc trạng thái / tag / khoảng ngày tạo.\n\n### Map lên màn hình\n\n> ➕ **Thêm field response (17/11)**: mỗi dòng có thêm **`redemption_window_open`** (`bool?`) — còn cho đổi quà sau khi campaign kết thúc; `false` sau khi gọi `close-redemption-window`.\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | tên cột bất kỳ của bảng campaign (vd `create_date`, `name`, `start_date`); sai tên cột → lỗi |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
+        "description": "Màn Campaign list: phân trang, tìm theo mã hoặc tên, lọc trạng thái / tag / khoảng ngày tạo.\n\n### Map lên màn hình\n\n> ⚠️ **`list_campaign_type_key` chưa hoạt động**: fn chưa có tham số lọc theo loại campaign, gửi lên sẽ bị bỏ qua (đã gửi yêu cầu team DB).\n\n> ➕ **Thêm field response (17/11)**: mỗi dòng có thêm **`redemption_window_open`** (`bool?`) — còn cho đổi quà sau khi campaign kết thúc; `false` sau khi gọi `close-redemption-window`.\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n| Ghi chú | |\n|---|---|\n| Search | tìm trong `code`, `name` |\n| `sortby` | chỉ nhận `id`, `create_date`, `start_date`, `end_date`, `name`, `code`; giá trị khác **tự về `create_date`** (không báo lỗi) |\n| Ngày | `from_date`/`to_date` lọc theo ngày tạo |",
         "operationId": "post_api_v1_reward_web_campaign_list_pageindex",
         "x-badges": [
           {
             "name": "Đổi tham số",
             "color": "#6941C6"
+          },
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
           }
         ],
         "requestBody": {
@@ -4535,7 +4539,6 @@
                 "searchtext": "",
                 "status_key": null,
                 "list_tag_id": null,
-                "list_campaign_type_key": [],
                 "from_date": null,
                 "to_date": null,
                 "sortby": "create_date",
@@ -4568,12 +4571,16 @@
           "Campaign"
         ],
         "summary": "Tổng số campaign + số theo trạng thái",
-        "description": "Gọi cùng bộ lọc với `list-pageindex` để phân trang và hiện số trên tab trạng thái.\n\n### Map lên màn hình\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n> 🔄 **Response đổi dạng**: trước là `result.totalrow.total`, giờ là **`result.total`** + `result.status_summary` (bỏ lớp `totalrow`). `total` đổi kiểu `int` → `long`.\n\n| Tab | Lấy số từ | Bấm tab → gửi `status_key` |\n|---|---|---|\n| All | `status_summary[\"campaign.metric.total\"]` | `null` |\n| Draft / Upcoming / Ongoing / Ended / Cancelled | `status_summary[\"campaign.status.<tên>\"]` | `\"campaign.status.<tên>\"` |",
+        "description": "Gọi cùng bộ lọc với `list-pageindex` để phân trang và hiện số trên tab trạng thái.\n\n### Map lên màn hình\n\n> ⚠️ **`list_campaign_type_key` chưa hoạt động**: fn chưa có tham số lọc theo loại campaign, gửi lên sẽ bị bỏ qua (đã gửi yêu cầu team DB).\n\n> 🔄 **Đổi tham số (13/11)**: `list_status_key` (mảng) → **`status_key`** (1 chuỗi, lọc theo 1 trạng thái). Bỏ trống / `null` = tất cả. Gửi `list_status_key` cũ sẽ bị bỏ qua (không lọc).\n\n> 🔄 **Response đổi dạng**: trước là `result.totalrow.total`, giờ là **`result.total`** + `result.status_summary` (bỏ lớp `totalrow`). `total` đổi kiểu `int` → `long`.\n\n| Tab | Lấy số từ | Bấm tab → gửi `status_key` |\n|---|---|---|\n| All | `status_summary[\"campaign.metric.total\"]` | `null` |\n| Draft / Upcoming / Ongoing / Ended / Cancelled | `status_summary[\"campaign.status.<tên>\"]` | `\"campaign.status.<tên>\"` |",
         "operationId": "post_api_v1_reward_web_campaign_list_totalrow",
         "x-badges": [
           {
             "name": "Đổi tham số",
             "color": "#6941C6"
+          },
+          {
+            "name": "Filter nâng cao đang lỗi",
+            "color": "#B42318"
           }
         ],
         "requestBody": {
@@ -4587,7 +4594,6 @@
                 "searchtext": "",
                 "status_key": null,
                 "list_tag_id": null,
-                "list_campaign_type_key": [],
                 "from_date": null,
                 "to_date": null
               }
@@ -15364,7 +15370,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Lọc theo loại campaign",
+            "description": "Lọc theo loại campaign — CHƯA HOẠT ĐỘNG: fn chưa có tham số p_list_campaign_type_key nên giá trị bị bỏ qua",
             "nullable": true
           },
           "list_tag_id": {
@@ -15413,8 +15419,18 @@
           },
           "sortby": {
             "type": "string",
-            "description": "Cột sắp xếp: tên cột của bảng campaign (mặc định create_date)",
-            "nullable": true
+            "description": "Cột sắp xếp. Giá trị ngoài danh sách tự về `create_date`.",
+            "nullable": true,
+            "enum": [
+              "id",
+              "create_date",
+              "start_date",
+              "end_date",
+              "name",
+              "code"
+            ],
+            "default": "create_date",
+            "example": "create_date"
           },
           "sortdir": {
             "type": "string",
@@ -15477,7 +15493,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Lọc theo loại campaign",
+            "description": "Lọc theo loại campaign — CHƯA HOẠT ĐỘNG: fn chưa có tham số p_list_campaign_type_key nên giá trị bị bỏ qua",
             "nullable": true
           },
           "list_tag_id": {
