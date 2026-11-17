@@ -17,8 +17,8 @@
       "attach": "/ca-quan-govap/(staff|admin)/",
       "scheme": "StaffBearer"
     },
-    "updated": "09:52 17/11/2026",
-    "rev": "b641862199"
+    "updated": "16:35 17/11/2026",
+    "rev": "cf6efa7191"
   },
   {
     "id": "reward",
