@@ -23,7 +23,7 @@
       "^/api/v1/reward/web/mission-type/(list)$",
       "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|approve-all|get-by-id)$",
       "^/api/v1/reward/web/campaign-redemption-entitlement/(list-by-consumer)$",
-      "^/api/v1/reward/zalo/campaign/(list-nopaging|list-race-nopaging|list-achievement-nopaging)$",
+      "^/api/v1/reward/zalo/campaign/(list-nopaging|list-race-nopaging|list-achievement-nopaging|list-leaderboard-nopaging)$",
       "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
       "^/api/v1/reward/zalo/campaign-consumer/(list|list-totalrow|register|summary|summary-totalrow|view-by-campaign-id-and-consumer-id|create|get-by-id)$",
@@ -2533,6 +2533,38 @@
           "is_registration_open": true
         }
       ]
+    },
+    "GET /api/v1/reward/zalo/campaign/list-leaderboard-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "rank": 1,
+          "campaign_consumer_id": 132,
+          "consumer_id": 2,
+          "name": "Trần Thị B",
+          "server_files": null,
+          "filepath": null,
+          "filename": null,
+          "image": "https://h5.zdn.vn/static/images/avatar.png",
+          "score": 2000,
+          "is_me": false
+        },
+        {
+          "rank": 2,
+          "campaign_consumer_id": 65,
+          "consumer_id": 57,
+          "name": "Nguyễn Văn A",
+          "server_files": null,
+          "filepath": null,
+          "filename": null,
+          "image": null,
+          "score": 1500,
+          "is_me": true
+        }
+      ],
+      "ui": "Top `limit` người (mặc định 10, tối đa 100) của 1 campaign, sắp theo hạng. Điểm = tổng điểm đã nhận (`lifetime_earned`); hòa điểm → ai đạt trước xếp trên. Bảng đã **chốt** (leaderboard `frozen` có snapshot) → trả kết quả lúc chốt.\n\n> ⚠️ Chỉ tính người tham gia **đã được duyệt** (`approved`) và không bị loại khỏi bảng. Hiện người đăng ký từ Zalo luôn ở trạng thái chờ duyệt (xem lưu ý ở `campaign-consumer/create`) → chưa lên bảng cho tới khi admin duyệt.\n\n| Khối Bảng xếp hạng | Field |\n|---|---|\n| Hạng | `rank` |\n| Avatar, tên | `image` (null → avatar mặc định), `name` |\n| Điểm | `score` |\n| Dòng của tôi | `is_me = true` (highlight) |\n\nHạng của tôi khi không nằm trong top: dùng `campaign_leaderboard.my_rank` của `campaign-consumer/get-by-id`.\n\nThay cho `zalo/campaign-leaderboard/list`, `list-totalrow`, `list-nopaging` (đang lỗi trên dev: bảng `campaign_leaderboard_score` không tồn tại)."
     },
     "GET /api/v1/reward/zalo/campaign/list-race-nopaging": {
       "badges": [
