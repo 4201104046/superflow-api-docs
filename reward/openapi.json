@@ -6328,6 +6328,97 @@
         }
       }
     },
+    "/api/v1/reward/zalo/campaign/list-race-nopaging": {
+      "get": {
+        "tags": [
+          "Zalo – Campaign"
+        ],
+        "summary": "Đường đua – campaign đang tham gia (Zalo Mini App)",
+        "description": "Màn **Đường đua**: các campaign người dùng đã tham gia và đang diễn ra (đã bắt đầu, chưa kết thúc, bỏ draft/cancelled), tham gia gần nhất trước, không phân trang.\r\nMỗi dòng: % nhiệm vụ (`progress_percent`), điểm đã nhận / đã dùng / còn lại, `is_lock` = bị khóa trong campaign.\r\nconsumer_id lấy từ token. `id` = id campaign; mở chi tiết bằng `campaign_consumer_id` qua `campaign-consumer/get-by-id`.\n\n### Map lên màn hình\n\nCampaign người dùng đã tham gia và **đang diễn ra** (đã bắt đầu, chưa kết thúc — theo `end_early_date` nếu kết thúc sớm; bỏ draft/cancelled); tham gia gần nhất trước; không phân trang. Chưa tham gia → `[]`.\n\n> ⚠️ `id` ở đây là **id campaign**; mở chi tiết / lịch sử điểm / quà đã nhận dùng **`campaign_consumer_id`** (khác `list-achievement-nopaging`, nơi `id` là campaign_consumer).\n\n| Màn Đường đua | Field |\n|---|---|\n| Logo, tên campaign | `logo_image` (null nếu chưa có), `name` |\n| Thời gian | `start_date` – `end_date` |\n| Thanh tiến độ | `progress_percent` (`completed_mission`/`total_mission`) |\n| Điểm | `total_earned` (đã nhận), `total_redeemed` (đã dùng), `balance` (còn lại) |\n| Khóa | `is_lock = true` → người dùng bị khóa trong campaign (hiện trạng thái khóa, chặn thao tác) |\n\nBấm vào dòng → `campaign-consumer/get-by-id?id={campaign_consumer_id}`.",
+        "operationId": "get_api_v1_reward_zalo_campaign_list_race_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignZaloAppRaceListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 32,
+                      "tenant_id": 71268,
+                      "code": "CZXZ2",
+                      "name": "Học hỏi hăng say – Nhận ngay may mắn",
+                      "server_files": "https://img.azidev.com",
+                      "logo_filepath": "/upload/image/51046/",
+                      "logo_filename": "imageqr_(1)639298297925548729.png",
+                      "logo_image": "https://img.azidev.com/upload/image/51046/imageqr_(1)639298297925548729.png",
+                      "start_date": "2026-11-09T18:51:39",
+                      "end_date": "2027-11-27T03:03:00",
+                      "campaign_consumer_id": 65,
+                      "is_lock": false,
+                      "total_mission": 8,
+                      "completed_mission": 1,
+                      "progress_percent": 13,
+                      "total_earned": 1500.0,
+                      "total_redeemed": 300.0,
+                      "balance": 1200.0
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/consumer-redemption/list-pageindex": {
       "post": {
         "tags": [
@@ -19430,6 +19521,129 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FnCampaignZaloAppListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignZaloAppRaceListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id campaign (khác API thành tựu: ở đây `id` là campaign, id bản ghi tham gia nằm ở `campaign_consumer_id`).",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_image": {
+            "type": "string",
+            "description": "URL logo (đã ghép; null nếu chưa có logo).",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Ngày kết thúc thực tế (end_early_date nếu kết thúc sớm, ngược lại end_date).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "description": "Id campaign_consumer (bản ghi tham gia) — dùng cho `campaign-consumer/get-by-id`, lịch sử điểm, quà đã nhận.",
+            "format": "int64",
+            "nullable": true
+          },
+          "is_lock": {
+            "type": "boolean",
+            "description": "true = người dùng bị khóa trong campaign (campaign.consumer.status.inactive).",
+            "nullable": true
+          },
+          "total_mission": {
+            "type": "integer",
+            "description": "Tổng lượt nhiệm vụ (cộng limit_per_period các nhiệm vụ active).",
+            "format": "int32",
+            "nullable": true
+          },
+          "completed_mission": {
+            "type": "integer",
+            "description": "Số lượt nhiệm vụ đã hoàn thành.",
+            "format": "int32",
+            "nullable": true
+          },
+          "progress_percent": {
+            "type": "integer",
+            "description": "% hoàn thành (0–100, số nguyên).",
+            "format": "int32",
+            "nullable": true
+          },
+          "total_earned": {
+            "type": "number",
+            "description": "Tổng điểm đã nhận.",
+            "format": "double",
+            "nullable": true
+          },
+          "total_redeemed": {
+            "type": "number",
+            "description": "Tổng điểm đã dùng đổi quà.",
+            "format": "double",
+            "nullable": true
+          },
+          "balance": {
+            "type": "number",
+            "description": "Điểm còn lại trong ví campaign.",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignZaloAppRaceListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignZaloAppRaceListItemDTO"
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true

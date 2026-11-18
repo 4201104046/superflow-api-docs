@@ -23,7 +23,7 @@
       "^/api/v1/reward/web/mission-type/(list)$",
       "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|approve-all|get-by-id)$",
       "^/api/v1/reward/web/campaign-redemption-entitlement/(list-by-consumer)$",
-      "^/api/v1/reward/zalo/campaign/(list-nopaging|list-achievement-nopaging)$",
+      "^/api/v1/reward/zalo/campaign/(list-nopaging|list-race-nopaging|list-achievement-nopaging)$",
       "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
       "^/api/v1/reward/zalo/campaign-consumer/(list|list-totalrow|register|summary|summary-totalrow|view-by-campaign-id-and-consumer-id|create|get-by-id)$",
@@ -2533,6 +2533,34 @@
           "is_registration_open": true
         }
       ]
+    },
+    "GET /api/v1/reward/zalo/campaign/list-race-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "id": 32,
+          "tenant_id": 71268,
+          "code": "CZXZ2",
+          "name": "Học hỏi hăng say – Nhận ngay may mắn",
+          "server_files": "https://img.azidev.com",
+          "logo_filepath": "/upload/image/51046/",
+          "logo_filename": "imageqr_(1)639298297925548729.png",
+          "logo_image": "https://img.azidev.com/upload/image/51046/imageqr_(1)639298297925548729.png",
+          "start_date": "2026-11-09T18:51:39",
+          "end_date": "2027-11-27T03:03:00",
+          "campaign_consumer_id": 65,
+          "is_lock": false,
+          "total_mission": 8,
+          "completed_mission": 1,
+          "progress_percent": 13,
+          "total_earned": 1500.0,
+          "total_redeemed": 300.0,
+          "balance": 1200.0
+        }
+      ],
+      "ui": "Campaign người dùng đã tham gia và **đang diễn ra** (đã bắt đầu, chưa kết thúc — theo `end_early_date` nếu kết thúc sớm; bỏ draft/cancelled); tham gia gần nhất trước; không phân trang. Chưa tham gia → `[]`.\n\n> ⚠️ `id` ở đây là **id campaign**; mở chi tiết / lịch sử điểm / quà đã nhận dùng **`campaign_consumer_id`** (khác `list-achievement-nopaging`, nơi `id` là campaign_consumer).\n\n| Màn Đường đua | Field |\n|---|---|\n| Logo, tên campaign | `logo_image` (null nếu chưa có), `name` |\n| Thời gian | `start_date` – `end_date` |\n| Thanh tiến độ | `progress_percent` (`completed_mission`/`total_mission`) |\n| Điểm | `total_earned` (đã nhận), `total_redeemed` (đã dùng), `balance` (còn lại) |\n| Khóa | `is_lock = true` → người dùng bị khóa trong campaign (hiện trạng thái khóa, chặn thao tác) |\n\nBấm vào dòng → `campaign-consumer/get-by-id?id={campaign_consumer_id}`."
     },
     "GET /api/v1/reward/zalo/campaign/list-achievement-nopaging": {
       "badges": [
