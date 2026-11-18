@@ -23,7 +23,7 @@
       "^/api/v1/reward/web/mission-type/(list)$",
       "^/api/v1/reward/web/campaign-mission-progress/(list-pageindex|list-totalrow|approve|approve-all|get-by-id)$",
       "^/api/v1/reward/web/campaign-redemption-entitlement/(list-by-consumer)$",
-      "^/api/v1/reward/zalo/campaign/(list-nopaging)$",
+      "^/api/v1/reward/zalo/campaign/(list-nopaging|list-achievement-nopaging)$",
       "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
       "^/api/v1/reward/zalo/campaign-consumer/(list|list-totalrow|register|summary|summary-totalrow|view-by-campaign-id-and-consumer-id|create|get-by-id)$",
@@ -2533,6 +2533,40 @@
           "is_registration_open": true
         }
       ]
+    },
+    "GET /api/v1/reward/zalo/campaign/list-achievement-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "id": 65,
+          "consumer_id": 57,
+          "campaign_id": 32,
+          "campaign_name": "Học hỏi hăng say – Nhận ngay may mắn",
+          "status_key": "campaign.status.ended",
+          "campaign_type_key": null,
+          "description": "",
+          "server_files": "https://img.azidev.com",
+          "banner_filepath": "/upload/image/51046/",
+          "banner_filename": "banner.png",
+          "banner_image": "https://img.azidev.com/upload/image/51046/banner.png",
+          "logo_filepath": "/upload/image/51046/",
+          "logo_filename": "logo.png",
+          "logo_image": "https://img.azidev.com/upload/image/51046/logo.png",
+          "start_date": "2026-09-01T00:00:00",
+          "end_date": "2026-10-31T23:59:00",
+          "total_missions": 8,
+          "completed_missions_count": 6,
+          "completion_percentage": 75.0,
+          "evaluation": "EXCELLENT!!",
+          "balance": 200,
+          "lifetime_earned": 1500,
+          "lifetime_redeemed": 1300,
+          "redeemed_rewards_count": 3
+        }
+      ],
+      "ui": "Campaign người dùng đã tham gia và **đã kết thúc** (theo `end_early_date` nếu kết thúc sớm), bỏ draft/cancelled; kết thúc gần nhất trước; không phân trang. Chưa có → `[]`.\n\n| Màn Thành tựu | Field |\n|---|---|\n| Ảnh, tên campaign | `banner_image` / `logo_image`, `campaign_name` |\n| Thời gian | `start_date` – `end_date` |\n| % hoàn thành nhiệm vụ | `completion_percentage` (`completed_missions_count`/`total_missions`) |\n| Xếp loại | `evaluation`: `PERFECT!!!` (100%), `EXCELLENT!!` (≥70), `GOOD JOB!` (≥40), `NOT BAD!!!` (≥10), `TRY HARDER!` |\n| Điểm | `lifetime_earned` (đã nhận), `lifetime_redeemed` (đã dùng), `balance` (còn lại) |\n| Số quà đã nhận | `redeemed_rewards_count` |\n\nBấm vào dòng → `campaign-consumer/get-by-id?id={id}` (`id` là id campaign_consumer). Thay cho `campaign-consumer/summary` (đang phụ thuộc bảng `consumer_wallet` lỗi trên dev).\n\nVí dụ là dữ liệu minh họa — dev chưa có campaign kết thúc nào có người tham gia."
     },
     "GET /api/v1/reward/zalo/campaign-consumer-field/list-nopaging": {
       "badges": [
