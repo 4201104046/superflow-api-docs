@@ -1874,6 +1874,319 @@
         }
       }
     },
+    "/api/v1/reward/zalo/campaign-consumer/get-by-id": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký campaign"
+        ],
+        "summary": "Chi tiết campaign đã tham gia (Zalo Mini App)",
+        "description": "Màn **chi tiết campaign của tôi**: gom 1 lần gọi gồm hồ sơ tham gia (`campaign_consumer`), campaign + đếm ngược (`campaign`),\r\nví điểm (`campaign_consumer_point`), quà chương trình (`reward_item`, có `can_redeem`), quà đã nhận (`campaign_consumer_redemption`),\r\ntiến độ nhiệm vụ (`campaign_mission_progress`) và bảng xếp hạng (`campaign_leaderboard`, có `my_rank`, `is_me`).\r\n`id` = id campaign_consumer (từ `create` / `list`), không phải id campaign. consumer_id lấy từ token.\r\nChỉ xem được bản ghi của chính mình: id của người khác hoặc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\".\r\nKhông tìm thấy id → `result` = null.\n\n### Map lên màn hình\n\n> ⚠️ fn `fn_campaign_consumer_zaloapp_get_by_id` chỉ nhận `p_id`, không lọc tenant/consumer. API đã tự chặn: chỉ trả bản ghi có `consumer_id` = người dùng đăng nhập và `tenant_id` khớp.\n\n| Khối UI | Lấy từ |\n|---|---|\n| Header campaign + đếm ngược | `campaign` (`remaining_seconds`, `server_time`, ảnh = `server_files` + `banner_filepath` + `banner_filename`) |\n| Điểm của tôi | `campaign_consumer_point.balance` |\n| Thực hiện % | `campaign_mission_progress.percent` (`completed_mission`/`total_mission`) |\n| Quà chương trình | `reward_item[]` — nút Đổi bật khi `can_redeem = true`; hết hàng `is_out_of_stock`; chạm giới hạn `reached_limit` |\n| Quà đã nhận | `campaign_consumer_redemption[]` + nút \"+N\" = `campaign_mission_progress.received_more_count` |\n| Bảng xếp hạng | `campaign_leaderboard.items[]` (dòng của tôi `is_me = true`), hạng của tôi `my_rank` (null = chưa được xếp hạng) |\n| Trạng thái duyệt | `campaign_consumer.approved_key` / `approved_name` / `approved_color` |\n\n`id` là **id campaign_consumer** (không phải id campaign). Số dòng mỗi danh sách chỉnh bằng `reward_limit` / `received_limit` / `leaderboard_limit` (0–50).",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_get_by_id",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "name": "reward_limit",
+            "in": "query",
+            "description": "Số quà chương trình trả về (0–50, mặc định 5).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "received_limit",
+            "in": "query",
+            "description": "Số quà đã nhận trả về (0–50, mặc định 3).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "leaderboard_limit",
+            "in": "query",
+            "description": "Số dòng bảng xếp hạng trả về (0–50, mặc định 5).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "campaign_consumer": {
+                      "id": 65,
+                      "tenant_id": 71268,
+                      "campaign_id": 32,
+                      "consumer_id": 57,
+                      "name": "Nguyễn Văn A",
+                      "phone": "0901234567",
+                      "email": "a@example.com",
+                      "birthday": null,
+                      "gender_key": "",
+                      "address": "",
+                      "job_title": null,
+                      "workplace": null,
+                      "province_id": null,
+                      "ward_id": null,
+                      "object_key": "",
+                      "ref_code": "",
+                      "zalo_avatar": null,
+                      "server_files": "",
+                      "filepath": "",
+                      "filename": "",
+                      "status_key": null,
+                      "status_name": null,
+                      "status_color": null,
+                      "approved_key": null,
+                      "approved_name": null,
+                      "approved_color": null,
+                      "approved_notes": null,
+                      "total_earned": 0.0,
+                      "total_balance": 0.0,
+                      "total_reward": null,
+                      "total_mission": null,
+                      "data_json": null,
+                      "metadata_json": {
+                        "pharmacy_name": "a",
+                        "pharmacy_address": "b"
+                      }
+                    },
+                    "campaign": {
+                      "id": 32,
+                      "tenant_id": 71268,
+                      "code": "CZXZ2",
+                      "name": "Học hỏi hăng say – Nhận ngay may mắn (dev làm)",
+                      "description": "",
+                      "color": null,
+                      "server_files": "https://img.azidev.com",
+                      "banner_filepath": "/upload/image/51046/",
+                      "banner_filename": "imageqr_(1)639298298001248458.png",
+                      "logo_filepath": "/upload/image/51046/",
+                      "logo_filename": "imageqr_(1)639298297925548729.png",
+                      "start_date": "2026-11-09T18:51:39",
+                      "end_date": "2027-11-27T03:03:00",
+                      "end_early_date": null,
+                      "registration_open": null,
+                      "registration_close": "2026-04-05T23:59:00",
+                      "status_key": "campaign.status.upcoming",
+                      "status_name": "Upcoming",
+                      "status_color": "#D97706",
+                      "campaign_type_key": null,
+                      "approval_mode_key": "campaign.approval.mode.auto",
+                      "max_consumer": 500,
+                      "max_reward": null,
+                      "repeat_allow": true,
+                      "repeat_limit": null,
+                      "redemption_window": 0,
+                      "redemption_window_open": false,
+                      "total_consumer": null,
+                      "total_point_issued": null,
+                      "total_redeemed": null,
+                      "server_time": "2026-11-18T09:02:15.17081+07:00",
+                      "remaining_seconds": 32292044,
+                      "tags": [],
+                      "config_json": {
+                        "terms": "<p>Điều khoản</p>",
+                        "timezone": "Asia/Ho_Chi_Minh",
+                        "point_expiry": {
+                          "expiry_type_key": "campaign.point.expiry.type.redemption_window_close",
+                          "remind_days_before": 3,
+                          "remind_before_expiry": true,
+                          "expiry_days_after_end": 7
+                        },
+                        "earning_limits": {
+                          "max_points_per_day": 500,
+                          "bonus_multiplier_rules": [
+                            {
+                              "value": "Chủ nhà thuốc",
+                              "operator": "equals",
+                              "field_code": "chuc_danh",
+                              "multiplier": 1.2
+                            }
+                          ],
+                          "enable_bonus_multiplier": true,
+                          "max_points_per_campaign": null
+                        },
+                        "balance_adjustments": {
+                          "allow_negative_balance_on_revoke": false,
+                          "second_approver_threshold_points": 500
+                        }
+                      },
+                      "participation_methods": [
+                        "form"
+                      ]
+                    },
+                    "campaign_consumer_point": {
+                      "id": 40,
+                      "campaign_consumer_id": 65,
+                      "campaign_id": 32,
+                      "balance": 1200,
+                      "held": 0.0,
+                      "lifetime_earned": 1500,
+                      "lifetime_redeemed": 300,
+                      "last_earned_date": "2026-11-13T09:30:52.193039"
+                    },
+                    "reward_item": [
+                      {
+                        "id": 31,
+                        "code": "",
+                        "name": "test create3",
+                        "description": "<p>test create3</p>",
+                        "image": "https://img.azidev.com/upload/image/51046/1728611746913639299198861482858.png",
+                        "server_files": "https://img.azidev.com",
+                        "filepath": "/upload/image/51046/",
+                        "filename": "1728611746913639299198861482858.png",
+                        "point_cost": 2,
+                        "cash_value": 0.0,
+                        "currency": "VND",
+                        "reward_type_key": "reward.item.reward.type.gift",
+                        "status_key": "reward.item.status.active",
+                        "status_name": "Active",
+                        "status_color": "#00A65E",
+                        "stock_total": 22,
+                        "stock_remaining": 22,
+                        "is_out_of_stock": false,
+                        "redeemed_count": 0,
+                        "per_consumer_limit": null,
+                        "reached_limit": false,
+                        "can_redeem": true,
+                        "max_redeem_per_day": 1,
+                        "requires_approval": false,
+                        "valid_from_date": null,
+                        "valid_to_date": null,
+                        "redemption_open_date": "2026-11-10T01:03:00",
+                        "redemption_closed_date": "2026-11-28T01:03:00",
+                        "ui_json": {}
+                      }
+                    ],
+                    "campaign_consumer_redemption": [
+                      {
+                        "id": 5,
+                        "redemption_no": "RED-TEST-005",
+                        "campaign_consumer_id": 65,
+                        "reward_item_id": null,
+                        "reward_code": null,
+                        "reward_name": null,
+                        "reward_type": null,
+                        "image": null,
+                        "server_files": null,
+                        "filepath": null,
+                        "filename": null,
+                        "quantity": 1.0,
+                        "point_cost": 500.0,
+                        "total_point_used": 500.0,
+                        "cash_value": 0.0,
+                        "currency": "VND",
+                        "status_key": "campaign.consumer.redemption.status.approved",
+                        "status_name": "Approved",
+                        "status_color": "#155DFC",
+                        "request_date": "2026-11-06T16:02:04.774112",
+                        "approval_date": "2026-11-07T16:02:04.774112",
+                        "delivered_date": null,
+                        "expired_date": null,
+                        "note": "Test point redemption approved",
+                        "shipping_name": null,
+                        "shipping_phone": null,
+                        "shipping_address": null,
+                        "shipping_provider": null,
+                        "shipping_tracking_no": null
+                      }
+                    ],
+                    "campaign_mission_progress": {
+                      "total_mission": 8,
+                      "completed_mission": 1,
+                      "percent": 13,
+                      "received_total": 4,
+                      "received_more_count": 1
+                    },
+                    "campaign_leaderboard": {
+                      "my_rank": 2,
+                      "total": 2,
+                      "items": [
+                        {
+                          "rank": 1,
+                          "campaign_consumer_id": 132,
+                          "name": "Trần Thị B",
+                          "zalo_avatar": null,
+                          "score": 2000,
+                          "is_me": false
+                        },
+                        {
+                          "rank": 2,
+                          "campaign_consumer_id": 65,
+                          "name": "Nguyễn Văn A",
+                          "zalo_avatar": null,
+                          "score": 1500,
+                          "is_me": true
+                        }
+                      ]
+                    }
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/web/campaign-import/create": {
       "post": {
         "tags": [
@@ -13207,6 +13520,814 @@
           },
           "data_json": {
             "description": "Giá trị các field không phải hệ thống của form (key = code của field) và các mục pháp lý đã đồng ý.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdCampaignDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "description": "Banner = server_files + banner_filepath + banner_filename (logo tương tự).",
+            "nullable": true
+          },
+          "banner_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_early_date": {
+            "type": "string",
+            "description": "Ngày kết thúc sớm (nếu có).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "registration_open": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "registration_close": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái campaign (campaign.status.*).",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "campaign_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "approval_mode_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "max_consumer": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "max_reward": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "repeat_allow": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "repeat_limit": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "redemption_window": {
+            "type": "integer",
+            "description": "Số ngày còn được đổi quà sau end_date.",
+            "format": "int32",
+            "nullable": true
+          },
+          "redemption_window_open": {
+            "type": "boolean",
+            "description": "Còn cho đổi quà sau khi campaign kết thúc.",
+            "nullable": true
+          },
+          "total_consumer": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_point_issued": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_redeemed": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "server_time": {
+            "type": "string",
+            "description": "Giờ server lúc trả dữ liệu (dùng cho đếm ngược).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "remaining_seconds": {
+            "type": "integer",
+            "description": "Số giây còn lại tới end_date (0 nếu đã qua, null nếu không có end_date).",
+            "format": "int64",
+            "nullable": true
+          },
+          "tags": {
+            "nullable": true
+          },
+          "config_json": {
+            "nullable": true
+          },
+          "participation_methods": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdConsumerDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id campaign_consumer.",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "gender_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "job_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "workplace": {
+            "type": "string",
+            "nullable": true
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "ward_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "object_key": {
+            "type": "string",
+            "description": "Loại đối tượng tham gia.",
+            "nullable": true
+          },
+          "ref_code": {
+            "type": "string",
+            "description": "Mã giới thiệu.",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "description": "URL avatar Zalo.",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "description": "Ảnh tự upload: server_files + filepath + filename.",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái tham gia (campaign.consumer.status.*).",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_key": {
+            "type": "string",
+            "description": "Trạng thái duyệt (campaign.consumer.approved.*).",
+            "nullable": true
+          },
+          "approved_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "approved_notes": {
+            "type": "string",
+            "description": "Ghi chú khi duyệt / từ chối.",
+            "nullable": true
+          },
+          "total_earned": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_balance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_reward": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_mission": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "data_json": {
+            "description": "Giá trị các field thêm của form đăng ký.",
+            "nullable": true
+          },
+          "metadata_json": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdDTO": {
+        "type": "object",
+        "properties": {
+          "campaign_consumer": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdConsumerDTO"
+          },
+          "campaign": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdCampaignDTO"
+          },
+          "campaign_consumer_point": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdPointDTO"
+          },
+          "reward_item": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdRewardDTO"
+            },
+            "description": "Quà của chương trình (đang mở đổi, sắp theo điểm tăng dần), tối đa `reward_limit`.",
+            "nullable": true
+          },
+          "campaign_consumer_redemption": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdRedemptionDTO"
+            },
+            "description": "Quà đã nhận (approved/delivered, mới nhất trước), tối đa `received_limit`.",
+            "nullable": true
+          },
+          "campaign_mission_progress": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdMissionProgressDTO"
+          },
+          "campaign_leaderboard": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdLeaderboardDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdLeaderboardDTO": {
+        "type": "object",
+        "properties": {
+          "my_rank": {
+            "type": "integer",
+            "description": "Hạng của người dùng (null nếu chưa được xếp hạng: chưa duyệt, bị loại hoặc chưa có ví).",
+            "format": "int64",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "description": "Tổng số người được xếp hạng.",
+            "format": "int64",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByIdLeaderboardRowDTO"
+            },
+            "description": "Top N theo `leaderboard_limit`.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdLeaderboardRowDTO": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "description": "Điểm xếp hạng (= lifetime_earned).",
+            "format": "double",
+            "nullable": true
+          },
+          "is_me": {
+            "type": "boolean",
+            "description": "Là người dùng hiện tại.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdMissionProgressDTO": {
+        "type": "object",
+        "properties": {
+          "total_mission": {
+            "type": "integer",
+            "description": "Tổng lượt nhiệm vụ (cộng limit_per_period các nhiệm vụ active).",
+            "format": "int32",
+            "nullable": true
+          },
+          "completed_mission": {
+            "type": "integer",
+            "description": "Số lượt đã hoàn thành.",
+            "format": "int32",
+            "nullable": true
+          },
+          "percent": {
+            "type": "integer",
+            "description": "% hoàn thành (0–100).",
+            "format": "int32",
+            "nullable": true
+          },
+          "received_total": {
+            "type": "integer",
+            "description": "Tổng số quà đã nhận (approved/delivered).",
+            "format": "int32",
+            "nullable": true
+          },
+          "received_more_count": {
+            "type": "integer",
+            "description": "Số quà đã nhận chưa hiển thị trong danh sách (cho nút \"+N\").",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdPointDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "balance": {
+            "type": "number",
+            "description": "Điểm hiện có.",
+            "format": "double",
+            "nullable": true
+          },
+          "held": {
+            "type": "number",
+            "description": "Điểm đang giữ (chờ duyệt đổi quà).",
+            "format": "double",
+            "nullable": true
+          },
+          "lifetime_earned": {
+            "type": "number",
+            "description": "Tổng điểm đã nhận (dùng làm điểm xếp hạng).",
+            "format": "double",
+            "nullable": true
+          },
+          "lifetime_redeemed": {
+            "type": "number",
+            "description": "Tổng điểm đã dùng.",
+            "format": "double",
+            "nullable": true
+          },
+          "last_earned_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdRedemptionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "redemption_no": {
+            "type": "string",
+            "description": "Mã phiếu đổi quà.",
+            "nullable": true
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "image": {
+            "type": "string",
+            "description": "URL ảnh quà (lấy từ reward_item).",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_point_used": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "cash_value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái phiếu (campaign.consumer.redemption.status.*).",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "request_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "approval_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "delivered_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expired_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_address": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_tracking_no": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByIdRewardDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "image": {
+            "type": "string",
+            "description": "URL ảnh quà (đã ghép).",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "point_cost": {
+            "type": "number",
+            "description": "Số điểm cần để đổi.",
+            "format": "double",
+            "nullable": true
+          },
+          "cash_value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "reward_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_color": {
+            "type": "string",
+            "nullable": true
+          },
+          "stock_total": {
+            "type": "integer",
+            "description": "Tổng tồn kho (null = không giới hạn).",
+            "format": "int64",
+            "nullable": true
+          },
+          "stock_remaining": {
+            "type": "integer",
+            "description": "Tồn còn lại (null = không giới hạn).",
+            "format": "int64",
+            "nullable": true
+          },
+          "is_out_of_stock": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "redeemed_count": {
+            "type": "number",
+            "description": "Số lượng người dùng đã đổi quà này (trừ bị từ chối).",
+            "format": "double",
+            "nullable": true
+          },
+          "per_consumer_limit": {
+            "type": "number",
+            "description": "Giới hạn mỗi người (null = không giới hạn).",
+            "format": "double",
+            "nullable": true
+          },
+          "reached_limit": {
+            "type": "boolean",
+            "description": "Đã chạm giới hạn mỗi người.",
+            "nullable": true
+          },
+          "can_redeem": {
+            "type": "boolean",
+            "description": "Đổi được ngay: đủ điểm, còn hàng, chưa chạm giới hạn.",
+            "nullable": true
+          },
+          "max_redeem_per_day": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "valid_from_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "valid_to_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "redemption_open_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "redemption_closed_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ui_json": {
             "nullable": true
           }
         },

@@ -26,7 +26,7 @@
       "^/api/v1/reward/zalo/campaign/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
-      "^/api/v1/reward/zalo/campaign-consumer/(create)$",
+      "^/api/v1/reward/zalo/campaign-consumer/(create|get-by-id)$",
       "^/api/v1/reward/zalo/location/(province/list-nopaging|ward/list-nopaging)$"
     ]
   },
@@ -2628,6 +2628,230 @@
         "message": "Thêm mới thành công",
         "type": "create"
       }
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer/get-by-id": {
+      "badges": [
+        "new",
+        "no-tenant"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 65,
+        "reward_limit": 5,
+        "received_limit": 3,
+        "leaderboard_limit": 5
+      },
+      "result_example": {
+        "campaign_consumer": {
+          "id": 65,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "consumer_id": 57,
+          "name": "Nguyễn Văn A",
+          "phone": "0901234567",
+          "email": "a@example.com",
+          "birthday": null,
+          "gender_key": "",
+          "address": "",
+          "job_title": null,
+          "workplace": null,
+          "province_id": null,
+          "ward_id": null,
+          "object_key": "",
+          "ref_code": "",
+          "zalo_avatar": null,
+          "server_files": "",
+          "filepath": "",
+          "filename": "",
+          "status_key": null,
+          "status_name": null,
+          "status_color": null,
+          "approved_key": null,
+          "approved_name": null,
+          "approved_color": null,
+          "approved_notes": null,
+          "total_earned": 0.0,
+          "total_balance": 0.0,
+          "total_reward": null,
+          "total_mission": null,
+          "data_json": null,
+          "metadata_json": {
+            "pharmacy_name": "a",
+            "pharmacy_address": "b"
+          }
+        },
+        "campaign": {
+          "id": 32,
+          "tenant_id": 71268,
+          "code": "CZXZ2",
+          "name": "Học hỏi hăng say – Nhận ngay may mắn (dev làm)",
+          "description": "",
+          "color": null,
+          "server_files": "https://img.azidev.com",
+          "banner_filepath": "/upload/image/51046/",
+          "banner_filename": "imageqr_(1)639298298001248458.png",
+          "logo_filepath": "/upload/image/51046/",
+          "logo_filename": "imageqr_(1)639298297925548729.png",
+          "start_date": "2026-11-09T18:51:39",
+          "end_date": "2027-11-27T03:03:00",
+          "end_early_date": null,
+          "registration_open": null,
+          "registration_close": "2026-04-05T23:59:00",
+          "status_key": "campaign.status.upcoming",
+          "status_name": "Upcoming",
+          "status_color": "#D97706",
+          "campaign_type_key": null,
+          "approval_mode_key": "campaign.approval.mode.auto",
+          "max_consumer": 500,
+          "max_reward": null,
+          "repeat_allow": true,
+          "repeat_limit": null,
+          "redemption_window": 0,
+          "redemption_window_open": false,
+          "total_consumer": null,
+          "total_point_issued": null,
+          "total_redeemed": null,
+          "server_time": "2026-11-18T09:02:15.17081+07:00",
+          "remaining_seconds": 32292044,
+          "tags": [],
+          "config_json": {
+            "terms": "<p>Điều khoản</p>",
+            "timezone": "Asia/Ho_Chi_Minh",
+            "point_expiry": {
+              "expiry_type_key": "campaign.point.expiry.type.redemption_window_close",
+              "remind_days_before": 3,
+              "remind_before_expiry": true,
+              "expiry_days_after_end": 7
+            },
+            "earning_limits": {
+              "max_points_per_day": 500,
+              "bonus_multiplier_rules": [
+                {
+                  "value": "Chủ nhà thuốc",
+                  "operator": "equals",
+                  "field_code": "chuc_danh",
+                  "multiplier": 1.2
+                }
+              ],
+              "enable_bonus_multiplier": true,
+              "max_points_per_campaign": null
+            },
+            "balance_adjustments": {
+              "allow_negative_balance_on_revoke": false,
+              "second_approver_threshold_points": 500
+            }
+          },
+          "participation_methods": [
+            "form"
+          ]
+        },
+        "campaign_consumer_point": {
+          "id": 40,
+          "campaign_consumer_id": 65,
+          "campaign_id": 32,
+          "balance": 1200,
+          "held": 0.0,
+          "lifetime_earned": 1500,
+          "lifetime_redeemed": 300,
+          "last_earned_date": "2026-11-13T09:30:52.193039"
+        },
+        "reward_item": [
+          {
+            "id": 31,
+            "code": "",
+            "name": "test create3",
+            "description": "<p>test create3</p>",
+            "image": "https://img.azidev.com/upload/image/51046/1728611746913639299198861482858.png",
+            "server_files": "https://img.azidev.com",
+            "filepath": "/upload/image/51046/",
+            "filename": "1728611746913639299198861482858.png",
+            "point_cost": 2,
+            "cash_value": 0.0,
+            "currency": "VND",
+            "reward_type_key": "reward.item.reward.type.gift",
+            "status_key": "reward.item.status.active",
+            "status_name": "Active",
+            "status_color": "#00A65E",
+            "stock_total": 22,
+            "stock_remaining": 22,
+            "is_out_of_stock": false,
+            "redeemed_count": 0,
+            "per_consumer_limit": null,
+            "reached_limit": false,
+            "can_redeem": true,
+            "max_redeem_per_day": 1,
+            "requires_approval": false,
+            "valid_from_date": null,
+            "valid_to_date": null,
+            "redemption_open_date": "2026-11-10T01:03:00",
+            "redemption_closed_date": "2026-11-28T01:03:00",
+            "ui_json": {}
+          }
+        ],
+        "campaign_consumer_redemption": [
+          {
+            "id": 5,
+            "redemption_no": "RED-TEST-005",
+            "campaign_consumer_id": 65,
+            "reward_item_id": null,
+            "reward_code": null,
+            "reward_name": null,
+            "reward_type": null,
+            "image": null,
+            "server_files": null,
+            "filepath": null,
+            "filename": null,
+            "quantity": 1.0,
+            "point_cost": 500.0,
+            "total_point_used": 500.0,
+            "cash_value": 0.0,
+            "currency": "VND",
+            "status_key": "campaign.consumer.redemption.status.approved",
+            "status_name": "Approved",
+            "status_color": "#155DFC",
+            "request_date": "2026-11-06T16:02:04.774112",
+            "approval_date": "2026-11-07T16:02:04.774112",
+            "delivered_date": null,
+            "expired_date": null,
+            "note": "Test point redemption approved",
+            "shipping_name": null,
+            "shipping_phone": null,
+            "shipping_address": null,
+            "shipping_provider": null,
+            "shipping_tracking_no": null
+          }
+        ],
+        "campaign_mission_progress": {
+          "total_mission": 8,
+          "completed_mission": 1,
+          "percent": 13,
+          "received_total": 4,
+          "received_more_count": 1
+        },
+        "campaign_leaderboard": {
+          "my_rank": 2,
+          "total": 2,
+          "items": [
+            {
+              "rank": 1,
+              "campaign_consumer_id": 132,
+              "name": "Trần Thị B",
+              "zalo_avatar": null,
+              "score": 2000,
+              "is_me": false
+            },
+            {
+              "rank": 2,
+              "campaign_consumer_id": 65,
+              "name": "Nguyễn Văn A",
+              "zalo_avatar": null,
+              "score": 1500,
+              "is_me": true
+            }
+          ]
+        }
+      },
+      "ui": "> ⚠️ fn `fn_campaign_consumer_zaloapp_get_by_id` chỉ nhận `p_id`, không lọc tenant/consumer. API đã tự chặn: chỉ trả bản ghi có `consumer_id` = người dùng đăng nhập và `tenant_id` khớp.\n\n| Khối UI | Lấy từ |\n|---|---|\n| Header campaign + đếm ngược | `campaign` (`remaining_seconds`, `server_time`, ảnh = `server_files` + `banner_filepath` + `banner_filename`) |\n| Điểm của tôi | `campaign_consumer_point.balance` |\n| Thực hiện % | `campaign_mission_progress.percent` (`completed_mission`/`total_mission`) |\n| Quà chương trình | `reward_item[]` — nút Đổi bật khi `can_redeem = true`; hết hàng `is_out_of_stock`; chạm giới hạn `reached_limit` |\n| Quà đã nhận | `campaign_consumer_redemption[]` + nút \"+N\" = `campaign_mission_progress.received_more_count` |\n| Bảng xếp hạng | `campaign_leaderboard.items[]` (dòng của tôi `is_me = true`), hạng của tôi `my_rank` (null = chưa được xếp hạng) |\n| Trạng thái duyệt | `campaign_consumer.approved_key` / `approved_name` / `approved_color` |\n\n`id` là **id campaign_consumer** (không phải id campaign). Số dòng mỗi danh sách chỉnh bằng `reward_limit` / `received_limit` / `leaderboard_limit` (0–50)."
     },
     "GET /api/v1/reward/zalo/location/province/list-nopaging": {
       "badges": [
