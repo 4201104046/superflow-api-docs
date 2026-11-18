@@ -1593,7 +1593,7 @@
                       "status_key": "campaign.consumer.redemption.status.approved",
                       "status_name": "Approved",
                       "entitlement_id": 12,
-                      "entitlement_kind_key": "campaign.consumer.redemption.entitlement.kind.game_turn",
+                      "entitlement_kind_key": "campaign.consumer.redemption.entitlement.kind.game_play",
                       "entitlement_kind_name": "Lượt chơi",
                       "game_code": "lucky_wheel",
                       "granted": 3,
