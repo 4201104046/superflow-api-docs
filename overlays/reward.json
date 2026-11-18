@@ -27,6 +27,7 @@
       "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
       "^/api/v1/reward/zalo/campaign-consumer/(list|list-totalrow|register|summary|summary-totalrow|view-by-campaign-id-and-consumer-id|create|get-by-id)$",
+      "^/api/v1/reward/zalo/campaign-consumer-point-ledger/(list-nopaging)$",
       "^/api/v1/reward/zalo/location/(province/list-nopaging|ward/list-nopaging)$"
     ]
   },
@@ -44,7 +45,7 @@
     {
       "name": "Zalo – Đăng ký & campaign của tôi",
       "match": "/zalo/campaign-co",
-      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer-point-ledger/list-nopaging`: lịch sử cộng/trừ điểm trong campaign — dùng `id` campaign_consumer.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
     },
     {
       "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
@@ -3021,6 +3022,48 @@
         }
       },
       "ui": "> ℹ️ fn chỉ nhận `p_id`; API tự chặn: chỉ trả bản ghi có `consumer_id` = người dùng đăng nhập và `tenant_id` khớp.\n\n| Khối UI | Lấy từ |\n|---|---|\n| Header campaign + đếm ngược | `campaign` (`remaining_seconds`, `server_time`, ảnh = `server_files` + `banner_filepath` + `banner_filename`) |\n| Điểm của tôi | `campaign_consumer_point.balance` |\n| Thực hiện % | `campaign_mission_progress.percent` (`completed_mission`/`total_mission`) |\n| Quà chương trình | `reward_item[]` — nút Đổi bật khi `can_redeem = true`; hết hàng `is_out_of_stock`; chạm giới hạn `reached_limit` |\n| Quà đã nhận | `campaign_consumer_redemption[]` + nút \"+N\" = `campaign_mission_progress.received_more_count` |\n| Bảng xếp hạng | `campaign_leaderboard.items[]` (dòng của tôi `is_me = true`), hạng của tôi `my_rank` (null = chưa được xếp hạng) |\n| Trạng thái duyệt | `campaign_consumer.approved_key` / `approved_name` / `approved_color` |\n\n`id` là **id campaign_consumer** (không phải id campaign). Số dòng mỗi danh sách chỉnh bằng `reward_limit` / `received_limit` / `leaderboard_limit` (0–50)."
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer-point-ledger/list-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "id": 44,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "campaign_consumer_id": 65,
+          "name": "Thu hồi: Offline mission completed",
+          "description": "test",
+          "notes": "test",
+          "delta": -400.0,
+          "before_balance": 400.0,
+          "after_balance": 0.0,
+          "expire_date": null,
+          "create_date": "2026-11-13T14:24:49",
+          "status_key": "campaign.consumer.point.ledger.status.revoke",
+          "source_type_key": "campaign.consumer.point.ledger.source.type.revoke",
+          "source_code": null
+        },
+        {
+          "id": 43,
+          "tenant_id": 71268,
+          "campaign_id": 32,
+          "campaign_consumer_id": 65,
+          "name": "Mời 3 bạn bè tham gia ứng dụng",
+          "description": null,
+          "notes": null,
+          "delta": 500.0,
+          "before_balance": 2334447898.0,
+          "after_balance": 2334448398.0,
+          "expire_date": null,
+          "create_date": "2026-11-13T09:30:52",
+          "status_key": null,
+          "source_type_key": "mission_completion",
+          "source_code": "MS_REFERRAL_FRIENDS_01"
+        }
+      ],
+      "ui": "> ℹ️ fn chỉ nhận `p_campaign_consumer_id` (không lọc tenant/consumer); API tự chặn: chỉ trả lịch sử của bản ghi tham gia thuộc người dùng đăng nhập và đúng tenant.\n\n| Màn Lịch sử điểm | Field |\n|---|---|\n| Tiêu đề dòng | `name` (ghi chú admin: `notes`) |\n| Số điểm (+/−) | `delta` (dương = cộng, âm = trừ) |\n| Số dư sau | `after_balance` |\n| Thời gian | `create_date` (đã sắp mới nhất trước) |\n| Loại | `source_type_key`: `...source.type.earn` / `adjust` / `revoke`, `mission_completion`; `status_key` = `adjust` / `revoke` / null |\n\nKhông phân trang. Chưa có giao dịch → `[]`."
     },
     "GET /api/v1/reward/zalo/location/province/list-nopaging": {
       "badges": [

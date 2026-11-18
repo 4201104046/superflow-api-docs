@@ -44,7 +44,7 @@
     },
     {
       "name": "Zalo – Đăng ký & campaign của tôi",
-      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer-point-ledger/list-nopaging`: lịch sử cộng/trừ điểm trong campaign — dùng `id` campaign_consumer.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
     },
     {
       "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
@@ -1003,6 +1003,120 @@
                     "mission_reset": false,
                     "completion_id": 21
                   },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign-consumer-point-ledger/list-nopaging": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Lịch sử điểm trong campaign (Zalo Mini App)",
+        "description": "Màn **Lịch sử điểm** của 1 campaign đã tham gia: mọi giao dịch cộng/trừ điểm (hoàn thành nhiệm vụ, điều chỉnh, thu hồi), mới nhất trước, không phân trang.\r\n`campaign_consumer_id` = id bản ghi tham gia (từ `campaign-consumer/get-by-id`), không phải id campaign. consumer_id lấy từ token.\r\nChỉ xem được lịch sử của chính mình: id của người khác / tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\".\n\n### Map lên màn hình\n\n> ℹ️ fn chỉ nhận `p_campaign_consumer_id` (không lọc tenant/consumer); API tự chặn: chỉ trả lịch sử của bản ghi tham gia thuộc người dùng đăng nhập và đúng tenant.\n\n| Màn Lịch sử điểm | Field |\n|---|---|\n| Tiêu đề dòng | `name` (ghi chú admin: `notes`) |\n| Số điểm (+/−) | `delta` (dương = cộng, âm = trừ) |\n| Số dư sau | `after_balance` |\n| Thời gian | `create_date` (đã sắp mới nhất trước) |\n| Loại | `source_type_key`: `...source.type.earn` / `adjust` / `revoke`, `mission_completion`; `status_key` = `adjust` / `revoke` / null |\n\nKhông phân trang. Chưa có giao dịch → `[]`.",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_point_ledger_list_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_consumer_id",
+            "in": "query",
+            "description": "Id campaign_consumer (bản ghi tham gia của người dùng, lấy từ `campaign-consumer/create` / `get-by-id`). Bắt buộc.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerZaloAppListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 44,
+                      "tenant_id": 71268,
+                      "campaign_id": 32,
+                      "campaign_consumer_id": 65,
+                      "name": "Thu hồi: Offline mission completed",
+                      "description": "test",
+                      "notes": "test",
+                      "delta": -400.0,
+                      "before_balance": 400.0,
+                      "after_balance": 0.0,
+                      "expire_date": null,
+                      "create_date": "2026-11-13T14:24:49",
+                      "status_key": "campaign.consumer.point.ledger.status.revoke",
+                      "source_type_key": "campaign.consumer.point.ledger.source.type.revoke",
+                      "source_code": null
+                    },
+                    {
+                      "id": 43,
+                      "tenant_id": 71268,
+                      "campaign_id": 32,
+                      "campaign_consumer_id": 65,
+                      "name": "Mời 3 bạn bè tham gia ứng dụng",
+                      "description": null,
+                      "notes": null,
+                      "delta": 500.0,
+                      "before_balance": 2334447898.0,
+                      "after_balance": 2334448398.0,
+                      "expire_date": null,
+                      "create_date": "2026-11-13T09:30:52",
+                      "status_key": null,
+                      "source_type_key": "mission_completion",
+                      "source_code": "MS_REFERRAL_FRIENDS_01"
+                    }
+                  ],
                   "error": null
                 }
               }
@@ -13443,6 +13557,116 @@
             "type": "boolean",
             "description": "true = mở lại nhiệm vụ để người tham gia làm lại; false (mặc định) = chỉ thu hồi điểm",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerZaloAppListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Tiêu đề giao dịch (vd tên nhiệm vụ, \"Thu hồi: ...\").",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "description": "Ghi chú của admin khi điều chỉnh / thu hồi.",
+            "nullable": true
+          },
+          "delta": {
+            "type": "number",
+            "description": "Số điểm thay đổi: dương = cộng, âm = trừ.",
+            "format": "double",
+            "nullable": true
+          },
+          "before_balance": {
+            "type": "number",
+            "description": "Số dư trước giao dịch.",
+            "format": "double",
+            "nullable": true
+          },
+          "after_balance": {
+            "type": "number",
+            "description": "Số dư sau giao dịch.",
+            "format": "double",
+            "nullable": true
+          },
+          "expire_date": {
+            "type": "string",
+            "description": "Hạn dùng của điểm (null = không hết hạn).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "create_date": {
+            "type": "string",
+            "description": "Thời điểm phát sinh (danh sách đã sắp mới nhất trước).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái: campaign.consumer.point.ledger.status.adjust / revoke; null = giao dịch thường.",
+            "nullable": true
+          },
+          "source_type_key": {
+            "type": "string",
+            "description": "Nguồn: campaign.consumer.point.ledger.source.type.earn / adjust / revoke, mission_completion...",
+            "nullable": true
+          },
+          "source_code": {
+            "type": "string",
+            "description": "Mã nguồn (vd mã nhiệm vụ).",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerPointLedgerZaloAppListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerPointLedgerZaloAppListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false
