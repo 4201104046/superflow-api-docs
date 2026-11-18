@@ -28,6 +28,7 @@
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
       "^/api/v1/reward/zalo/campaign-consumer/(list|list-totalrow|register|summary|summary-totalrow|view-by-campaign-id-and-consumer-id|create|get-by-id)$",
       "^/api/v1/reward/zalo/campaign-consumer-point-ledger/(list-nopaging)$",
+      "^/api/v1/reward/zalo/campaign-consumer-redemption/(list-nopaging)$",
       "^/api/v1/reward/zalo/location/(province/list-nopaging|ward/list-nopaging)$"
     ]
   },
@@ -45,7 +46,7 @@
     {
       "name": "Zalo – Đăng ký & campaign của tôi",
       "match": "/zalo/campaign-co",
-      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer-point-ledger/list-nopaging`: lịch sử cộng/trừ điểm trong campaign — dùng `id` campaign_consumer.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer-point-ledger/list-nopaging`: lịch sử cộng/trừ điểm trong campaign — dùng `id` campaign_consumer.\n- `campaign-consumer-redemption/list-nopaging`: quà đã nhận (approved/delivered) + lượt chơi còn lại — dùng `id` campaign_consumer.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
     },
     {
       "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
@@ -3064,6 +3065,66 @@
         }
       ],
       "ui": "> ℹ️ fn chỉ nhận `p_campaign_consumer_id` (không lọc tenant/consumer); API tự chặn: chỉ trả lịch sử của bản ghi tham gia thuộc người dùng đăng nhập và đúng tenant.\n\n| Màn Lịch sử điểm | Field |\n|---|---|\n| Tiêu đề dòng | `name` (ghi chú admin: `notes`) |\n| Số điểm (+/−) | `delta` (dương = cộng, âm = trừ) |\n| Số dư sau | `after_balance` |\n| Thời gian | `create_date` (đã sắp mới nhất trước) |\n| Loại | `source_type_key`: `...source.type.earn` / `adjust` / `revoke`, `mission_completion`; `status_key` = `adjust` / `revoke` / null |\n\nKhông phân trang. Chưa có giao dịch → `[]`."
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer-redemption/list-nopaging": {
+      "badges": [
+        "new"
+      ],
+      "result_example": [
+        {
+          "id": 7,
+          "campaign_id": 32,
+          "campaign_consumer_id": 65,
+          "redemption_no": "RED-TEST-007",
+          "reward_item_id": 31,
+          "reward_code": "SPIN-03",
+          "reward_name": "3 lượt quay may mắn",
+          "quantity": 1.0,
+          "server_files": "https://img.azidev.com",
+          "filepath": "/upload/image/51046/",
+          "filename": "voucher.png",
+          "image": "https://img.azidev.com/upload/image/51046/voucher.png",
+          "status_key": "campaign.consumer.redemption.status.approved",
+          "status_name": "Approved",
+          "entitlement_id": 12,
+          "entitlement_kind_key": "campaign.consumer.redemption.entitlement.kind.game_play",
+          "entitlement_kind_name": "Lượt chơi",
+          "game_code": "lucky_wheel",
+          "granted": 3,
+          "used": 1,
+          "remaining": 2,
+          "expired_date": "2026-12-31T23:59:00",
+          "expired_date_text": "23:59 31/12/2026",
+          "created_date": "2026-11-08T16:02:04"
+        },
+        {
+          "id": 6,
+          "campaign_id": 32,
+          "campaign_consumer_id": 65,
+          "redemption_no": "RED-TEST-006",
+          "reward_item_id": 31,
+          "reward_code": "GIFT-01",
+          "reward_name": "Voucher 50.000đ",
+          "quantity": 1.0,
+          "server_files": "https://img.azidev.com",
+          "filepath": "/upload/image/51046/",
+          "filename": "voucher.png",
+          "image": "https://img.azidev.com/upload/image/51046/voucher.png",
+          "status_key": "campaign.consumer.redemption.status.delivered",
+          "status_name": "Delivered",
+          "entitlement_id": null,
+          "entitlement_kind_key": null,
+          "entitlement_kind_name": "",
+          "game_code": null,
+          "granted": null,
+          "used": null,
+          "remaining": 0,
+          "expired_date": null,
+          "expired_date_text": null,
+          "created_date": "2026-11-08T16:02:04"
+        }
+      ],
+      "ui": "> ℹ️ fn chỉ nhận `p_campaign_consumer_id` (không lọc tenant/consumer); API tự chặn: chỉ trả quà của bản ghi tham gia thuộc người dùng đăng nhập và đúng tenant.\n\nChỉ trả phiếu **đã duyệt / đã giao** (`approved`, `delivered`), mới nhất trước, không phân trang. Phiếu chờ duyệt / bị từ chối không có ở đây.\n\n| Màn Quà của tôi | Field |\n|---|---|\n| Ảnh, tên quà | `image`, `reward_name` (null nếu quà đã bị xóa) |\n| Mã phiếu | `redemption_no` |\n| Trạng thái | `status_name` (`status_key`) |\n| Lượt chơi còn lại | `remaining` / `granted` (chỉ khi `entitlement_id` khác null; `game_code` = game cần mở) |\n| Hạn dùng | `expired_date_text` (đã định dạng `HH:mm dd/MM/yyyy`) |\n| Ngày đổi | `created_date` |\n\nVí dụ dòng đầu (có lượt chơi) là dữ liệu minh họa — dev chưa có phiếu nào có quyền lợi."
     },
     "GET /api/v1/reward/zalo/location/province/list-nopaging": {
       "badges": [

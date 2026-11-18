@@ -44,7 +44,7 @@
     },
     {
       "name": "Zalo – Đăng ký & campaign của tôi",
-      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer-point-ledger/list-nopaging`: lịch sử cộng/trừ điểm trong campaign — dùng `id` campaign_consumer.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer-point-ledger/list-nopaging`: lịch sử cộng/trừ điểm trong campaign — dùng `id` campaign_consumer.\n- `campaign-consumer-redemption/list-nopaging`: quà đã nhận (approved/delivered) + lượt chơi còn lại — dùng `id` campaign_consumer.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
     },
     {
       "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
@@ -1499,6 +1499,138 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CampaignConsumerRedemptionWebItemDTOListResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign-consumer-redemption/list-nopaging": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Quà đã nhận trong campaign (Zalo Mini App)",
+        "description": "Màn **Quà của tôi** trong 1 campaign đã tham gia: các phiếu đổi quà đã duyệt / đã giao (approved, delivered), mới nhất trước, không phân trang.\r\nKèm quyền lợi đi kèm quà (vd lượt chơi game: `granted` / `used` / `remaining`) và hạn dùng (`expired_date_text`).\r\n`campaign_consumer_id` = id bản ghi tham gia (từ `campaign-consumer/get-by-id`), không phải id campaign. consumer_id lấy từ token.\r\nChỉ xem được quà của chính mình: id của người khác / tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\".\n\n### Map lên màn hình\n\n> ℹ️ fn chỉ nhận `p_campaign_consumer_id` (không lọc tenant/consumer); API tự chặn: chỉ trả quà của bản ghi tham gia thuộc người dùng đăng nhập và đúng tenant.\n\nChỉ trả phiếu **đã duyệt / đã giao** (`approved`, `delivered`), mới nhất trước, không phân trang. Phiếu chờ duyệt / bị từ chối không có ở đây.\n\n| Màn Quà của tôi | Field |\n|---|---|\n| Ảnh, tên quà | `image`, `reward_name` (null nếu quà đã bị xóa) |\n| Mã phiếu | `redemption_no` |\n| Trạng thái | `status_name` (`status_key`) |\n| Lượt chơi còn lại | `remaining` / `granted` (chỉ khi `entitlement_id` khác null; `game_code` = game cần mở) |\n| Hạn dùng | `expired_date_text` (đã định dạng `HH:mm dd/MM/yyyy`) |\n| Ngày đổi | `created_date` |\n\nVí dụ dòng đầu (có lượt chơi) là dữ liệu minh họa — dev chưa có phiếu nào có quyền lợi.",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_redemption_list_nopaging",
+        "x-badges": [
+          {
+            "name": "Mới",
+            "color": "#0B7A45"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_consumer_id",
+            "in": "query",
+            "description": "Id campaign_consumer (bản ghi tham gia của người dùng, lấy từ `campaign-consumer/get-by-id`). Bắt buộc.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerRedemptionZaloAppListItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 7,
+                      "campaign_id": 32,
+                      "campaign_consumer_id": 65,
+                      "redemption_no": "RED-TEST-007",
+                      "reward_item_id": 31,
+                      "reward_code": "SPIN-03",
+                      "reward_name": "3 lượt quay may mắn",
+                      "quantity": 1.0,
+                      "server_files": "https://img.azidev.com",
+                      "filepath": "/upload/image/51046/",
+                      "filename": "voucher.png",
+                      "image": "https://img.azidev.com/upload/image/51046/voucher.png",
+                      "status_key": "campaign.consumer.redemption.status.approved",
+                      "status_name": "Approved",
+                      "entitlement_id": 12,
+                      "entitlement_kind_key": "campaign.consumer.redemption.entitlement.kind.game_turn",
+                      "entitlement_kind_name": "Lượt chơi",
+                      "game_code": "lucky_wheel",
+                      "granted": 3,
+                      "used": 1,
+                      "remaining": 2,
+                      "expired_date": "2026-12-31T23:59:00",
+                      "expired_date_text": "23:59 31/12/2026",
+                      "created_date": "2026-11-08T16:02:04"
+                    },
+                    {
+                      "id": 6,
+                      "campaign_id": 32,
+                      "campaign_consumer_id": 65,
+                      "redemption_no": "RED-TEST-006",
+                      "reward_item_id": 31,
+                      "reward_code": "GIFT-01",
+                      "reward_name": "Voucher 50.000đ",
+                      "quantity": 1.0,
+                      "server_files": "https://img.azidev.com",
+                      "filepath": "/upload/image/51046/",
+                      "filename": "voucher.png",
+                      "image": "https://img.azidev.com/upload/image/51046/voucher.png",
+                      "status_key": "campaign.consumer.redemption.status.delivered",
+                      "status_name": "Delivered",
+                      "entitlement_id": null,
+                      "entitlement_kind_key": null,
+                      "entitlement_kind_name": "",
+                      "game_code": null,
+                      "granted": null,
+                      "used": null,
+                      "remaining": 0,
+                      "expired_date": null,
+                      "expired_date_text": null,
+                      "created_date": "2026-11-08T16:02:04"
+                    }
+                  ],
+                  "error": null
                 }
               }
             }
@@ -13991,6 +14123,155 @@
             "type": "string",
             "description": "Trạng thái mới (bắt buộc), ví dụ campaign.consumer.redemption.status.rejected / delivered",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionZaloAppListItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "redemption_no": {
+            "type": "string",
+            "description": "Mã phiếu đổi quà.",
+            "nullable": true
+          },
+          "reward_item_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reward_code": {
+            "type": "string",
+            "description": "Mã quà (null nếu quà đã bị xóa / phiếu không gắn quà).",
+            "nullable": true
+          },
+          "reward_name": {
+            "type": "string",
+            "description": "Tên quà (null nếu quà đã bị xóa / phiếu không gắn quà).",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "image": {
+            "type": "string",
+            "description": "URL ảnh quà (đã ghép server_files + filepath + filename; null nếu chưa có ảnh).",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái phiếu: campaign.consumer.redemption.status.approved / delivered.",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "entitlement_id": {
+            "type": "integer",
+            "description": "Quyền lợi đi kèm quà (vd lượt chơi game); null nếu quà không có quyền lợi.",
+            "format": "int64",
+            "nullable": true
+          },
+          "entitlement_kind_key": {
+            "type": "string",
+            "description": "Loại quyền lợi (campaign.consumer.redemption.entitlement.kind.*).",
+            "nullable": true
+          },
+          "entitlement_kind_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "game_code": {
+            "type": "string",
+            "description": "Mã game dùng quyền lợi (nếu là lượt chơi).",
+            "nullable": true
+          },
+          "granted": {
+            "type": "integer",
+            "description": "Số lượt được cấp.",
+            "format": "int32",
+            "nullable": true
+          },
+          "used": {
+            "type": "integer",
+            "description": "Số lượt đã dùng.",
+            "format": "int32",
+            "nullable": true
+          },
+          "remaining": {
+            "type": "integer",
+            "description": "Số lượt còn lại = granted - used (0 nếu không có quyền lợi).",
+            "format": "int32",
+            "nullable": true
+          },
+          "expired_date": {
+            "type": "string",
+            "description": "Hạn dùng: hạn của phiếu, không có thì lấy hạn của quyền lợi.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expired_date_text": {
+            "type": "string",
+            "description": "Hạn dùng đã định dạng \"HH:mm dd/MM/yyyy\" để hiển thị.",
+            "nullable": true
+          },
+          "created_date": {
+            "type": "string",
+            "description": "Thời điểm đổi (danh sách đã sắp mới nhất trước).",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerRedemptionZaloAppListItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerRedemptionZaloAppListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false
