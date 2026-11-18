@@ -43,8 +43,8 @@
       "description": "API cho **Zalo Mini App** (consumer đăng nhập bằng Zalo, cần header zuId). `consumer_id` lấy từ token, client không gửi."
     },
     {
-      "name": "Zalo – Đăng ký campaign",
-      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+      "name": "Zalo – Đăng ký & campaign của tôi",
+      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
     },
     {
       "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
@@ -131,7 +131,7 @@
     "/api/v1/reward/zalo/campaign-config/list-legal": {
       "get": {
         "tags": [
-          "Zalo – Đăng ký campaign"
+          "Zalo – Đăng ký & campaign của tôi"
         ],
         "summary": "Danh sách mục đồng ý pháp lý của campaign (Zalo Mini App)",
         "description": "Màn **Đăng ký tham gia campaign**: các checkbox pháp lý cuối form (điều khoản, đồng ý xử lý dữ liệu cá nhân, nhận marketing, follow Zalo OA).\r\nChỉ trả cấu hình `campaign_config` có `parent_key = campaign.consumer.field.legal`, đang active, của đúng campaign + tenant, sắp theo `sequence`.\r\nLưu ý: hiện **không** trả các mục mặc định hệ thống (tenant_id/campaign_id = -1) nếu campaign chưa có bản ghi riêng.\n\n### Map lên màn hình\n\n| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Checkbox | `name` | |\n| Nội dung chi tiết | `description` | |\n| Thứ tự | `sequence` | Đã sắp sẵn |\n\n> Mục đã tick gửi trong `data_json` của `campaign-consumer/create` (key = `key`).\n\n> ⚠️ Hiện chỉ trả bản ghi riêng của campaign; **không** trả 4 mục mặc định hệ thống (tenant/campaign = -1) — đang chờ team DB xác nhận.",
@@ -352,7 +352,7 @@
     "/api/v1/reward/zalo/campaign-consumer-field/list-nopaging": {
       "get": {
         "tags": [
-          "Zalo – Đăng ký campaign"
+          "Zalo – Đăng ký & campaign của tôi"
         ],
         "summary": "Danh sách field form đăng ký campaign (Zalo Mini App)",
         "description": "Màn **Đăng ký tham gia campaign** trên Zalo Mini App: dựng form theo danh sách field trả về (đã sắp theo `sequence`).\r\nChỉ trả field đang active và `is_show_form = true`. Validate theo `config.required`, `type_key`, `data_type_key`.\r\nKhi submit (`zalo/campaign-consumer/create`): field `is_system` gửi vào property cùng tên `code`, field còn lại gửi trong `data_json` với key = `code`.\n\n### Map lên màn hình\n\n| Hiển thị | Field | Ghi chú |\n|---|---|---|\n| Nhãn | `name` | |\n| Loại control | `type_key` | text / phone / email / ... |\n| Bắt buộc | `config.required` | |\n| Placeholder, gợi ý | `config.placeholder`, `config.help_text` | |\n| Lựa chọn (select/radio) | `config.options` | |\n| Thứ tự | `sequence` | Đã sắp sẵn |\n\n> Submit: field `is_system = true` gửi vào property cùng tên `code` của `campaign-consumer/create`; field còn lại gửi trong `data_json` với key = `code`.\n\n> ⚠️ fn chưa lọc theo tenant (`p_tenant_id` không dùng).",
@@ -1802,18 +1802,884 @@
         }
       }
     },
+    "/api/v1/reward/zalo/campaign-consumer/list": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Danh sách campaign đã tham gia (Zalo Mini App)",
+        "description": "Màn **Campaign của tôi**: các campaign mà người dùng đăng nhập (consumer_id lấy từ token) đã tham gia, kèm điểm ví và tiến độ nhiệm vụ.\r\nPhải gửi `pageindex` ≥ 1 và `pagesize` ≥ 1 (mặc định 0 → trả rỗng). Tìm theo tên campaign.\r\n⚠️ Trên dev đang trả rỗng: fn join bảng `consumer_wallet` không tồn tại.\n\n### Map lên màn hình\n\n> ⛔ **Đang lỗi trên dev**: fn join bảng `consumer_wallet` không tồn tại → lỗi bị nuốt, luôn trả `[]`. Tạm dùng `get-by-id` / `view-by-campaign-id-and-consumer-id` theo từng campaign.\n\n> ⚠️ fn không lọc `tenant_id` (chỉ lọc theo `consumer_id` từ token) → có thể lẫn campaign của tenant khác nếu cùng consumer.\n\nBắt buộc gửi `pageindex` ≥ 1 và `pagesize` ≥ 1 (mặc định 0 → rỗng). Tìm theo tên campaign. `sortby`: cột của bảng campaign (`id`, `name`, `code`, `start_date`, `end_date`, `status_key`, `create_date`...); để trống / sai → `create_date`.",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_list",
+        "x-badges": [
+          {
+            "name": "Đang lỗi trên dev",
+            "color": "#B42318"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            }
+          },
+          {
+            "name": "list_campaign_type_key",
+            "in": "query",
+            "description": "Lọc theo loại campaign.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "list_status_key",
+            "in": "query",
+            "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+              "example": null
+            }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+              "example": null
+            },
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59."
+          },
+          {
+            "name": "pageindex",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "Trang hiện tại, bắt đầu từ 1.",
+              "default": 1,
+              "minimum": 1,
+              "example": 1
+            },
+            "description": "Trang hiện tại, bắt đầu từ 1."
+          },
+          {
+            "name": "pagesize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "Số dòng mỗi trang.",
+              "default": 20,
+              "minimum": 1,
+              "example": 20
+            },
+            "description": "Số dòng mỗi trang."
+          },
+          {
+            "name": "sortby",
+            "in": "query",
+            "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo.",
+            "schema": {
+              "type": "string",
+              "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo."
+            }
+          },
+          {
+            "name": "sortdir",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Chiều sắp xếp.",
+              "enum": [
+                "ASC",
+                "DESC"
+              ],
+              "default": "DESC"
+            },
+            "description": "Chiều sắp xếp."
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignConsumerZaloAppItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 65,
+                      "consumer_id": 57,
+                      "campaign_id": 32,
+                      "campaign_name": "Học hỏi hăng say – Nhận ngay may mắn",
+                      "status_key": "campaign.status.ongoing",
+                      "campaign_type_key": null,
+                      "description": "",
+                      "server_files": "https://img.azidev.com",
+                      "banner_filepath": "/upload/image/51046/",
+                      "banner_filename": "banner.png",
+                      "banner_image": "https://img.azidev.com/upload/image/51046/banner.png",
+                      "logo_filepath": "/upload/image/51046/",
+                      "logo_filename": "logo.png",
+                      "logo_image": "https://img.azidev.com/upload/image/51046/logo.png",
+                      "start_date": "2026-11-09T18:51:39",
+                      "end_date": "2027-11-27T03:03:00",
+                      "balance": 1200,
+                      "lifetime_credit": 1500,
+                      "lifetime_debit": 300,
+                      "available_balance": 1200,
+                      "total_participants": 120,
+                      "total_missions": 8,
+                      "completed_missions_count": 1,
+                      "completion_percentage": 13,
+                      "evaluation": ""
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign-consumer/list-totalrow": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Tổng số campaign đã tham gia (Zalo Mini App)",
+        "description": "Đi cặp với `list`, cùng bộ lọc. consumer_id lấy từ token.\r\n⚠️ Trên dev fn lỗi `relation \"consumer_wallet\" does not exist` → total luôn 0.\n\n### Map lên màn hình\n\n> ⛔ **Đang lỗi trên dev**: fn trả `result = 0`, `relation \"consumer_wallet\" does not exist` → `total` luôn 0.\n\nĐi cặp với `list`, cùng bộ lọc.",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_list_totalrow",
+        "x-badges": [
+          {
+            "name": "Đang lỗi trên dev",
+            "color": "#B42318"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            },
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\"."
+          },
+          {
+            "name": "list_campaign_type_key",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "list_status_key",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+            },
+            "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+              "example": null
+            },
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi)."
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+              "example": null
+            },
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59."
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerZaloAppListTotalrowItemDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "total": 0,
+                    "status_summary": {}
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign-consumer/register": {
+      "post": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Đăng ký tham gia campaign – bản cũ (Zalo Mini App)",
+        "description": "Luồng đăng ký cũ (field pharmacy_*, opella_*), sau khi tạo gọi thêm tạo ví điểm. Luồng mới dùng `zalo/campaign-consumer/create`.\r\n`id` = 0/null tạo mới, `id` > 0 cập nhật bản ghi theo id (không kiểm tra chủ sở hữu). consumer_id lấy từ token, zaloapp_uid = zuId.\r\n⚠️ Phụ thuộc bảng `consumer_wallet`, `campaign_leaderboard_score` chưa có trên dev.\n\n### Map lên màn hình\n\n> ⛔ **Luồng cũ, đang lỗi trên dev**: fn gọi `fn_campaign_leaderboard_score_zaloapp_create` (bảng `campaign_leaderboard_score` không tồn tại) và sau đó tạo ví bằng `fn_consumer_wallet_zaloapp_create` (bảng `consumer_wallet` không tồn tại). **Dùng `create`.**\n\n> ⚠️ `id` > 0 cập nhật bản ghi theo id mà **không kiểm tra chủ sở hữu**.",
+        "operationId": "post_api_v1_reward_zalo_campaign_consumer_register",
+        "x-badges": [
+          {
+            "name": "Đang lỗi trên dev",
+            "color": "#B42318"
+          },
+          {
+            "name": "Chưa kiểm tra người sở hữu",
+            "color": "#B54708"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FnCampaignConsumerZaloAppRegisterRequestDTO"
+              },
+              "example": {
+                "tenant_id": 71268,
+                "id": 0,
+                "campaign_id": 32,
+                "province_id": null,
+                "ward_id": null,
+                "object_key": "",
+                "zalooa_uid": "",
+                "zalo_avatar": "",
+                "server_files": "",
+                "filepath": "",
+                "filename": "",
+                "username": "",
+                "email": "a@example.com",
+                "ref_code": "",
+                "name": "Nguyễn Văn A",
+                "phone": "0901234567",
+                "birthday": "1995-08-20",
+                "gender_key": "",
+                "address": "",
+                "pharmacy_name": "",
+                "pharmacy_address": "",
+                "opella_customer_code": "",
+                "practice_license_no": "",
+                "active": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateActionResultDTOResponseDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign-consumer/summary": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Lịch sử campaign đã kết thúc của tôi (Zalo Mini App)",
+        "description": "Danh sách campaign người dùng đã tham gia và **đã kết thúc** (end_date < hiện tại), kèm tổng điểm, số nhiệm vụ hoàn thành, số quà đã đổi.\r\nconsumer_id lấy từ token. Phải gửi `pageindex`/`pagesize` ≥ 1.\n\n### Map lên màn hình\n\nLịch sử campaign **đã kết thúc** (`end_date` < hiện tại) của người dùng.\n\n> ⚠️ Mỗi dòng gọi `fn_consumer_wallet_zaloapp_get_by_consumer_id` (dùng bảng `consumer_wallet` không tồn tại trên dev): người dùng chưa có campaign kết thúc → `[]` bình thường; có dữ liệu → nhiều khả năng lỗi và trả `[]`.\n\n> ⚠️ fn không lọc `tenant_id`.\n\nBắt buộc gửi `pageindex`/`pagesize` ≥ 1. Tìm theo tên campaign. `sortby`: `id`, `consumer_id`, `campaign_id`, `campaign_name`, `status_key`, `campaign_type_key`, `start_date`, `end_date`; sai → `id`.",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_summary",
+        "x-badges": [
+          {
+            "name": "Có nhánh đang lỗi",
+            "color": "#B54708"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            },
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\"."
+          },
+          {
+            "name": "list_campaign_type_key",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "list_status_key",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+            },
+            "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+              "example": null
+            },
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi)."
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+              "example": null
+            },
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59."
+          },
+          {
+            "name": "pageindex",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "Trang hiện tại, bắt đầu từ 1.",
+              "default": 1,
+              "minimum": 1,
+              "example": 1
+            },
+            "description": "Trang hiện tại, bắt đầu từ 1."
+          },
+          {
+            "name": "pagesize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "Số dòng mỗi trang.",
+              "default": 20,
+              "minimum": 1,
+              "example": 20
+            },
+            "description": "Số dòng mỗi trang."
+          },
+          {
+            "name": "sortby",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo."
+            },
+            "description": "Cột sắp xếp. Giá trị ngoài danh sách cho phép sẽ bị bỏ qua và sort theo ngày tạo."
+          },
+          {
+            "name": "sortdir",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Chiều sắp xếp.",
+              "enum": [
+                "ASC",
+                "DESC"
+              ],
+              "default": "DESC"
+            },
+            "description": "Chiều sắp xếp."
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerZaloAppSummaryPageindexItemDTOListResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 65,
+                      "consumer_id": 57,
+                      "campaign_id": 32,
+                      "campaign_name": "Học hỏi hăng say – Nhận ngay may mắn",
+                      "status_key": "campaign.status.ongoing",
+                      "campaign_type_key": null,
+                      "description": "",
+                      "server_files": "https://img.azidev.com",
+                      "banner_filepath": "/upload/image/51046/",
+                      "banner_filename": "banner.png",
+                      "banner_image": "https://img.azidev.com/upload/image/51046/banner.png",
+                      "logo_filepath": "/upload/image/51046/",
+                      "logo_filename": "logo.png",
+                      "logo_image": "https://img.azidev.com/upload/image/51046/logo.png",
+                      "start_date": "2026-11-09T18:51:39",
+                      "end_date": "2027-11-27T03:03:00",
+                      "total_missions": 8,
+                      "completed_missions_count": 8,
+                      "completion_percentage": 100,
+                      "evaluation": "",
+                      "available_balance": 200,
+                      "lifetime_credit": 1500,
+                      "lifetime_debit": 1300,
+                      "redeemed_rewards_count": 3
+                    }
+                  ],
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign-consumer/summary-totalrow": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Tổng số campaign đã kết thúc của tôi (Zalo Mini App)",
+        "description": "Đi cặp với `summary`, cùng bộ lọc. consumer_id lấy từ token.\n\n### Map lên màn hình\n\nĐi cặp với `summary`, cùng bộ lọc. Cùng lưu ý `consumer_wallet` như `summary`.",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_summary_totalrow",
+        "x-badges": [
+          {
+            "name": "Có nhánh đang lỗi",
+            "color": "#B54708"
+          },
+          {
+            "name": "Chưa lọc tenant",
+            "color": "#B42318"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "searchtext",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\".",
+              "example": ""
+            },
+            "description": "Từ khóa ô tìm kiếm. Rỗng thì gửi \"\"."
+          },
+          {
+            "name": "list_campaign_type_key",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "list_status_key",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+            },
+            "description": "Lọc theo trạng thái (tab đang chọn). Tab \"All\" gửi null."
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc từ ngày (theo ngày tạo bản ghi).",
+              "example": null
+            },
+            "description": "Lọc từ ngày (theo ngày tạo bản ghi)."
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59.",
+              "example": null
+            },
+            "description": "Lọc đến ngày. Chỉ cần gửi ngày, API tự lấy tới 23:59:59."
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerZaloAppSummaryTotalrowItemDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "total": 0,
+                    "status_summary": {}
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/reward/zalo/campaign-consumer/view-by-campaign-id-and-consumer-id": {
+      "get": {
+        "tags": [
+          "Zalo – Đăng ký & campaign của tôi"
+        ],
+        "summary": "Thông tin đăng ký của tôi trong campaign (Zalo Mini App)",
+        "description": "Hồ sơ đăng ký (campaign_consumer) của người dùng trong 1 campaign, kèm số người đã mời (`invited_count`).\r\n⚠️ Action dùng `ReturnOk` nên consumer_id **không** lấy từ token: client phải gửi `consumer_id` trên query (và có thể xem hồ sơ người khác).\n\n### Map lên màn hình\n\n> ⚠️ **Chưa kiểm tra chủ sở hữu**: action dùng `ReturnOk` nên `consumer_id` **không** lấy từ token — client phải tự gửi `consumer_id` trên query, và gửi `consumer_id` khác là xem được hồ sơ (SĐT, email) của người khác.\n\nKhông tìm thấy (chưa đăng ký) → `result` rỗng (các field mặc định, `id = 0`).\n\n| Màn | Field |\n|---|---|\n| Ảnh đại diện | `avatar_image` |\n| Số người đã mời | `invited_count` |\n| Mã giới thiệu để chia sẻ | `ref_code` / `consumer_id` |",
+        "operationId": "get_api_v1_reward_zalo_campaign_consumer_view_by_campaign_id_and_consumer_id",
+        "x-badges": [
+          {
+            "name": "Chưa kiểm tra người sở hữu",
+            "color": "#B54708"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+              "example": null
+            }
+          },
+          {
+            "name": "consumer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "zuToken",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/tenant_id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByCampaignIdAndConsumerIdDTOResponseDTO"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "id": 65,
+                    "tenant_id": 71268,
+                    "campaign_id": 32,
+                    "consumer_id": 57,
+                    "province_id": 0,
+                    "ward_id": 0,
+                    "object_key": "",
+                    "zalooa_uid": "",
+                    "zaloapp_uid": "1234567890123456789",
+                    "zalo_avatar": null,
+                    "server_files": "",
+                    "filepath": "",
+                    "filename": "",
+                    "avatar_image": "",
+                    "username": "",
+                    "email": "a@example.com",
+                    "ref_code": "",
+                    "name": "Nguyễn Văn A",
+                    "phone": "0901234567",
+                    "birthday": null,
+                    "gender_key": "",
+                    "address": "",
+                    "metadata_json": {
+                      "pharmacy_name": "a",
+                      "pharmacy_address": "b"
+                    },
+                    "pharmacy_name": "a",
+                    "pharmacy_address": "b",
+                    "practice_license_no": null,
+                    "opella_customer_code": null,
+                    "invited_count": 0,
+                    "active": true,
+                    "create_date": "2026-07-22T08:29:01.194582"
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Thiếu hoặc sai Bearer token"
+          }
+        }
+      }
+    },
     "/api/v1/reward/zalo/campaign-consumer/create": {
       "post": {
         "tags": [
-          "Zalo – Đăng ký campaign"
+          "Zalo – Đăng ký & campaign của tôi"
         ],
         "summary": "Đăng ký tham gia campaign (Zalo Mini App)",
-        "description": "Nút **Đăng ký** trên form đăng ký campaign. Form dựng từ `zalo/campaign-consumer-field/list-nopaging` + `zalo/campaign-config/list-legal`.\r\nField hệ thống (`name`, `phone`, `email`, `birthday`, `gender_key`, `address`, `job_title`, `workplace`...) gửi vào property cùng tên;\r\nfield còn lại + mục pháp lý đã tick gửi trong `data_json` (key = `code` / `key`).\r\n`consumer_id`, `zaloapp_uid` lấy từ token/zuId. Chỉ tạo mới; trạng thái duyệt mặc định `campaign.consumer.approved.pending`.\r\nBáo lỗi nếu campaign không thuộc tenant, đang draft/cancelled/ended, hoặc người dùng đã đăng ký.\r\nTạo luôn ví điểm (`campaign_consumer_point`) cho người tham gia. Thành công: `result.id` = id campaign_consumer.\n\n### Map lên màn hình\n\n> Nút **Đăng ký**. Lỗi trả về (`success = false`, `error.message`): campaign không tìm thấy / không thuộc tenant, campaign draft/cancelled/ended, đã đăng ký rồi.\n\n> Trạng thái duyệt mặc định `campaign.consumer.approved.pending`. ⚠️ Chưa chặn theo giờ mở/đóng đăng ký và giới hạn số người (`registration_status_key` của `zalo/campaign/list-nopaging`) — FE ẩn nút theo `is_registration_open`.",
+        "description": "Nút **Đăng ký** trên form đăng ký campaign. Form dựng từ `zalo/campaign-consumer-field/list-nopaging` + `zalo/campaign-config/list-legal`.\r\nField hệ thống (`name`, `phone`, `email`, `birthday`, `gender_key`, `address`, `job_title`, `workplace`...) gửi vào property cùng tên;\r\nfield còn lại + mục pháp lý đã tick gửi trong `data_json` (key = `code` / `key`).\r\n`consumer_id`, `zaloapp_uid` lấy từ token/zuId. Chỉ tạo mới; trạng thái duyệt mặc định `campaign.consumer.approved.pending`.\r\nBáo lỗi nếu campaign không thuộc tenant, đang draft/cancelled/ended, hoặc người dùng đã đăng ký.\r\nTạo luôn ví điểm (`campaign_consumer_point`) cho người tham gia. Thành công: `result.id` = id campaign_consumer.\n\n### Map lên màn hình\n\n> ⚠️ **Duyệt tự động chưa hoạt động**: người đăng ký luôn ở `campaign.consumer.approved.pending`, kể cả campaign cấu hình `approval_mode_key = campaign.approval.mode.auto` (fn chưa xét chế độ duyệt). Hệ quả: chưa lên bảng xếp hạng, `total_consumer` chưa tăng cho tới khi admin duyệt. Đã báo team DB.\n\n> ➕ **Thêm field (18/11)**: **`ref_code`** — mã giới thiệu của người mời (lấy từ link/QR giới thiệu), không bắt buộc. Hệ thống không kiểm tra mã có tồn tại.\n\n> Nút **Đăng ký**. Lỗi trả về (`success = false`, `error.message`): campaign không tìm thấy / không thuộc tenant, campaign draft/cancelled/ended, đã đăng ký rồi.\n\n> Trạng thái duyệt mặc định `campaign.consumer.approved.pending`. ⚠️ Chưa chặn theo giờ mở/đóng đăng ký và giới hạn số người (`registration_status_key` của `zalo/campaign/list-nopaging`) — FE ẩn nút theo `is_registration_open`.",
         "operationId": "post_api_v1_reward_zalo_campaign_consumer_create",
         "x-badges": [
           {
             "name": "Mới",
             "color": "#0B7A45"
+          },
+          {
+            "name": "Đổi tham số",
+            "color": "#6941C6"
+          },
+          {
+            "name": "Có nhánh đang lỗi",
+            "color": "#B54708"
           }
         ],
         "requestBody": {
@@ -1832,6 +2698,7 @@
                 "name": "Nguyễn Văn A",
                 "phone": "0901234567",
                 "email": "a@example.com",
+                "ref_code": "57",
                 "birthday": "1995-08-20",
                 "gender_key": null,
                 "address": null,
@@ -1877,19 +2744,15 @@
     "/api/v1/reward/zalo/campaign-consumer/get-by-id": {
       "get": {
         "tags": [
-          "Zalo – Đăng ký campaign"
+          "Zalo – Đăng ký & campaign của tôi"
         ],
         "summary": "Chi tiết campaign đã tham gia (Zalo Mini App)",
-        "description": "Màn **chi tiết campaign của tôi**: gom 1 lần gọi gồm hồ sơ tham gia (`campaign_consumer`), campaign + đếm ngược (`campaign`),\r\nví điểm (`campaign_consumer_point`), quà chương trình (`reward_item`, có `can_redeem`), quà đã nhận (`campaign_consumer_redemption`),\r\ntiến độ nhiệm vụ (`campaign_mission_progress`) và bảng xếp hạng (`campaign_leaderboard`, có `my_rank`, `is_me`).\r\n`id` = id campaign_consumer (từ `create` / `list`), không phải id campaign. consumer_id lấy từ token.\r\nChỉ xem được bản ghi của chính mình: id của người khác hoặc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\".\r\nKhông tìm thấy id → `result` = null.\n\n### Map lên màn hình\n\n> ⚠️ fn `fn_campaign_consumer_zaloapp_get_by_id` chỉ nhận `p_id`, không lọc tenant/consumer. API đã tự chặn: chỉ trả bản ghi có `consumer_id` = người dùng đăng nhập và `tenant_id` khớp.\n\n| Khối UI | Lấy từ |\n|---|---|\n| Header campaign + đếm ngược | `campaign` (`remaining_seconds`, `server_time`, ảnh = `server_files` + `banner_filepath` + `banner_filename`) |\n| Điểm của tôi | `campaign_consumer_point.balance` |\n| Thực hiện % | `campaign_mission_progress.percent` (`completed_mission`/`total_mission`) |\n| Quà chương trình | `reward_item[]` — nút Đổi bật khi `can_redeem = true`; hết hàng `is_out_of_stock`; chạm giới hạn `reached_limit` |\n| Quà đã nhận | `campaign_consumer_redemption[]` + nút \"+N\" = `campaign_mission_progress.received_more_count` |\n| Bảng xếp hạng | `campaign_leaderboard.items[]` (dòng của tôi `is_me = true`), hạng của tôi `my_rank` (null = chưa được xếp hạng) |\n| Trạng thái duyệt | `campaign_consumer.approved_key` / `approved_name` / `approved_color` |\n\n`id` là **id campaign_consumer** (không phải id campaign). Số dòng mỗi danh sách chỉnh bằng `reward_limit` / `received_limit` / `leaderboard_limit` (0–50).",
+        "description": "Màn **chi tiết campaign của tôi**: gom 1 lần gọi gồm hồ sơ tham gia (`campaign_consumer`), campaign + đếm ngược (`campaign`),\r\nví điểm (`campaign_consumer_point`), quà chương trình (`reward_item`, có `can_redeem`), quà đã nhận (`campaign_consumer_redemption`),\r\ntiến độ nhiệm vụ (`campaign_mission_progress`) và bảng xếp hạng (`campaign_leaderboard`, có `my_rank`, `is_me`).\r\n`id` = id campaign_consumer (từ `create` / `list`), không phải id campaign. consumer_id lấy từ token.\r\nChỉ xem được bản ghi của chính mình: id của người khác hoặc tenant khác → lỗi \"Không tìm thấy bản ghi yêu cầu.\".\r\nKhông tìm thấy id → `result` = null.\n\n### Map lên màn hình\n\n> ℹ️ fn chỉ nhận `p_id`; API tự chặn: chỉ trả bản ghi có `consumer_id` = người dùng đăng nhập và `tenant_id` khớp.\n\n| Khối UI | Lấy từ |\n|---|---|\n| Header campaign + đếm ngược | `campaign` (`remaining_seconds`, `server_time`, ảnh = `server_files` + `banner_filepath` + `banner_filename`) |\n| Điểm của tôi | `campaign_consumer_point.balance` |\n| Thực hiện % | `campaign_mission_progress.percent` (`completed_mission`/`total_mission`) |\n| Quà chương trình | `reward_item[]` — nút Đổi bật khi `can_redeem = true`; hết hàng `is_out_of_stock`; chạm giới hạn `reached_limit` |\n| Quà đã nhận | `campaign_consumer_redemption[]` + nút \"+N\" = `campaign_mission_progress.received_more_count` |\n| Bảng xếp hạng | `campaign_leaderboard.items[]` (dòng của tôi `is_me = true`), hạng của tôi `my_rank` (null = chưa được xếp hạng) |\n| Trạng thái duyệt | `campaign_consumer.approved_key` / `approved_name` / `approved_color` |\n\n`id` là **id campaign_consumer** (không phải id campaign). Số dòng mỗi danh sách chỉnh bằng `reward_limit` / `received_limit` / `leaderboard_limit` (0–50).",
         "operationId": "get_api_v1_reward_zalo_campaign_consumer_get_by_id",
         "x-badges": [
           {
             "name": "Mới",
             "color": "#0B7A45"
-          },
-          {
-            "name": "Chưa lọc tenant",
-            "color": "#B42318"
           }
         ],
         "parameters": [
@@ -7527,6 +8390,155 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CampaignConsumerWebListItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignConsumerZaloAppItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id campaign_consumer (bản ghi tham gia).",
+            "format": "int64",
+            "nullable": true
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "description": "Trạng thái campaign (campaign.status.*).",
+            "nullable": true
+          },
+          "campaign_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_image": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_image": {
+            "type": "string",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "balance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "lifetime_credit": {
+            "type": "number",
+            "description": "Tổng điểm đã nhận.",
+            "format": "double",
+            "nullable": true
+          },
+          "lifetime_debit": {
+            "type": "number",
+            "description": "Tổng điểm đã dùng.",
+            "format": "double",
+            "nullable": true
+          },
+          "available_balance": {
+            "type": "number",
+            "description": "Điểm khả dụng trong ví campaign.",
+            "format": "double",
+            "nullable": true
+          },
+          "total_participants": {
+            "type": "integer",
+            "description": "Tổng số người tham gia campaign.",
+            "format": "int32",
+            "nullable": true
+          },
+          "total_missions": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "completed_missions_count": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "completion_percentage": {
+            "type": "number",
+            "description": "% nhiệm vụ đã hoàn thành.",
+            "format": "double",
+            "nullable": true
+          },
+          "evaluation": {
+            "type": "string",
+            "description": "Đánh giá tiến độ (từ fn tiến độ nhiệm vụ).",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CampaignConsumerZaloAppItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignConsumerZaloAppItemDTO"
             },
             "description": "Kết quả trả về nếu success = true",
             "nullable": true
@@ -13497,6 +14509,11 @@
             "type": "string",
             "nullable": true
           },
+          "ref_code": {
+            "type": "string",
+            "description": "Mã giới thiệu của người mời (lấy từ link/QR giới thiệu). Không bắt buộc; hệ thống không kiểm tra mã có tồn tại.",
+            "nullable": true
+          },
           "birthday": {
             "type": "string",
             "description": "Ngày sinh dạng yyyy-MM-dd. Sai định dạng thì lưu NULL (không báo lỗi).",
@@ -13521,6 +14538,156 @@
           "data_json": {
             "description": "Giá trị các field không phải hệ thống của form (key = code của field) và các mục pháp lý đã đồng ý.",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByCampaignIdAndConsumerIdDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ward_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "object_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalooa_uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "zaloapp_uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatar_image": {
+            "type": "string",
+            "description": "Ảnh đại diện: zalo_avatar hoặc ảnh tự upload.",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "ref_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "gender_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata_json": {
+            "description": "Dữ liệu thêm của form đăng ký (jsonb).",
+            "nullable": true
+          },
+          "pharmacy_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "pharmacy_address": {
+            "type": "string",
+            "nullable": true
+          },
+          "practice_license_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "opella_customer_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "invited_count": {
+            "type": "integer",
+            "description": "Số người đã đăng ký bằng mã giới thiệu của người này.",
+            "format": "int64",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "create_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppGetByCampaignIdAndConsumerIdDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppGetByCampaignIdAndConsumerIdDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false
@@ -14329,6 +15496,343 @@
           },
           "ui_json": {
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppListTotalrowItemDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status_summary": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppListTotalrowItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppListTotalrowItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppRegisterRequestDTO": {
+        "required": [
+          "tenant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Tenant đang làm việc. Bắt buộc, > 0.",
+            "example": 1,
+            "minimum": 1
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "session_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "zuId": {
+            "type": "string",
+            "nullable": true
+          },
+          "zuToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "zaloapp_uid": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "id": {
+            "type": "integer",
+            "description": "0/null = tạo mới; > 0 = cập nhật bản ghi campaign_consumer theo id.",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "province_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "ward_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "object_key": {
+            "type": "string",
+            "description": "Loại đối tượng tham gia.",
+            "nullable": true
+          },
+          "zalooa_uid": {
+            "type": "string",
+            "description": "UID theo Zalo OA.",
+            "nullable": true
+          },
+          "zalo_avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "ref_code": {
+            "type": "string",
+            "description": "Mã giới thiệu (consumer_id của người mời).",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "gender_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "pharmacy_name": {
+            "type": "string",
+            "description": "Tên nhà thuốc (lưu metadata_json).",
+            "nullable": true
+          },
+          "pharmacy_address": {
+            "type": "string",
+            "description": "Địa chỉ nhà thuốc (lưu metadata_json).",
+            "nullable": true
+          },
+          "opella_customer_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "practice_license_no": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppSummaryPageindexItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "consumer_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "campaign_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Campaign đang mở. ⚠️ Hiện SQL chưa dùng tham số này.",
+            "example": null
+          },
+          "campaign_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "campaign_type_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "server_files": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "banner_image": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filepath": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_filename": {
+            "type": "string",
+            "nullable": true
+          },
+          "logo_image": {
+            "type": "string",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "total_missions": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "completed_missions_count": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "completion_percentage": {
+            "type": "number",
+            "description": "% nhiệm vụ đã hoàn thành.",
+            "format": "double",
+            "nullable": true
+          },
+          "evaluation": {
+            "type": "string",
+            "nullable": true
+          },
+          "available_balance": {
+            "type": "number",
+            "description": "Điểm khả dụng còn lại.",
+            "format": "double",
+            "nullable": true
+          },
+          "lifetime_credit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "lifetime_debit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "redeemed_rewards_count": {
+            "type": "integer",
+            "description": "Số quà đã đổi trong campaign.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppSummaryPageindexItemDTOListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FnCampaignConsumerZaloAppSummaryPageindexItemDTO"
+            },
+            "description": "Kết quả trả về nếu success = true",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppSummaryTotalrowItemDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status_summary": {
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FnCampaignConsumerZaloAppSummaryTotalrowItemDTOResponseDTO": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/FnCampaignConsumerZaloAppSummaryTotalrowItemDTO"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDTO"
           }
         },
         "additionalProperties": false

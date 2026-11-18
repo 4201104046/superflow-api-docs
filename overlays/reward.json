@@ -26,7 +26,7 @@
       "^/api/v1/reward/zalo/campaign/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-consumer-field/(list-nopaging)$",
       "^/api/v1/reward/zalo/campaign-config/(list-legal)$",
-      "^/api/v1/reward/zalo/campaign-consumer/(create|get-by-id)$",
+      "^/api/v1/reward/zalo/campaign-consumer/(list|list-totalrow|register|summary|summary-totalrow|view-by-campaign-id-and-consumer-id|create|get-by-id)$",
       "^/api/v1/reward/zalo/location/(province/list-nopaging|ward/list-nopaging)$"
     ]
   },
@@ -42,9 +42,9 @@
       "description": "API cho **Zalo Mini App** (consumer đăng nhập bằng Zalo, cần header zuId). `consumer_id` lấy từ token, client không gửi."
     },
     {
-      "name": "Zalo – Đăng ký campaign",
+      "name": "Zalo – Đăng ký & campaign của tôi",
       "match": "/zalo/campaign-co",
-      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
+      "description": "Form **đăng ký tham gia campaign** trên Zalo Mini App:\n\n1. `campaign-consumer-field/list-nopaging`: các field của form.\n2. `campaign-config/list-legal`: các checkbox pháp lý cuối form.\n3. `campaign-consumer/create`: gửi đăng ký (`register` là luồng cũ).\n\n**Campaign của tôi** (sau khi đăng ký):\n\n- `campaign-consumer/get-by-id`: chi tiết 1 campaign đã tham gia (điểm, quà, nhiệm vụ, xếp hạng) — dùng `id` campaign_consumer.\n- `campaign-consumer/view-by-campaign-id-and-consumer-id`: hồ sơ đăng ký theo campaign.\n- `campaign-consumer/list` + `list-totalrow`: campaign đang tham gia (⚠️ đang lỗi trên dev).\n- `campaign-consumer/summary` + `summary-totalrow`: lịch sử campaign đã kết thúc.\n\n`consumer_id` và `zaloapp_uid` lấy từ token/zuId."
     },
     {
       "name": "Zalo – Địa chỉ (Tỉnh/Phường)",
@@ -2596,9 +2596,178 @@
         }
       ]
     },
+    "GET /api/v1/reward/zalo/campaign-consumer/list": {
+      "badges": [
+        "broken",
+        "no-tenant"
+      ],
+      "result_example": [
+        {
+          "id": 65,
+          "consumer_id": 57,
+          "campaign_id": 32,
+          "campaign_name": "Học hỏi hăng say – Nhận ngay may mắn",
+          "status_key": "campaign.status.ongoing",
+          "campaign_type_key": null,
+          "description": "",
+          "server_files": "https://img.azidev.com",
+          "banner_filepath": "/upload/image/51046/",
+          "banner_filename": "banner.png",
+          "banner_image": "https://img.azidev.com/upload/image/51046/banner.png",
+          "logo_filepath": "/upload/image/51046/",
+          "logo_filename": "logo.png",
+          "logo_image": "https://img.azidev.com/upload/image/51046/logo.png",
+          "start_date": "2026-11-09T18:51:39",
+          "end_date": "2027-11-27T03:03:00",
+          "balance": 1200,
+          "lifetime_credit": 1500,
+          "lifetime_debit": 300,
+          "available_balance": 1200,
+          "total_participants": 120,
+          "total_missions": 8,
+          "completed_missions_count": 1,
+          "completion_percentage": 13,
+          "evaluation": ""
+        }
+      ],
+      "ui": "> ⛔ **Đang lỗi trên dev**: fn join bảng `consumer_wallet` không tồn tại → lỗi bị nuốt, luôn trả `[]`. Tạm dùng `get-by-id` / `view-by-campaign-id-and-consumer-id` theo từng campaign.\n\n> ⚠️ fn không lọc `tenant_id` (chỉ lọc theo `consumer_id` từ token) → có thể lẫn campaign của tenant khác nếu cùng consumer.\n\nBắt buộc gửi `pageindex` ≥ 1 và `pagesize` ≥ 1 (mặc định 0 → rỗng). Tìm theo tên campaign. `sortby`: cột của bảng campaign (`id`, `name`, `code`, `start_date`, `end_date`, `status_key`, `create_date`...); để trống / sai → `create_date`."
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer/list-totalrow": {
+      "badges": [
+        "broken",
+        "no-tenant"
+      ],
+      "result_example": {
+        "total": 0,
+        "status_summary": {}
+      },
+      "ui": "> ⛔ **Đang lỗi trên dev**: fn trả `result = 0`, `relation \"consumer_wallet\" does not exist` → `total` luôn 0.\n\nĐi cặp với `list`, cùng bộ lọc."
+    },
+    "POST /api/v1/reward/zalo/campaign-consumer/register": {
+      "badges": [
+        "broken",
+        "no-owner"
+      ],
+      "request_example": {
+        "tenant_id": 71268,
+        "id": 0,
+        "campaign_id": 32,
+        "province_id": null,
+        "ward_id": null,
+        "object_key": "",
+        "zalooa_uid": "",
+        "zalo_avatar": "",
+        "server_files": "",
+        "filepath": "",
+        "filename": "",
+        "username": "",
+        "email": "a@example.com",
+        "ref_code": "",
+        "name": "Nguyễn Văn A",
+        "phone": "0901234567",
+        "birthday": "1995-08-20",
+        "gender_key": "",
+        "address": "",
+        "pharmacy_name": "",
+        "pharmacy_address": "",
+        "opella_customer_code": "",
+        "practice_license_no": "",
+        "active": true
+      },
+      "ui": "> ⛔ **Luồng cũ, đang lỗi trên dev**: fn gọi `fn_campaign_leaderboard_score_zaloapp_create` (bảng `campaign_leaderboard_score` không tồn tại) và sau đó tạo ví bằng `fn_consumer_wallet_zaloapp_create` (bảng `consumer_wallet` không tồn tại). **Dùng `create`.**\n\n> ⚠️ `id` > 0 cập nhật bản ghi theo id mà **không kiểm tra chủ sở hữu**."
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer/summary": {
+      "badges": [
+        "partial-broken",
+        "no-tenant"
+      ],
+      "result_example": [
+        {
+          "id": 65,
+          "consumer_id": 57,
+          "campaign_id": 32,
+          "campaign_name": "Học hỏi hăng say – Nhận ngay may mắn",
+          "status_key": "campaign.status.ongoing",
+          "campaign_type_key": null,
+          "description": "",
+          "server_files": "https://img.azidev.com",
+          "banner_filepath": "/upload/image/51046/",
+          "banner_filename": "banner.png",
+          "banner_image": "https://img.azidev.com/upload/image/51046/banner.png",
+          "logo_filepath": "/upload/image/51046/",
+          "logo_filename": "logo.png",
+          "logo_image": "https://img.azidev.com/upload/image/51046/logo.png",
+          "start_date": "2026-11-09T18:51:39",
+          "end_date": "2027-11-27T03:03:00",
+          "total_missions": 8,
+          "completed_missions_count": 8,
+          "completion_percentage": 100,
+          "evaluation": "",
+          "available_balance": 200,
+          "lifetime_credit": 1500,
+          "lifetime_debit": 1300,
+          "redeemed_rewards_count": 3
+        }
+      ],
+      "ui": "Lịch sử campaign **đã kết thúc** (`end_date` < hiện tại) của người dùng.\n\n> ⚠️ Mỗi dòng gọi `fn_consumer_wallet_zaloapp_get_by_consumer_id` (dùng bảng `consumer_wallet` không tồn tại trên dev): người dùng chưa có campaign kết thúc → `[]` bình thường; có dữ liệu → nhiều khả năng lỗi và trả `[]`.\n\n> ⚠️ fn không lọc `tenant_id`.\n\nBắt buộc gửi `pageindex`/`pagesize` ≥ 1. Tìm theo tên campaign. `sortby`: `id`, `consumer_id`, `campaign_id`, `campaign_name`, `status_key`, `campaign_type_key`, `start_date`, `end_date`; sai → `id`."
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer/summary-totalrow": {
+      "badges": [
+        "partial-broken",
+        "no-tenant"
+      ],
+      "result_example": {
+        "total": 0,
+        "status_summary": {}
+      },
+      "ui": "Đi cặp với `summary`, cùng bộ lọc. Cùng lưu ý `consumer_wallet` như `summary`."
+    },
+    "GET /api/v1/reward/zalo/campaign-consumer/view-by-campaign-id-and-consumer-id": {
+      "badges": [
+        "no-owner"
+      ],
+      "result_example": {
+        "id": 65,
+        "tenant_id": 71268,
+        "campaign_id": 32,
+        "consumer_id": 57,
+        "province_id": 0,
+        "ward_id": 0,
+        "object_key": "",
+        "zalooa_uid": "",
+        "zaloapp_uid": "1234567890123456789",
+        "zalo_avatar": null,
+        "server_files": "",
+        "filepath": "",
+        "filename": "",
+        "avatar_image": "",
+        "username": "",
+        "email": "a@example.com",
+        "ref_code": "",
+        "name": "Nguyễn Văn A",
+        "phone": "0901234567",
+        "birthday": null,
+        "gender_key": "",
+        "address": "",
+        "metadata_json": {
+          "pharmacy_name": "a",
+          "pharmacy_address": "b"
+        },
+        "pharmacy_name": "a",
+        "pharmacy_address": "b",
+        "practice_license_no": null,
+        "opella_customer_code": null,
+        "invited_count": 0,
+        "active": true,
+        "create_date": "2026-07-22T08:29:01.194582"
+      },
+      "ui": "> ⚠️ **Chưa kiểm tra chủ sở hữu**: action dùng `ReturnOk` nên `consumer_id` **không** lấy từ token — client phải tự gửi `consumer_id` trên query, và gửi `consumer_id` khác là xem được hồ sơ (SĐT, email) của người khác.\n\nKhông tìm thấy (chưa đăng ký) → `result` rỗng (các field mặc định, `id = 0`).\n\n| Màn | Field |\n|---|---|\n| Ảnh đại diện | `avatar_image` |\n| Số người đã mời | `invited_count` |\n| Mã giới thiệu để chia sẻ | `ref_code` / `consumer_id` |"
+    },
     "POST /api/v1/reward/zalo/campaign-consumer/create": {
       "badges": [
-        "new"
+        "new",
+        "changed",
+        "partial-broken"
       ],
       "request_example": {
         "tenant_id": 71268,
@@ -2610,6 +2779,7 @@
         "name": "Nguyễn Văn A",
         "phone": "0901234567",
         "email": "a@example.com",
+        "ref_code": "57",
         "birthday": "1995-08-20",
         "gender_key": null,
         "address": null,
@@ -2621,7 +2791,7 @@
           "campaign.consumer.field.legal.personal_data_consent": true
         }
       },
-      "ui": "> Nút **Đăng ký**. Lỗi trả về (`success = false`, `error.message`): campaign không tìm thấy / không thuộc tenant, campaign draft/cancelled/ended, đã đăng ký rồi.\n\n> Trạng thái duyệt mặc định `campaign.consumer.approved.pending`. ⚠️ Chưa chặn theo giờ mở/đóng đăng ký và giới hạn số người (`registration_status_key` của `zalo/campaign/list-nopaging`) — FE ẩn nút theo `is_registration_open`.",
+      "ui": "> ⚠️ **Duyệt tự động chưa hoạt động**: người đăng ký luôn ở `campaign.consumer.approved.pending`, kể cả campaign cấu hình `approval_mode_key = campaign.approval.mode.auto` (fn chưa xét chế độ duyệt). Hệ quả: chưa lên bảng xếp hạng, `total_consumer` chưa tăng cho tới khi admin duyệt. Đã báo team DB.\n\n> ➕ **Thêm field (18/11)**: **`ref_code`** — mã giới thiệu của người mời (lấy từ link/QR giới thiệu), không bắt buộc. Hệ thống không kiểm tra mã có tồn tại.\n\n> Nút **Đăng ký**. Lỗi trả về (`success = false`, `error.message`): campaign không tìm thấy / không thuộc tenant, campaign draft/cancelled/ended, đã đăng ký rồi.\n\n> Trạng thái duyệt mặc định `campaign.consumer.approved.pending`. ⚠️ Chưa chặn theo giờ mở/đóng đăng ký và giới hạn số người (`registration_status_key` của `zalo/campaign/list-nopaging`) — FE ẩn nút theo `is_registration_open`.",
       "result_example": {
         "id": 5123,
         "result": 1,
@@ -2631,8 +2801,7 @@
     },
     "GET /api/v1/reward/zalo/campaign-consumer/get-by-id": {
       "badges": [
-        "new",
-        "no-tenant"
+        "new"
       ],
       "request_example": {
         "tenant_id": 71268,
@@ -2851,7 +3020,7 @@
           ]
         }
       },
-      "ui": "> ⚠️ fn `fn_campaign_consumer_zaloapp_get_by_id` chỉ nhận `p_id`, không lọc tenant/consumer. API đã tự chặn: chỉ trả bản ghi có `consumer_id` = người dùng đăng nhập và `tenant_id` khớp.\n\n| Khối UI | Lấy từ |\n|---|---|\n| Header campaign + đếm ngược | `campaign` (`remaining_seconds`, `server_time`, ảnh = `server_files` + `banner_filepath` + `banner_filename`) |\n| Điểm của tôi | `campaign_consumer_point.balance` |\n| Thực hiện % | `campaign_mission_progress.percent` (`completed_mission`/`total_mission`) |\n| Quà chương trình | `reward_item[]` — nút Đổi bật khi `can_redeem = true`; hết hàng `is_out_of_stock`; chạm giới hạn `reached_limit` |\n| Quà đã nhận | `campaign_consumer_redemption[]` + nút \"+N\" = `campaign_mission_progress.received_more_count` |\n| Bảng xếp hạng | `campaign_leaderboard.items[]` (dòng của tôi `is_me = true`), hạng của tôi `my_rank` (null = chưa được xếp hạng) |\n| Trạng thái duyệt | `campaign_consumer.approved_key` / `approved_name` / `approved_color` |\n\n`id` là **id campaign_consumer** (không phải id campaign). Số dòng mỗi danh sách chỉnh bằng `reward_limit` / `received_limit` / `leaderboard_limit` (0–50)."
+      "ui": "> ℹ️ fn chỉ nhận `p_id`; API tự chặn: chỉ trả bản ghi có `consumer_id` = người dùng đăng nhập và `tenant_id` khớp.\n\n| Khối UI | Lấy từ |\n|---|---|\n| Header campaign + đếm ngược | `campaign` (`remaining_seconds`, `server_time`, ảnh = `server_files` + `banner_filepath` + `banner_filename`) |\n| Điểm của tôi | `campaign_consumer_point.balance` |\n| Thực hiện % | `campaign_mission_progress.percent` (`completed_mission`/`total_mission`) |\n| Quà chương trình | `reward_item[]` — nút Đổi bật khi `can_redeem = true`; hết hàng `is_out_of_stock`; chạm giới hạn `reached_limit` |\n| Quà đã nhận | `campaign_consumer_redemption[]` + nút \"+N\" = `campaign_mission_progress.received_more_count` |\n| Bảng xếp hạng | `campaign_leaderboard.items[]` (dòng của tôi `is_me = true`), hạng của tôi `my_rank` (null = chưa được xếp hạng) |\n| Trạng thái duyệt | `campaign_consumer.approved_key` / `approved_name` / `approved_color` |\n\n`id` là **id campaign_consumer** (không phải id campaign). Số dòng mỗi danh sách chỉnh bằng `reward_limit` / `received_limit` / `leaderboard_limit` (0–50)."
     },
     "GET /api/v1/reward/zalo/location/province/list-nopaging": {
       "badges": [
